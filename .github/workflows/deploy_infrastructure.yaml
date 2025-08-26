@@ -1,0 +1,86 @@
+# Workflow for running terraform and ansible
+# on a github hosted agent
+
+name: Deploy Infrastructure
+
+# Controls when the workflow will run
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  terraform_plan:
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: hashicorp/setup-terraform@v2
+
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Terraform Plan
+        run: |
+          echo $SSH_PUBLIC_KEY | base64 -d > ssh_public_key
+          export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
+          export TF_VAR_hcloud_token=$HCLOUD_TOKEN
+          export TF_VAR_ssh_public_key=ssh_public_key
+          terraform init
+          terraform plan --out=tfplan
+        working-directory: ./k8s
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
+      
+      - name: Publish tfplan
+        uses: actions/upload-artifact@v2
+        with:
+          name: tfplan
+          path: ./k8s/tfplan
+
+  terraform_apply:
+    needs: terraform_plan
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: hashicorp/setup-terraform@v2
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: tfplan
+
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Terraform Apply
+        run: |
+          echo $SSH_PUBLIC_KEY | base64 -d > ssh_public_key
+          export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
+          export TF_VAR_hcloud_token=$HCLOUD_TOKEN
+          export TF_VAR_ssh_public_key=ssh_public_key
+          terraform init
+          terraform apply ../tfplan
+        working-directory: ./k8s
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
+
+      - name: Publish kubeconfig
+        uses: actions/upload-artifact@v2
+        with:
+          name: k3s_kubeconfig
+          path: ./k8s/k3s_kubeconfig.yaml
