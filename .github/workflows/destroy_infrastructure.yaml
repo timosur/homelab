@@ -44,22 +44,22 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
 
-      - uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
       - name: Terraform Destroy
         run: |
           echo $SSH_PUBLIC_KEY | base64 -d > ssh_public_key
+          echo $SSH_PRIVATE_KEY | base64 -d > ssh_private_key
+          chmod 600 ssh_private_key
           export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
           export TF_VAR_hcloud_token=$HCLOUD_TOKEN
-          export TF_VAR_ssh_public_key=ssh_public_key
+          export TF_VAR_ssh_public_key_file=ssh_public_key
+          export TF_VAR_ssh_private_key_file=ssh_private_key
           terraform init
           terraform destroy -auto-approve
         working-directory: ./infrastructure
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
 
       - name: Cleanup artifacts
