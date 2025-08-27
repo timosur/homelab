@@ -23,8 +23,8 @@ jobs:
 
       - name: Terraform Plan
         run: |
-          echo $SSH_PUBLIC_KEY | base64 -d > ssh_public_key
-          echo $SSH_PRIVATE_KEY | base64 -d > ssh_private_key
+          echo $SSH_PUBLIC_KEY > ssh_public_key
+          echo $SSH_PRIVATE_KEY > ssh_private_key
           chmod 600 ssh_private_key
           export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
           export TF_VAR_hcloud_token=$HCLOUD_TOKEN
