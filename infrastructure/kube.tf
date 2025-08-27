@@ -69,6 +69,8 @@ module "kube-hetzner" {
       server_type = "cpx11"
       location    = "fsn1"
       count       = 1
+      labels      = []
+      taints      = []
     }
   ]
 
@@ -78,6 +80,8 @@ module "kube-hetzner" {
       server_type = "cpx11"
       location    = "fsn1"
       count       = 2
+      labels      = []
+      taints      = []
     }
   ]
 
