@@ -1,0 +1,69 @@
+# Workflow for destroying terraform infrastructure
+# This workflow will destroy all resources managed by Terraform
+
+name: Destroy Infrastructure
+
+# Controls when the workflow will run
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "DESTROY" to confirm infrastructure destruction'
+        required: true
+        default: ''
+
+jobs:
+  validate_confirmation:
+    runs-on: ubuntu-latest
+    outputs:
+      confirmed: ${{ steps.check.outputs.confirmed }}
+    steps:
+      - name: Validate confirmation
+        id: check
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" = "DESTROY" ]; then
+            echo "confirmed=true" >> $GITHUB_OUTPUT
+            echo "✅ Confirmation validated"
+          else
+            echo "confirmed=false" >> $GITHUB_OUTPUT
+            echo "❌ Invalid confirmation. You must type 'DESTROY' exactly to proceed."
+            exit 1
+          fi
+
+  terraform_destroy:
+    needs: validate_confirmation
+    if: needs.validate_confirmation.outputs.confirmed == 'true'
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Terraform Destroy
+        run: |
+          echo $SSH_PUBLIC_KEY | base64 -d > ssh_public_key
+          export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
+          export TF_VAR_hcloud_token=$HCLOUD_TOKEN
+          export TF_VAR_ssh_public_key=ssh_public_key
+          terraform init
+          terraform destroy -auto-approve
+        working-directory: ./infrastructure
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
+
+      - name: Cleanup artifacts
+        run: |
+          echo "🧹 Infrastructure has been destroyed"
+          echo "All Hetzner Cloud resources have been removed"
+          echo "Kubernetes cluster and associated resources are no longer available"
