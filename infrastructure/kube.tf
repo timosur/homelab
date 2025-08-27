@@ -19,9 +19,10 @@ variable "hcloud_token" {
   default   = ""
 }
 
-variable "ssh_public_key" {
+variable "ssh_public_key_content" {
   sensitive = true
-  default = ""
+  type      = string
+  default   = ""
 }
 
 ###############################################
@@ -59,7 +60,7 @@ module "kube-hetzner" {
   firewall_kube_api_source = ["0.0.0.0/0", "::/0"]
 
   # —— SSH keys ——
-  ssh_public_key  = file(var.ssh_public_key)
+  ssh_public_key  = var.ssh_public_key_content
   ssh_private_key = null
 
   # —— Node pools ——
