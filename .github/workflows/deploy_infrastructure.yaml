@@ -32,7 +32,7 @@ jobs:
           export TF_VAR_ssh_public_key=ssh_public_key
           terraform init
           terraform plan --out=tfplan
-        working-directory: ./k8s
+        working-directory: ./infrastructure
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
@@ -42,7 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
-          path: ./k8s/tfplan
+          path: ./infrastructure/tfplan
 
   terraform_apply:
     needs: terraform_plan
@@ -73,7 +73,7 @@ jobs:
           export TF_VAR_ssh_public_key=ssh_public_key
           terraform init
           terraform apply ../tfplan
-        working-directory: ./k8s
+        working-directory: ./infrastructure
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
@@ -83,4 +83,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: k3s_kubeconfig
-          path: ./k8s/k3s_kubeconfig.yaml
+          path: ./infrastructure/k3s_kubeconfig.yaml
