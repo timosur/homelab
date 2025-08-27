@@ -55,7 +55,7 @@ module "kube-hetzner" {
   network_region = "eu-central"
 
   # —— Security ——
-  firewall_ssh_source      = null
+  firewall_ssh_source      = ["0.0.0.0/0", "::/0"]
   firewall_kube_api_source = ["0.0.0.0/0", "::/0"]
 
   # —— SSH keys ——
