@@ -46,13 +46,13 @@ provider "hcloud" {
 ###############################################
 module "kube-hetzner" {
   source  = "kube-hetzner/kube-hetzner/hcloud"
-  version = "2.18.0"
+  version = "2.18.1"
 
   providers   = { hcloud = hcloud }
   hcloud_token = var.hcloud_token
 
   # —— Region & network ——
-  network_region = "eu-central"   # fsn1/nbg1/hel1
+  network_region = "eu-central"
 
   # —— Security ——
   firewall_ssh_source      = null
@@ -101,11 +101,11 @@ module "kube-hetzner" {
 
   # Minimal Cilium Helm values: enable Gateway API dataplane & L7 Proxy
   cilium_values = <<-EOT
-  kubeProxyReplacement: true
-  l7Proxy: true
-  k8s:
+kubeProxyReplacement: true
+l7Proxy: true
+k8s:
   requireIPv4PodCIDR: true
-  gatewayAPI:
+gatewayAPI:
   enabled: true
   EOT
 
