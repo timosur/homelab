@@ -88,6 +88,7 @@ module "kube-hetzner" {
   # ——— Networking / LB ———
   cni_plugin = "cilium"
   disable_kube_proxy = true
+  cilium_hubble_enabled = true
 
   # Default LB that CCM will use when Services of type LoadBalancer are created
   load_balancer_type = "lb11"
