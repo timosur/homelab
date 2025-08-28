@@ -103,14 +103,3 @@ jobs:
           
           echo "GitOps bootstrap completed. ArgoCD should now be connected to your repository."
           echo "Check ArgoCD UI for status."
-
-      - name: Wait for Applications to Sync
-        run: |
-          echo "Waiting for applications to sync..."
-          
-          # Wait for root app to be healthy
-          kubectl wait --for=condition=Synced --timeout=300s application/root -n argocd || echo "Root app sync timeout"
-          
-          # List application status
-          kubectl get applications -n argocd || echo "Could not list applications"
-        continue-on-error: true
