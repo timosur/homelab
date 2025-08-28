@@ -25,12 +25,6 @@ variable "ssh_public_key_file" {
   default   = ""
 }
 
-variable "ssh_private_key_file" {
-  sensitive = true
-  type      = string
-  default   = ""
-}
-
 ###############################################
 # Terraform & provider
 ###############################################
@@ -67,7 +61,7 @@ module "kube-hetzner" {
 
   # —— SSH keys ——
   ssh_public_key  = file(var.ssh_public_key_file)
-  ssh_private_key = file(var.ssh_private_key_file)
+  ssh_private_key = null
 
   # —— Node pools ——
   control_plane_nodepools = [
