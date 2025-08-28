@@ -88,7 +88,76 @@ module "kube-hetzner" {
   # ——— Networking / LB ———
   cni_plugin = "cilium"
   disable_kube_proxy = true
-  cilium_hubble_enabled = true
+  
+  # Enable Cilium Gateway API support
+  cilium_values = <<EOT
+# Enable Kubernetes host-scope IPAM mode (required for K3s + Hetzner CCM)
+ipam:
+  mode: kubernetes
+k8s:
+  requireIPv4PodCIDR: true
+
+# Replace kube-proxy with Cilium
+kubeProxyReplacement: true
+# Enable health check server (healthz) for the kube-proxy replacement
+kubeProxyReplacementHealthzBindAddr: "0.0.0.0:10256"
+
+# Access to Kube API Server (mandatory if kube-proxy is disabled)
+k8sServiceHost: "127.0.0.1"
+k8sServicePort: "6444"
+
+# Set Tunnel Mode or Native Routing Mode (supported by Hetzner CCM Route Controller)
+routingMode: "tunnel"
+
+# Perform a gradual roll out on config update.
+rollOutCiliumPods: true
+
+endpointRoutes:
+  # Enable use of per endpoint routes instead of routing via the cilium_host interface.
+  enabled: true
+
+loadBalancer:
+  # Enable LoadBalancer & NodePort XDP Acceleration (direct routing (routingMode=native) is recommended to achieve optimal performance)
+  acceleration: native
+
+bpf:
+  # Enable eBPF-based Masquerading ("The eBPF-based implementation is the most efficient implementation")
+  masquerade: true
+
+encryption:
+  enabled: true
+  # Enable node encryption for node-to-node traffic
+  nodeEncryption: true
+  type: wireguard
+
+hubble:
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - port-distribution
+      - icmp
+      - http
+
+# Enable Gateway API support
+gatewayAPI:
+  enabled: true
+
+# Operator tolerations to ensure it can schedule during cluster initialization
+operator:
+  tolerations:
+    - key: node.cloudprovider.kubernetes.io/uninitialized
+      operator: Exists
+      effect: NoSchedule
+
+MTU: 1450
+EOT
 
   # Default LB that CCM will use when Services of type LoadBalancer are created
   load_balancer_type = "lb11"
