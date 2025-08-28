@@ -1,6 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: argocd
+# Multi-namespace deployment using overlays
 resources:
-- https://raw.githubusercontent.com/argoproj/argo-cd/v2.7.2/manifests/install.yaml
+- overlays/argocd
+
+# Global configurations
+commonLabels:
+  homelab.io/deployment: terraform-managed
+
+# Optional: Add global patches here
+patchesStrategicMerge: []
