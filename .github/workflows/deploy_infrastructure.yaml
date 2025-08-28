@@ -1,9 +1,6 @@
-# Workflow for running terraform and ansible
-# on a github hosted agent
+# Alternative approach using SSH agent
+name: Deploy Infrastructure (SSH Agent)
 
-name: Deploy Infrastructure
-
-# Controls when the workflow will run
 on:
   push:
     branches: [ "main" ]
@@ -15,28 +12,48 @@ jobs:
   terraform_plan:
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v5
 
       - uses: hashicorp/setup-terraform@v3
 
+      # Setup SSH agent
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Put public key into file
+        run: |
+          echo "$SSH_PUBLIC_KEY" > ssh_public_key
+          chmod 644 ssh_public_key
+        env:
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+        working-directory: ./infrastructure
+
+      - name: Debug SSH Keys
+        run: |
+          echo "Public key file exists:"
+          ls -la ssh_public_key || echo "Public key file not found"
+
+          echo "Public key content (first 50 chars):"
+          head -c 50 ssh_public_key || echo "Cannot read public key"
+
+          echo "SSH key fingerprint:"
+          ssh-keygen -lf ssh_public_key || echo "Cannot generate fingerprint"
+        working-directory: ./infrastructure
+
       - name: Terraform Plan
         run: |
-          echo $SSH_PUBLIC_KEY > ssh_public_key
-          echo $SSH_PRIVATE_KEY > ssh_private_key
-          chmod 600 ssh_private_key
           export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
           export TF_VAR_hcloud_token=$HCLOUD_TOKEN
-          export TF_VAR_ssh_public_key_file=ssh_public_key
-          export TF_VAR_ssh_private_key_file=ssh_private_key
+          export TF_VAR_ssh_public_key_file="$(pwd)/ssh_public_key"
+
           terraform init
           terraform plan --out=tfplan
         working-directory: ./infrastructure
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
-          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
       
       - name: Publish tfplan
@@ -52,7 +69,6 @@ jobs:
     environment:
       name: production
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v5
 
@@ -62,22 +78,33 @@ jobs:
         with:
           name: tfplan
 
-      - name: Terraform Apply
+      # Setup SSH agent
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Put public key into file
         run: |
-          echo $SSH_PUBLIC_KEY > ssh_public_key
-          echo $SSH_PRIVATE_KEY > ssh_private_key
-          chmod 600 ssh_private_key
+          echo "$SSH_PUBLIC_KEY" > ssh_public_key
+          chmod 644 ssh_public_key
+        env:
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+        working-directory: ./infrastructure
+
+      - name: Terraform Apply
+        run: |          
           export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
           export TF_VAR_hcloud_token=$HCLOUD_TOKEN
-          export TF_VAR_ssh_public_key_file=ssh_public_key
-          export TF_VAR_ssh_private_key_file=ssh_private_key
+          export TF_VAR_ssh_public_key_file="$(pwd)/ssh_public_key"
+          # When using SSH agent, you might not need the private key file
+          # export TF_VAR_ssh_private_key_file="$(pwd)/ssh_private_key"
+          
           terraform init
           terraform apply ../tfplan
         working-directory: ./infrastructure
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
-          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
 
       - name: Publish kubeconfig
