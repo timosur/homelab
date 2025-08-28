@@ -93,18 +93,10 @@ module "kube-hetzner" {
   load_balancer_type = "lb11"
   load_balancer_location = "fsn1"
 
-  # Don’t deploy Traefik/Nginx/HAProxy; we’ll use Cilium Gateway API instead
   ingress_controller = "none"
 
   # ——— TLS ———
   enable_cert_manager = true
-  # Tip: create a Hetzner DNS API secret + ClusterIssuer/Certificate via Kustomize or HelmChart manifests
-  # for *.timosur.com, then define a Gateway & HTTPRoutes using the issued secret.
-
-
-  # ——— Convenience ———
-  # create_kubeconfig = false # (recommended for CI; fetch later via: terraform output --raw kubeconfig > kubeconfig.yaml)
-  # export_values = true # (optional) export effective Helm values for charts
 }
 
 
