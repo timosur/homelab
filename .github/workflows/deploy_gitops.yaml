@@ -66,7 +66,7 @@ jobs:
           echo "Configuring ArgoCD repository connection..."
           
           # Create a temporary SSH key file for ArgoCD
-          echo "$ARGOCD_SSH_PRIVATE_KEY" > /tmp/argocd_ssh_key
+          echo "$SSH_PRIVATE_KEY" > /tmp/argocd_ssh_key
           chmod 600 /tmp/argocd_ssh_key
           
           # Create repository configuration
@@ -91,7 +91,7 @@ jobs:
           
           echo "Repository configuration completed."
         env:
-          ARGOCD_SSH_PRIVATE_KEY: ${{ secrets.ARGOCD_SSH_PRIVATE_KEY }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Apply Gateway API CRDs
         run: |
