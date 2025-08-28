@@ -1,20 +1,6 @@
 name: Deploy GitOps
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'apps/**'
-      - 'bootstrap/**'
-      - 'networking/**'
-      - '.github/workflows/deploy_gitops.yaml'
-  pull_request:
-    branches: [ "main" ]
-    paths:
-      - 'apps/**'
-      - 'bootstrap/**'
-      - 'networking/**'
-      - '.github/workflows/deploy_gitops.yaml'
   workflow_dispatch:
 
 jobs:
