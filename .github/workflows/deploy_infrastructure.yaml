@@ -1,5 +1,5 @@
 # Alternative approach using SSH agent
-name: Deploy Infrastructure (SSH Agent)
+name: Deploy Infrastructure
 
 on:
   push:
