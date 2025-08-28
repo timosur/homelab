@@ -89,26 +89,12 @@ module "kube-hetzner" {
   cni_plugin = "cilium"
   disable_kube_proxy = true
 
-
   # Default LB that CCM will use when Services of type LoadBalancer are created
   load_balancer_type = "lb11"
   load_balancer_location = "fsn1"
 
-
   # Don’t deploy Traefik/Nginx/HAProxy; we’ll use Cilium Gateway API instead
   ingress_controller = "none"
-
-
-  # Minimal Cilium Helm values: enable Gateway API dataplane & L7 Proxy
-  cilium_values = <<-EOT
-kubeProxyReplacement: true
-l7Proxy: true
-k8s:
-  requireIPv4PodCIDR: true
-gatewayAPI:
-  enabled: true
-  EOT
-
 
   # ——— TLS ———
   enable_cert_manager = true
