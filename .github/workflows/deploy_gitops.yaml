@@ -27,11 +27,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Setup SSH agent for repository access
-      - name: Setup SSH Agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - uses: hashicorp/setup-terraform@v3
+
+
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
@@ -40,11 +38,6 @@ jobs:
 
       - name: Get kubeconfig from Terraform Cloud
         run: |
-          # Install Terraform CLI
-          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-          sudo apt-get update && sudo apt-get install terraform
-          
           # Get kubeconfig from Terraform Cloud
           cd infrastructure
           export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
@@ -67,11 +60,7 @@ jobs:
         run: |
           echo "Configuring ArgoCD repository connection..."
           
-          # Create a temporary SSH key file for ArgoCD
-          echo "$SSH_PRIVATE_KEY" > /tmp/argocd_ssh_key
-          chmod 600 /tmp/argocd_ssh_key
-          
-          # Create repository configuration
+          # Create repository configuration for public HTTPS repo
           cat <<EOF | kubectl apply -f - || echo "Failed to create repository configuration"
           apiVersion: v1
           kind: Secret
@@ -83,17 +72,10 @@ jobs:
           type: Opaque
           stringData:
             type: git
-            url: git@github.com:timosur/homelab.git
-            sshPrivateKey: |
-          $(sed 's/^/      /' /tmp/argocd_ssh_key)
+            url: https://github.com/timosur/homelab.git
           EOF
           
-          # Clean up temporary SSH key
-          rm -f /tmp/argocd_ssh_key
-          
           echo "Repository configuration completed."
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Apply Gateway API CRDs
         run: |
