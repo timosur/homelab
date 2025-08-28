@@ -4,8 +4,14 @@ name: Deploy Infrastructure
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/deploy_infrastructure.yaml'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/deploy_infrastructure.yaml'
   workflow_dispatch:
 
 jobs:
@@ -50,17 +56,11 @@ jobs:
           export TF_VAR_ssh_public_key_file="$(pwd)/ssh_public_key"
 
           terraform init
-          terraform plan --out=tfplan
+          terraform plan
         working-directory: ./infrastructure
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
-      
-      - name: Publish tfplan
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: ./infrastructure/tfplan
 
   terraform_apply:
     needs: terraform_plan
@@ -73,10 +73,6 @@ jobs:
       - uses: actions/checkout@v5
 
       - uses: hashicorp/setup-terraform@v3
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: tfplan
 
       # Setup SSH agent
       - name: Setup SSH Agent
@@ -99,15 +95,9 @@ jobs:
           export TF_VAR_ssh_public_key_file="$(pwd)/ssh_public_key"
           
           terraform init
-          terraform apply ../tfplan
+          terraform apply -auto-approve
         working-directory: ./infrastructure
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
           TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
-
-      - name: Publish kubeconfig
-        uses: actions/upload-artifact@v4
-        with:
-          name: k3s_kubeconfig
-          path: ./infrastructure/k3s_kubeconfig.yaml

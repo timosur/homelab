@@ -1,0 +1,2 @@
+- Add ingress networking using Cilium GatewayAPI with Let's Encrypt
+  -> Deploy via argo

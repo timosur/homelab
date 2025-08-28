@@ -1,0 +1,123 @@
+name: Deploy GitOps
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'apps/**'
+      - 'bootstrap/**'
+      - 'networking/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'apps/**'
+      - 'bootstrap/**'
+      - 'networking/**'
+  workflow_dispatch:
+
+jobs:
+  bootstrap_gitops:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Setup SSH agent for repository access
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Get kubeconfig from Terraform Cloud
+        run: |
+          # Install Terraform CLI
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+          sudo apt-get update && sudo apt-get install terraform
+          
+          # Get kubeconfig from Terraform Cloud
+          cd infrastructure
+          export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
+          terraform init
+          terraform output -raw kubeconfig > k3s_kubeconfig.yaml
+          
+          # Set kubeconfig for subsequent steps
+          echo "KUBECONFIG=$(pwd)/k3s_kubeconfig.yaml" >> $GITHUB_ENV
+        env:
+          TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
+
+      - name: Wait for ArgoCD to be ready
+        run: |
+          echo "Waiting for ArgoCD to be ready..."
+          kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd || echo "ArgoCD not ready yet"
+          kubectl wait --for=condition=ready --timeout=300s pod -l app.kubernetes.io/name=argocd-server -n argocd || echo "ArgoCD server pod not ready"
+          kubectl wait --for=condition=ready --timeout=300s pod -l app.kubernetes.io/name=argocd-repo-server -n argocd || echo "ArgoCD repo server pod not ready"
+
+      - name: Configure ArgoCD Repository
+        run: |
+          echo "Configuring ArgoCD repository connection..."
+          
+          # Create a temporary SSH key file for ArgoCD
+          echo "$ARGOCD_SSH_PRIVATE_KEY" > /tmp/argocd_ssh_key
+          chmod 600 /tmp/argocd_ssh_key
+          
+          # Create repository configuration
+          cat <<EOF | kubectl apply -f - || echo "Failed to create repository configuration"
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: homelab-repo
+            namespace: argocd
+            labels:
+              argocd.argoproj.io/secret-type: repository
+          type: Opaque
+          stringData:
+            type: git
+            url: git@github.com:timosur/homelab.git
+            sshPrivateKey: |
+          $(sed 's/^/      /' /tmp/argocd_ssh_key)
+          EOF
+          
+          # Clean up temporary SSH key
+          rm -f /tmp/argocd_ssh_key
+          
+          echo "Repository configuration completed."
+        env:
+          ARGOCD_SSH_PRIVATE_KEY: ${{ secrets.ARGOCD_SSH_PRIVATE_KEY }}
+
+      - name: Apply Gateway API CRDs
+        run: |
+          echo "Applying Gateway API CRDs..."
+          kubectl apply -k bootstrap/gateway-api/ || echo "Gateway API CRDs failed"
+
+      - name: Deploy Root ArgoCD Application
+        run: |
+          echo "Deploying root ArgoCD application..."
+          
+          # Wait a bit for ArgoCD to process the repository
+          sleep 30
+          
+          # Deploy root app
+          kubectl apply -f apps/root.yaml || echo "Root app deployment failed"
+          
+          echo "GitOps bootstrap completed. ArgoCD should now be connected to your repository."
+          echo "Check ArgoCD UI for status."
+
+      - name: Wait for Applications to Sync
+        run: |
+          echo "Waiting for applications to sync..."
+          
+          # Wait for root app to be healthy
+          kubectl wait --for=condition=Synced --timeout=300s application/root -n argocd || echo "Root app sync timeout"
+          
+          # List application status
+          kubectl get applications -n argocd || echo "Could not list applications"
+        continue-on-error: true
