@@ -96,13 +96,14 @@ jobs:
         run: |          
           export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
           export TF_VAR_hcloud_token=$HCLOUD_TOKEN
-          export TF_VAR_ssh_public_key_file=ssh_public_key
+          export TF_VAR_ssh_public_key_file="$(pwd)/ssh_public_key"
           
           terraform init
           terraform apply ../tfplan
         working-directory: ./infrastructure
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
           TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
 
       - name: Publish kubeconfig
