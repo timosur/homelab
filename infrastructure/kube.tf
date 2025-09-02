@@ -20,8 +20,8 @@ variable "hcloud_token" {
 }
 
 variable "ssh_public_key_file" {
-  type      = string
-  default   = ""
+  type    = string
+  default = ""
 }
 
 ###############################################
@@ -48,7 +48,7 @@ module "kube-hetzner" {
   source  = "kube-hetzner/kube-hetzner/hcloud"
   version = "2.18.1"
 
-  providers   = { hcloud = hcloud }
+  providers    = { hcloud = hcloud }
   hcloud_token = var.hcloud_token
 
   # —— Region & network ——
@@ -86,11 +86,12 @@ module "kube-hetzner" {
   ]
 
   # ——— Networking / LB ———
-  cni_plugin = "cilium"
+  cni_plugin         = "cilium"
   disable_kube_proxy = true
-  
+
   # Enable Cilium Gateway API support
-  cilium_values = <<EOT
+  cilium_version = "1.18.1"
+  cilium_values  = <<EOT
 # Enable Kubernetes host-scope IPAM mode (required for K3s + Hetzner CCM)
 ipam:
   mode: kubernetes
@@ -148,6 +149,8 @@ hubble:
 # Enable Gateway API support
 gatewayAPI:
   enabled: true
+  gatewayClass:
+    create: true
 
 # Operator tolerations to ensure it can schedule during cluster initialization
 operator:
@@ -160,7 +163,7 @@ MTU: 1450
 EOT
 
   # Default LB that CCM will use when Services of type LoadBalancer are created
-  load_balancer_type = "lb11"
+  load_balancer_type     = "lb11"
   load_balancer_location = "fsn1"
 
   # Just being installed because otherwise kube-hetzner does not create the Hetzner LB, will be reconfigured afterwards to use Cilium GatewayAPI
@@ -175,12 +178,12 @@ EOT
 
 
 output "kubeconfig" {
-  value = module.kube-hetzner.kubeconfig
+  value     = module.kube-hetzner.kubeconfig
   sensitive = true
 }
 
 
 output "ingress_public_ipv4" {
   description = "Public IPv4 of the default ingress/load balancer (or first CP if none)."
-  value = module.kube-hetzner.ingress_public_ipv4
-} 
+  value       = module.kube-hetzner.ingress_public_ipv4
+}
