@@ -1,2 +1,1 @@
-- Add ingress networking using Cilium GatewayAPI with Let's Encrypt
-  -> Deploy via argo
+- Enable GatewayAPI to really accept ingress traffic -> How does the networking look like?
