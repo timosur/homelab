@@ -163,7 +163,8 @@ EOT
   load_balancer_type = "lb11"
   load_balancer_location = "fsn1"
 
-  ingress_controller = "none"
+  # Just being installed because otherwise kube-hetzner does not create the Hetzner LB, will be reconfigured afterwards to use Cilium GatewayAPI
+  ingress_controller = "nginx"
 
   # ——— TLS ———
   enable_cert_manager = true
