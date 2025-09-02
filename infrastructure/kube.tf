@@ -168,6 +168,9 @@ EOT
 
   # ——— TLS ———
   enable_cert_manager = true
+
+  # Needs to be set until https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/issues/1887 is fixed
+  kured_version = "1.19.0"
 }
 
 
