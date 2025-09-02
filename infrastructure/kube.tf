@@ -1,9 +1,9 @@
 ###############################################
 # kube.tf — Kube‑Hetzner v2.18.0
-# Goal: low‑cost GitOps cluster w/ wildcard TLS on *.timosur.com
-# Stack: k3s + Cilium + NGINX Ingress + cert-manager (DNS‑01 for wildcard)
+# Goal: low‑cost GitOps cluster w/ TLS on *.timosur.com
+# Stack: k3s + Cilium + Cilium GatewayAPI + cert-manager
 # Shape: 1× control plane (cpx11) + 2× workers (cpx11)
-# LB: Hetzner Cloud Load Balancer (lb11) in fsn1
+# LB: Hetzner Cloud Load Balancer (lb11) in fsn1 pointing to Cilium Gateway
 ###############################################
 
 ###############################################
