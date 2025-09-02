@@ -11,10 +11,10 @@ spec:
       protocol: HTTP
       allowedRoutes:
         namespaces:
-          from: argocd
+          from: Same
     - name: https
       port: 4443
       protocol: HTTPS
       allowedRoutes:
         namespaces:
-          from: argocd
+          from: Same
