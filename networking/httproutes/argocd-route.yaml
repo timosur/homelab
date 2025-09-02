@@ -5,8 +5,8 @@ metadata:
   namespace: argocd
 spec:
   parentRefs:
-    - name: argocd-gateway
-      namespace: argocd
+    - name: main-gateway
+      namespace: kube-system
       sectionName: https
   hostnames:
     - "argocd.timosur.com"
