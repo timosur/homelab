@@ -131,6 +131,9 @@ encryption:
   nodeEncryption: true
   type: wireguard
 
+debug:
+  enabled: true
+
 hubble:
   relay:
     enabled: true
