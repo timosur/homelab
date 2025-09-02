@@ -1,8 +1,8 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: main-gateway
-  namespace: gateway-system
+  name: argocd-gateway
+  namespace: argocd
 spec:
   gatewayClassName: cilium
   listeners:
@@ -11,15 +11,10 @@ spec:
       protocol: HTTP
       allowedRoutes:
         namespaces:
-          from: All
+          from: argocd
     - name: https
       port: 4443
       protocol: HTTPS
       allowedRoutes:
         namespaces:
-          from: All
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: argocd-timosur-com
-            namespace: cert-manager
+          from: argocd
