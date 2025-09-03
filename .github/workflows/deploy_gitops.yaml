@@ -2,11 +2,7 @@ name: Deploy GitOps
 
 on:
   workflow_dispatch:
-
-env:
-  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-  AZURE_KEYVAULT_NAME: ${{ vars.AZURE_KEYVAULT_NAME }}
-
+  
 jobs:
   bootstrap_gitops:
     runs-on: ubuntu-latest
