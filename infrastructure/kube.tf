@@ -173,6 +173,18 @@ EOT
 
   # ——— TLS ———
   enable_cert_manager = true
+  cert_manager_values = <<EOT
+crds:
+  enabled: true
+  keep: true
+replicaCount: 3
+webhook:
+  replicaCount: 3
+cainjector:
+  replicaCount: 3
+config:
+  enableGatewayAPI: true
+EOT
 
   # Needs to be set until https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/issues/1887 is fixed
   kured_version = "1.19.0"
