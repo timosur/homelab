@@ -1,37 +1,37 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: argocd
-  namespace: argocd
+  name: argo
+  namespace: argo
 spec:
   parentRefs:
     - name: main-gateway
       namespace: kube-system
       sectionName: https
   hostnames:
-    - "argocd.timosur.com"
+    - "argo.timosur.com"
   rules:
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: argocd-server
+        - name: argo-server
           port: 80
 ---
 # HTTP to HTTPS redirect
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: argocd-redirect
-  namespace: argocd
+  name: argo-redirect
+  namespace: argo
 spec:
   parentRefs:
     - name: main-gateway
       namespace: kube-system
       sectionName: http
   hostnames:
-    - "argocd.timosur.com"
+    - "argo.timosur.com"
   rules:
     - filters:
         - type: RequestRedirect

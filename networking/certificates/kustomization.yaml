@@ -3,4 +3,4 @@ kind: Kustomization
 
 namespace: cert-manager
 resources:
-- argocd-cert.yaml
+- argo-cert.yaml

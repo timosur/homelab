@@ -9,18 +9,18 @@ spec:
     - name: http
       port: 80
       protocol: HTTP
-      hostname: argocd.timosur.com
+      hostname: argo.timosur.com
       allowedRoutes:
         namespaces:
           from: All
     - name: https
       port: 443
       protocol: HTTPS
-      hostname: argocd.timosur.com
+      hostname: argo.timosur.com
       allowedRoutes:
         namespaces:
           from: All
       tls:
         mode: Terminate
         certificateRefs:
-          - name: argocd-timosur-com
+          - name: argo-timosur-com
