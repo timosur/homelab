@@ -1,12 +1,12 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: argocd-timosur-com
+  name: argo-timosur-com
   namespace: kube-system
 spec:
-  secretName: argocd-timosur-com
+  secretName: argo-timosur-com
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
-  - "argocd.timosur.com"
+  - "argo.timosur.com"
