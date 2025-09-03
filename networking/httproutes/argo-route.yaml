@@ -16,7 +16,7 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: argo-server
+        - name: argocd-server
           port: 80
 ---
 # HTTP to HTTPS redirect
