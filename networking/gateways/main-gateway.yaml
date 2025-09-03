@@ -3,20 +3,22 @@ kind: Gateway
 metadata:
   name: main-gateway
   namespace: cert-manager
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   gatewayClassName: cilium
   listeners:
-    - name: http
+    - name: argo-http
       port: 80
       protocol: HTTP
-      hostname: argo.timosur.com
+      hostname: "argo.timosur.com"
       allowedRoutes:
         namespaces:
           from: All
-    - name: https
+    - name: argo-https
       port: 443
       protocol: HTTPS
-      hostname: argo.timosur.com
+      hostname: "argo.timosur.com"
       allowedRoutes:
         namespaces:
           from: All
@@ -24,3 +26,21 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: argo-timosur-com
+    - name: mealie-http
+      port: 80
+      protocol: HTTP
+      hostname: "mealie.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: mealie-https
+      port: 443
+      protocol: HTTPS
+      hostname: "mealie.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: mealie-timosur-com
