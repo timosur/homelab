@@ -4,3 +4,6 @@ kind: Kustomization
 resources:
 - networking-app.yaml
 - cert-manager-app.yaml
+- external-secrets-app.yaml
+- cloudnative-pg-app.yaml
+- mealie-app.yaml

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mealie-config
+  namespace: mealie
+data:
+  ALLOW_SIGNUP: "false"
+  PUID: "1000"
+  PGID: "1000"
+  TZ: "Europe/Berlin"
+  BASE_URL: "https://mealie.timosur.com"
+  DB_ENGINE: "postgres"
+  POSTGRES_USER: "mealie"
+  POSTGRES_SERVER: "mealie-postgres-rw"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "mealie"

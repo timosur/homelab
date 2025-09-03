@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mealie
+  namespace: mealie
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mealie
+  template:
+    metadata:
+      labels:
+        app: mealie
+    spec:
+      containers:
+      - name: mealie
+        image: ghcr.io/mealie-recipes/mealie:v3.1.2
+        ports:
+        - containerPort: 9000
+        envFrom:
+        - configMapRef:
+            name: mealie-config
+        - secretRef:
+            name: mealie-postgres-password
+        volumeMounts:
+        - name: mealie-data
+          mountPath: /app/data
+        resources:
+          limits:
+            memory: "1000Mi"
+            cpu: "1000m"
+          requests:
+            memory: "512Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /api/app/about
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/app/about
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: mealie-data
+        persistentVolumeClaim:
+          claimName: mealie-data

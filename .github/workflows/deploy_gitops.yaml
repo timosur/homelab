@@ -3,6 +3,10 @@ name: Deploy GitOps
 on:
   workflow_dispatch:
 
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  AZURE_KEYVAULT_NAME: ${{ vars.AZURE_KEYVAULT_NAME }}
+
 jobs:
   bootstrap_gitops:
     runs-on: ubuntu-latest
@@ -40,6 +44,30 @@ jobs:
           kubectl wait --for=condition=ready --timeout=300s pod -l app.kubernetes.io/name=argocd-server -n argocd || echo "ArgoCD server pod not ready"
           kubectl wait --for=condition=ready --timeout=300s pod -l app.kubernetes.io/name=argocd-repo-server -n argocd || echo "ArgoCD repo server pod not ready"
 
+      - name: Setup Azure Key Vault and External Secrets
+        run: |
+          echo "Setting up Azure Key Vault and External Secrets integration..."
+          
+          # Create external-secrets-system namespace
+          kubectl create namespace external-secrets-system --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Validate required Azure credentials are provided
+          if [ -z "${{ secrets.AZURE_SP_CLIENT_ID }}" ] || [ -z "${{ secrets.AZURE_SP_CLIENT_SECRET }}" ]; then
+            echo "Error: AZURE_SP_CLIENT_ID and AZURE_SP_CLIENT_SECRET must be set in GitHub secrets"
+            exit 1
+          fi
+          
+          echo "Creating Kubernetes secret with Azure Service Principal credentials..."
+          
+          # Create the Kubernetes secret for Azure authentication
+          kubectl create secret generic azure-secret \
+            --namespace=external-secrets-system \
+            --from-literal=ClientID="${{ secrets.AZURE_SP_CLIENT_ID }}" \
+            --from-literal=ClientSecret="${{ secrets.AZURE_SP_CLIENT_SECRET }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          echo "Azure Service Principal secret created successfully"
+
       - name: Configure ArgoCD Repository
         run: |
           echo "Configuring ArgoCD repository connection..."
@@ -73,3 +101,27 @@ jobs:
 
           echo "GitOps bootstrap completed. ArgoCD should now be connected to your repository."
           echo "Check ArgoCD UI for status."
+
+      - name: Verify External Secrets setup
+        run: |
+          echo "Verifying External Secrets configuration..."
+          
+          # Wait for External Secrets Operator to be ready
+          echo "Waiting for External Secrets Operator..."
+          kubectl wait --for=condition=available deployment/external-secrets \
+            --namespace=external-secrets-system \
+            --timeout=300s || echo "External Secrets Operator not ready yet"
+          
+          # Check ClusterSecretStore status
+          echo "Checking ClusterSecretStore status..."
+          kubectl get clustersecretstore azure-keyvault-store -o yaml || echo "ClusterSecretStore not found"
+          
+          # Check if External Secrets are created
+          echo "Checking ExternalSecrets in mealie namespace..."
+          kubectl get externalsecrets -n mealie || echo "No ExternalSecrets found yet"
+          
+          # Check if secrets are created
+          echo "Checking secrets in mealie namespace..."
+          kubectl get secrets -n mealie || echo "Mealie namespace not ready yet"
+          
+          echo "External Secrets verification completed"
