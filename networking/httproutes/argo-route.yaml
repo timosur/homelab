@@ -6,7 +6,7 @@ metadata:
 spec:
   parentRefs:
     - name: main-gateway
-      namespace: kube-system
+      namespace: cert-manager
       sectionName: https
   hostnames:
     - "argo.timosur.com"
@@ -28,7 +28,7 @@ metadata:
 spec:
   parentRefs:
     - name: main-gateway
-      namespace: kube-system
+      namespace: cert-manager
       sectionName: http
   hostnames:
     - "argo.timosur.com"
