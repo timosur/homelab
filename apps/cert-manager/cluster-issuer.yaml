@@ -20,8 +20,6 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: argo-acme-http
-            labels:
-              acme-cert-manager-solver: "true"
       # mealie.timosur.com
       - selector:
           dnsNames: ["mealie.timosur.com"]
@@ -33,5 +31,3 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: mealie-acme-http
-            labels:
-              acme-cert-manager-solver: "true"

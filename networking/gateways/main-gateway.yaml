@@ -14,10 +14,7 @@ spec:
       hostname: "argo.timosur.com"
       allowedRoutes:
         namespaces:
-          from: Selector
-        selector:
-          matchLabels:
-            acme-cert-manager-solver: "true"
+          from: All
     # - name: argo-https
     #   port: 443
     #   protocol: HTTPS
@@ -35,10 +32,7 @@ spec:
       hostname: "mealie.timosur.com"
       allowedRoutes:
         namespaces:
-          from: Selector
-        selector:
-          matchLabels:
-            acme-cert-manager-solver: "true"
+          from: All
     # - name: mealie-https
     #   port: 443
     #   protocol: HTTPS
