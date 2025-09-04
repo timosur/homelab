@@ -44,3 +44,21 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: mealie-timosur-com
+    - name: ai-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "ai.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: ai-https
+      port: 443
+      protocol: HTTPS
+      hostname: "ai.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: ai-timosur-com

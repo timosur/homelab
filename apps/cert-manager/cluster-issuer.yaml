@@ -31,3 +31,14 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: mealie-acme-http
+      # ai.timosur.com
+      - selector:
+          dnsNames: ["ai.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: ai-acme-http

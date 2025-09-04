@@ -7,3 +7,4 @@ resources:
 - external-secrets-app.yaml
 - cloudnative-pg-app.yaml
 - mealie-app.yaml
+- open-webui-app.yaml
