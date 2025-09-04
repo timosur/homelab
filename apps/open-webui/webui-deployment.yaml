@@ -28,6 +28,24 @@ spec:
         env:
         - name: OLLAMA_BASE_URL
           value: "http://ollama-service.open-webui.svc.cluster.local:11434"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
         tty: true
         volumeMounts:
         - name: webui-volume
