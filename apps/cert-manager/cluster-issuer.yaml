@@ -9,9 +9,25 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
-      - http01:
+      # argo.timosur.com -> argo-http listener
+      - selector:
+          dnsNames: ["argo.timosur.com"]
+        http01:
           gatewayHTTPRoute:
             parentRefs:
-              - name: main-gateway
-                namespace: kube-system
-                sectionName: http
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: argo-http
+      # mealie.timosur.com -> mealie-http listener
+      - selector:
+          dnsNames: ["mealie.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: mealie-http
