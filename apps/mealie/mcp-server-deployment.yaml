@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mealie-mcp-server
+  namespace: mealie
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mealie-mcp-server
+  template:
+    metadata:
+      labels:
+        app: mealie-mcp-server
+    spec:
+      containers:
+      - name: mealie-mcp-server
+        image: ghcr.io/timosur/mealie-mcp-server:main
+        ports:
+        - containerPort: 8000
+        env:
+        - name: MEALIE_BASE_URL
+          value: "http://mealie:9000"
+        - name: MEALIE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mealie-secrets
+              key: api-key
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mcp-secrets
+              key: api-key
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
