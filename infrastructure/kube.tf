@@ -66,9 +66,9 @@ module "kube-hetzner" {
   control_plane_nodepools = [
     {
       name        = "cp"
-      server_type = "cax11"
+      server_type = "cx32"
       location    = "fsn1"
-      count       = 2
+      count       = 1
       labels      = []
       taints      = []
     }
@@ -77,7 +77,7 @@ module "kube-hetzner" {
   agent_nodepools = [
     {
       name        = "workers"
-      server_type = "cpx11"
+      server_type = "cx32"
       location    = "fsn1"
       count       = 3
       labels      = []
