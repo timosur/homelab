@@ -5,3 +5,4 @@ resources:
 - argo-route.yaml
 - mealie-route.yaml
 - ai-route.yaml
+- n8n-route.yaml
