@@ -152,8 +152,6 @@ hubble:
 # Enable Gateway API support
 gatewayAPI:
   enabled: true
-  gatewayClass:
-    create: true
 
 # Operator tolerations to ensure it can schedule during cluster initialization
 operator:
