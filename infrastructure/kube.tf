@@ -68,7 +68,7 @@ module "kube-hetzner" {
       name        = "cp"
       server_type = "cax11"
       location    = "fsn1"
-      count       = 1
+      count       = 2
       labels      = []
       taints      = []
     }
@@ -79,7 +79,7 @@ module "kube-hetzner" {
       name        = "workers"
       server_type = "cpx11"
       location    = "fsn1"
-      count       = 2
+      count       = 3
       labels      = []
       taints      = []
     }
