@@ -44,6 +44,8 @@ spec:
         envFrom:
         - configMapRef:
             name: n8n-config
+        - secretRef:
+            name: n8n-postgres-password
         volumeMounts:
         - name: n8n-data
           mountPath: /home/node/.n8n

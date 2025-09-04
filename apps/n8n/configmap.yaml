@@ -13,3 +13,10 @@ data:
   WEBHOOK_URL: "https://automate.timosur.com/"
   GENERIC_TIMEZONE: "Europe/Berlin"
   TZ: "Europe/Berlin"
+  # Database configuration
+  DB_TYPE: "postgresdb"
+  DB_POSTGRESDB_HOST: "n8n-postgres-rw"
+  DB_POSTGRESDB_PORT: "5432"
+  DB_POSTGRESDB_DATABASE: "n8n"
+  DB_POSTGRESDB_USER: "n8n"
+  DB_POSTGRESDB_SCHEMA: "public"
