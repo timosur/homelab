@@ -15,17 +15,17 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    # - name: argo-https
-    #   port: 443
-    #   protocol: HTTPS
-    #   hostname: "argo.timosur.com"
-    #   allowedRoutes:
-    #     namespaces:
-    #       from: All
-    #   tls:
-    #     mode: Terminate
-    #     certificateRefs:
-    #       - name: argo-timosur-com
+    - name: argo-https
+      port: 443
+      protocol: HTTPS
+      hostname: "argo.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: argo-timosur-com
     - name: mealie-acme-http
       port: 80
       protocol: HTTP
@@ -33,14 +33,14 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    # - name: mealie-https
-    #   port: 443
-    #   protocol: HTTPS
-    #   hostname: "mealie.timosur.com"
-    #   allowedRoutes:
-    #     namespaces:
-    #       from: All
-    #   tls:
-    #     mode: Terminate
-    #     certificateRefs:
-    #       - name: mealie-timosur-com
+    - name: mealie-https
+      port: 443
+      protocol: HTTPS
+      hostname: "mealie.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: mealie-timosur-com
