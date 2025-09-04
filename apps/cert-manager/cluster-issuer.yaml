@@ -9,7 +9,7 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
-      # argo.timosur.com -> argo-http listener
+      # argo.timosur.com
       - selector:
           dnsNames: ["argo.timosur.com"]
         http01:
@@ -19,8 +19,10 @@ spec:
                 kind: Gateway
                 name: main-gateway
                 namespace: cert-manager
-                sectionName: argo-http
-      # mealie.timosur.com -> mealie-http listener
+                sectionName: argo-acme-http
+            labels:
+              acme-cert-manager-solver: "true"
+      # mealie.timosur.com
       - selector:
           dnsNames: ["mealie.timosur.com"]
         http01:
@@ -30,4 +32,6 @@ spec:
                 kind: Gateway
                 name: main-gateway
                 namespace: cert-manager
-                sectionName: mealie-http
+                sectionName: mealie-acme-http
+            labels:
+              acme-cert-manager-solver: "true"
