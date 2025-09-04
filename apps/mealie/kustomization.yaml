@@ -10,5 +10,9 @@ resources:
   - pvc.yaml
   - deployment.yaml
   - service.yaml
+  - mealie-api-secret.yaml
+  - mcp-server-secret.yaml
+  - mcp-server-deployment.yaml
+  - mcp-server-service.yaml
 
 namespace: mealie
