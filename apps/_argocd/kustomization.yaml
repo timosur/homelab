@@ -8,3 +8,4 @@ resources:
 - cloudnative-pg-app.yaml
 - mealie-app.yaml
 - open-webui-app.yaml
+- n8n-app.yaml

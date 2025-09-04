@@ -62,3 +62,21 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: ai-timosur-com
+    - name: automate-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "automate.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: automate-https
+      port: 443
+      protocol: HTTPS
+      hostname: "automate.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: automate-timosur-com
