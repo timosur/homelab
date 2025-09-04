@@ -13,11 +13,34 @@ spec:
       labels:
         app: n8n
     spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+      - name: init-permissions
+        image: busybox:1.35
+        command: ['sh', '-c']
+        args:
+          - |
+            chown -R 1000:1000 /home/node/.n8n
+            chown -R 1000:1000 /files
+            chmod -R 755 /home/node/.n8n
+            chmod -R 755 /files
+        volumeMounts:
+        - name: n8n-data
+          mountPath: /home/node/.n8n
+        - name: n8n-files
+          mountPath: /files
+        securityContext:
+          runAsUser: 0
       containers:
       - name: n8n
         image: docker.n8n.io/n8nio/n8n:latest
         ports:
         - containerPort: 5678
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
         envFrom:
         - configMapRef:
             name: n8n-config
