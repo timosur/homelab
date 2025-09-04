@@ -21,8 +21,8 @@ spec:
   
   storage:
     size: 10Gi
-    storageClass: local-path
-  
+    storageClass: hcloud-volumes
+    
   resources:
     requests:
       memory: "256Mi"
