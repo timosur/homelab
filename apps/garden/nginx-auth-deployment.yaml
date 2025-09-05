@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garden-nginx-auth
+  namespace: garden
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: garden-nginx-auth
+  template:
+    metadata:
+      labels:
+        app: garden-nginx-auth
+    spec:
+      initContainers:
+      - name: setup-auth
+        image: httpd:alpine
+        command: ['sh', '-c']
+        args:
+          - |
+            # Create htpasswd file from secrets
+            AUTH_USER=$(cat /tmp/secrets/auth-user)
+            AUTH_PASS=$(cat /tmp/secrets/auth-pass)
+            htpasswd -cb /etc/nginx/auth/.htpasswd "$AUTH_USER" "$AUTH_PASS"
+            echo "Basic auth setup complete"
+        volumeMounts:
+        - name: auth-secrets
+          mountPath: /tmp/secrets
+          readOnly: true
+        - name: auth-file
+          mountPath: /etc/nginx/auth
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        - name: auth-file
+          mountPath: /etc/nginx/auth
+          readOnly: true
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: garden-nginx-auth-config
+      - name: auth-secrets
+        secret:
+          secretName: garden-nginx-auth-secrets
+      - name: auth-file
+        emptyDir: {}

@@ -11,33 +11,11 @@ spec:
   hostnames:
     - "garden.timosur.com"
   rules:
-    # Backend API routes
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /api/
-      backendRefs:
-        - name: garden-backend
-          port: 8000
-    # rmapi wrapper routes
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /rmapi/
-      backendRefs:
-        - name: garden-rmapi-wrapper
-          port: 8001
-      filters:
-        - type: URLRewrite
-          urlRewrite:
-            path:
-              type: ReplacePrefixMatch
-              replacePrefixMatch: /
-    # Frontend routes (catch-all, must be last)
+    # All routes go through nginx auth proxy
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: garden-frontend
+        - name: garden-nginx-auth
           port: 80
