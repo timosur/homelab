@@ -68,18 +68,18 @@ spec:
             cpu: "200m"
         livenessProbe:
           httpGet:
-            path: /api/health
+            path: /
             port: 8000
           initialDelaySeconds: 30
-          periodSeconds: 300
+          periodSeconds: 10
           timeoutSeconds: 120
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /api/health
+            path: /
             port: 8000
           initialDelaySeconds: 30
-          periodSeconds: 300
+          periodSeconds: 10
           timeoutSeconds: 120
           failureThreshold: 12
       volumes:
