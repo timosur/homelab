@@ -28,7 +28,7 @@ spec:
         - name: rmapi-devicetoken
           mountPath: /root/.config/rmapi/rmapi.conf
           subPath: rmapi.conf
-          readOnly: true
+          readOnly: false
         - name: rmapi-data
           mountPath: /tmp/rmapi
         - name: rmapi-uploads
