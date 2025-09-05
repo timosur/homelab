@@ -10,11 +10,15 @@ resources:
   - backend-configmap.yaml
   - backend-external-secret.yaml
   - rmapi-external-secret.yaml
+  - nginx-auth-configmap.yaml
+  - nginx-auth-external-secret.yaml
   - backend-deployment.yaml
   - backend-service.yaml
   - frontend-deployment.yaml
   - frontend-service.yaml
   - rmapi-wrapper-deployment.yaml
   - rmapi-wrapper-service.yaml
+  - nginx-auth-deployment.yaml
+  - nginx-auth-service.yaml
   - scheduler-cronjob.yaml
   - backup-cronjob.yaml
