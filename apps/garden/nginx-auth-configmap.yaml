@@ -22,7 +22,7 @@ data:
         server_name _;
         
         # Large file support and timeouts
-        client_max_body_size 50M;
+        client_max_body_size 1G;
         client_body_timeout 300s;
         client_header_timeout 300s;
         proxy_connect_timeout 300s;
@@ -37,7 +37,14 @@ data:
         proxy_buffers 8 4k;
         proxy_busy_buffers_size 8k;
         
-        # Basic auth for all routes
+        # Health check endpoint without auth
+        location /nginx-health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+        
+        # Basic auth for all other routes
         auth_basic "Garden Access";
         auth_basic_user_file /etc/nginx/auth/.htpasswd;
         

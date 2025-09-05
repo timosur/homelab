@@ -50,13 +50,13 @@ spec:
             cpu: "100m"
         livenessProbe:
           httpGet:
-            path: /
+            path: /nginx-health
             port: 80
           initialDelaySeconds: 10
           periodSeconds: 30
         readinessProbe:
           httpGet:
-            path: /
+            path: /nginx-health
             port: 80
           initialDelaySeconds: 5
           periodSeconds: 10
