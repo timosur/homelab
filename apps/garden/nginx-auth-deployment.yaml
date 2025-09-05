@@ -13,6 +13,8 @@ spec:
       labels:
         app: garden-nginx-auth
     spec:
+      nodeSelector:
+        workload-type: arm
       initContainers:
       - name: setup-auth
         image: httpd:alpine
