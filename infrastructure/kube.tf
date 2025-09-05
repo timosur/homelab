@@ -79,8 +79,16 @@ module "kube-hetzner" {
       name        = "workers"
       server_type = "cx32"
       location    = "fsn1"
-      count       = 3
+      count       = 2
       labels      = []
+      taints      = []
+    },
+    {
+      name        = "workers-arm"
+      server_type = "cax21"
+      location    = "fsn1"
+      count       = 1
+      labels      = ["arch=arm64", "workload-type=arm"]
       taints      = []
     }
   ]
