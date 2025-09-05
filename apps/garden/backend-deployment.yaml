@@ -71,7 +71,7 @@ spec:
             path: /api/health
             port: 8000
           initialDelaySeconds: 30
-          periodSeconds: 3600
+          periodSeconds: 300
           timeoutSeconds: 120
           failureThreshold: 3
         readinessProbe:
@@ -79,7 +79,7 @@ spec:
             path: /api/health
             port: 8000
           initialDelaySeconds: 30
-          periodSeconds: 3600
+          periodSeconds: 300
           timeoutSeconds: 120
           failureThreshold: 12
       volumes:
