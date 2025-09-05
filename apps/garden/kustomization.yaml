@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: garden
+
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - backup-pvc.yaml
+  - backend-configmap.yaml
+  - backend-external-secret.yaml
+  - rmapi-external-secret.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - rmapi-wrapper-deployment.yaml
+  - rmapi-wrapper-service.yaml
+  - scheduler-cronjob.yaml
+  - backup-cronjob.yaml

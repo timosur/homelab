@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garden-rmapi-wrapper
+  namespace: garden
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: garden-rmapi-wrapper
+  template:
+    metadata:
+      labels:
+        app: garden-rmapi-wrapper
+    spec:
+      containers:
+      - name: garden-rmapi-wrapper
+        image: ghcr.io/timosur/life-as-a-garden/rmapi-wrapper:sha-2797ce9
+        ports:
+        - containerPort: 8001
+        volumeMounts:
+        - name: rmapi-config
+          mountPath: /root/.config/rmapi
+        - name: rmapi-devicetoken
+          mountPath: /root/.config/rmapi/rmapi.conf
+          subPath: rmapi.conf
+          readOnly: true
+        - name: rmapi-data
+          mountPath: /tmp/rmapi
+        - name: rmapi-uploads
+          mountPath: /tmp/rmapi-uploads
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: rmapi-config
+        persistentVolumeClaim:
+          claimName: garden-rmapi-config
+      - name: rmapi-devicetoken
+        secret:
+          secretName: garden-rmapi-secrets
+          items:
+          - key: devicetoken
+            path: rmapi.conf
+      - name: rmapi-data
+        persistentVolumeClaim:
+          claimName: garden-rmapi-data
+      - name: rmapi-uploads
+        emptyDir: {}

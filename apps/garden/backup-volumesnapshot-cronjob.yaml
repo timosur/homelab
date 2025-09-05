@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: garden-db-backup
+  namespace: garden
+spec:
+  schedule: "0 2 * * *"  # 2 AM daily
+  timeZone: "Europe/Berlin"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: backup
+            image: alpine:latest
+            command: ['sh', '-c']
+            args:
+              - |
+                # This approach uses volume snapshots
+                kubectl create volumesnapshot garden-db-backup-$(date +%Y%m%d-%H%M%S) \
+                  --from-pvc=garden-backend-db \
+                  --volume-snapshot-class=csi-hcloud-snapshots
+          serviceAccountName: garden-backup-sa
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: garden-backup-sa
+  namespace: garden
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: garden-backup-role
+  namespace: garden
+rules:
+- apiGroups: ["snapshot.storage.k8s.io"]
+  resources: ["volumesnapshots"]
+  verbs: ["create", "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: garden-backup-binding
+  namespace: garden
+subjects:
+- kind: ServiceAccount
+  name: garden-backup-sa
+  namespace: garden
+roleRef:
+  kind: Role
+  name: garden-backup-role
+  apiGroup: rbac.authorization.k8s.io

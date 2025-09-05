@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: garden-db-backup-sidecar
+  namespace: garden
+spec:
+  schedule: "0 2 * * *"  # 2 AM daily  
+  timeZone: "Europe/Berlin"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: backup
+            image: alpine:latest
+            command: ['sh', '-c']
+            args:
+              - |
+                # Signal the backend to pause writes (optional)
+                # kubectl exec deployment/garden-backend -n garden -- kill -USR1 1
+                
+                # Wait a moment for any ongoing writes to complete
+                sleep 5
+                
+                # Create backup with timestamp
+                BACKUP_FILE="/backups/garden-db-backup-$(date +%Y%m%d-%H%M%S).db"
+                cp /app/db/database.db "$BACKUP_FILE"
+                
+                # Compress the backup
+                gzip "$BACKUP_FILE"
+                
+                # Clean up old backups (keep last 7 days)
+                find /backups -name "garden-db-backup-*.db.gz" -mtime +7 -delete
+                
+                echo "Backup completed: ${BACKUP_FILE}.gz"
+                
+                # Resume backend writes (optional)
+                # kubectl exec deployment/garden-backend -n garden -- kill -USR2 1
+            volumeMounts:
+            - name: backend-db
+              mountPath: /app/db
+              readOnly: true
+            - name: backup-storage
+              mountPath: /backups
+          volumes:
+          - name: backend-db
+            persistentVolumeClaim:
+              claimName: garden-backend-db
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: garden-backup-storage

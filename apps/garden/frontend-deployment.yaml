@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garden-frontend
+  namespace: garden
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: garden-frontend
+  template:
+    metadata:
+      labels:
+        app: garden-frontend
+    spec:
+      containers:
+      - name: garden-frontend
+        image: ghcr.io/timosur/life-as-a-garden/frontend:sha-2797ce9
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10

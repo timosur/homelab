@@ -80,3 +80,21 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: automate-timosur-com
+    - name: garden-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "garden.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: garden-https
+      port: 443
+      protocol: HTTPS
+      hostname: "garden.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: garden-timosur-com

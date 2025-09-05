@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garden-backend
+  namespace: garden
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: garden-backend
+  template:
+    metadata:
+      labels:
+        app: garden-backend
+    spec:
+      initContainers:
+      - name: init-db
+        image: busybox:1.35
+        command: ['sh', '-c']
+        args:
+          - |
+            # Check if database already exists
+            if [ ! -f /app/db/database.db ]; then
+              echo "Initializing database directory..."
+              mkdir -p /app/db
+            else
+              echo "Database already exists, skipping initialization"
+            fi
+        volumeMounts:
+        - name: backend-db
+          mountPath: /app/db
+      containers:
+      - name: garden-backend
+        image: ghcr.io/timosur/life-as-a-garden/backend:sha-2797ce9
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PYTHONPATH
+          value: "/app"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: FRONTEND_URL
+          value: "http://garden-frontend:80"
+        - name: RMAPI_SERVICE_URL
+          value: "http://garden-rmapi-wrapper:8001"
+        envFrom:
+        - configMapRef:
+            name: garden-backend-config
+        - secretRef:
+            name: garden-backend-secrets
+        volumeMounts:
+        - name: backend-input
+          mountPath: /app/input
+        - name: backend-output
+          mountPath: /app/output
+        - name: backend-db
+          mountPath: /app/db
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 40
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: backend-input
+        persistentVolumeClaim:
+          claimName: garden-backend-input
+      - name: backend-output
+        persistentVolumeClaim:
+          claimName: garden-backend-output
+      - name: backend-db
+        persistentVolumeClaim:
+          claimName: garden-backend-db
