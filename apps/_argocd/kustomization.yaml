@@ -9,3 +9,4 @@ resources:
 - mealie-app.yaml
 - open-webui-app.yaml
 - n8n-app.yaml
+- garden-app.yaml

@@ -6,3 +6,4 @@ resources:
 - mealie-route.yaml
 - ai-route.yaml
 - n8n-route.yaml
+- garden-route.yaml

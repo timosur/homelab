@@ -53,3 +53,14 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: automate-acme-http
+      # garden.timosur.com
+      - selector:
+          dnsNames: ["garden.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: garden-acme-http
