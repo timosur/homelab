@@ -10,6 +10,8 @@ spec:
     spec:
       template:
         spec:
+          nodeSelector:
+            workload-type: arm
           containers:
           - name: scheduler
             image: curlimages/curl:latest

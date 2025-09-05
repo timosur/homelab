@@ -13,6 +13,8 @@ spec:
       labels:
         app: garden-rmapi-wrapper
     spec:
+      nodeSelector:
+        workload-type: arm
       containers:
       - name: garden-rmapi-wrapper
         image: ghcr.io/timosur/life-as-a-garden/rmapi-wrapper:sha-2797ce9
