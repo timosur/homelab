@@ -9,3 +9,7 @@ data:
   PYTHONUNBUFFERED: "1"
   FRONTEND_URL: http://garden-frontend:80
   RMAPI_SERVICE_URL: http://garden-rmapi-wrapper:8001
+  SMTP_HOST: smtp.gmail.com
+  SMTP_PORT: "587"
+  NOTIFICATION_EMAIL: lebensgarten@timosur.com
+  EMAIL_NOTIFICATIONS_ENABLED: "true"
