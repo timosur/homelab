@@ -4,7 +4,7 @@ metadata:
   name: garden-db-backup
   namespace: garden
 spec:
-  schedule: "0 2 * * *"  # 2 AM daily
+  schedule: "0 2 * * *" # 2 AM daily
   timeZone: "Europe/Berlin"
   jobTemplate:
     spec:
@@ -14,51 +14,93 @@ spec:
             workload-type: arm
           restartPolicy: OnFailure
           serviceAccountName: garden-backup-sa
+          securityContext:
+            runAsUser: 0 # Run as root to have write access to backup volume
+            runAsGroup: 0
+            fsGroup: 0
           containers:
-          - name: backup
-            image: bitnami/kubectl:latest
-            command: ['sh', '-c']
-            args:
-              - |
-                # Get the backend pod name
-                POD_NAME=$(kubectl get pods -n garden -l app=garden-backend -o jsonpath='{.items[0].metadata.name}')
-                
-                if [ -z "$POD_NAME" ]; then
-                  echo "No backend pod found"
-                  exit 1
-                fi
-                
-                echo "Creating backup from pod: $POD_NAME"
-                
-                # Create backup directory with timestamp
-                BACKUP_DIR="/tmp/backup-$(date +%Y%m%d-%H%M%S)"
-                mkdir -p "$BACKUP_DIR"
-                
-                # Copy database from pod
-                kubectl cp "garden/${POD_NAME}:/app/db/database.db" "${BACKUP_DIR}/database.db"
-                
-                # Compress backup
-                tar -czf "${BACKUP_DIR}.tar.gz" -C /tmp "$(basename $BACKUP_DIR)"
-                
-                # Upload to storage (you could add S3, Azure Blob, etc.)
-                # For now, just copy to a backup PVC
-                mkdir -p /backups
-                cp "${BACKUP_DIR}.tar.gz" /backups/
-                
-                # Clean up old backups (keep last 7 days)
-                find /backups -name "backup-*.tar.gz" -mtime +7 -delete
-                
-                echo "Backup completed: ${BACKUP_DIR}.tar.gz"
-                
-                # Cleanup temp files
-                rm -rf "$BACKUP_DIR" "${BACKUP_DIR}.tar.gz"
-            volumeMounts:
-            - name: backup-storage
-              mountPath: /backups
+            - name: backup
+              image: bitnami/kubectl:latest
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -e  # Exit on any error
+
+                  # Get the backend pod name
+                  POD_NAME=$(kubectl get pods -n garden -l app=garden-backend -o jsonpath='{.items[0].metadata.name}')
+
+                  if [ -z "$POD_NAME" ]; then
+                    echo "No backend pod found"
+                    exit 1
+                  fi
+
+                  echo "Creating backup from pod: $POD_NAME"
+
+                  # First, check if database file exists in the pod
+                  echo "Checking if database file exists..."
+                  if ! kubectl exec -n garden "$POD_NAME" -c garden-backend -- test -f /app/db/garden.db; then
+                    echo "Database file not found at /app/db/garden.db"
+                    echo "Listing contents of /app/db:"
+                    kubectl exec -n garden "$POD_NAME" -c garden-backend -- ls -la /app/db/ || true
+                    exit 1
+                  fi
+
+                  # Create backup directory with timestamp
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  BACKUP_DIR="/tmp/backup-${TIMESTAMP}"
+                  mkdir -p "$BACKUP_DIR"
+
+                  # Copy database from pod
+                  echo "Copying database file..."
+                  kubectl cp "garden/${POD_NAME}:/app/db/garden.db" "${BACKUP_DIR}/garden.db"
+
+                  # Verify the file was copied
+                  if [ ! -f "${BACKUP_DIR}/garden.db" ]; then
+                    echo "Failed to copy database file"
+                    exit 1
+                  fi
+
+                  echo "Database file copied successfully ($(du -h ${BACKUP_DIR}/garden.db | cut -f1))"
+
+                  # Compress backup
+                  echo "Compressing backup..."
+                  tar -czf "${BACKUP_DIR}.tar.gz" -C /tmp "$(basename $BACKUP_DIR)"
+
+                  # Ensure backup directory exists and has correct permissions
+                  mkdir -p /backups
+                  chmod 755 /backups
+
+                  # Copy to backup storage
+                  echo "Storing backup..."
+                  cp "${BACKUP_DIR}.tar.gz" "/backups/backup-${TIMESTAMP}.tar.gz"
+
+                  # Verify backup was stored
+                  if [ -f "/backups/backup-${TIMESTAMP}.tar.gz" ]; then
+                    echo "Backup stored successfully: backup-${TIMESTAMP}.tar.gz ($(du -h /backups/backup-${TIMESTAMP}.tar.gz | cut -f1))"
+                  else
+                    echo "Failed to store backup"
+                    exit 1
+                  fi
+
+                  # Clean up old backups (keep last 7 days) - ignore permission errors on lost+found
+                  echo "Cleaning up old backups..."
+                  find /backups -name "backup-*.tar.gz" -mtime +7 -delete 2>/dev/null || true
+
+                  # Show current backups
+                  echo "Current backups:"
+                  ls -lah /backups/backup-*.tar.gz 2>/dev/null || echo "No backups found"
+
+                  echo "Backup process completed successfully"
+
+                  # Cleanup temp files
+                  rm -rf "$BACKUP_DIR" "${BACKUP_DIR}.tar.gz"
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
           volumes:
-          - name: backup-storage
-            persistentVolumeClaim:
-              claimName: garden-backup-storage
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: garden-backup-storage
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -72,12 +114,12 @@ metadata:
   name: garden-backup-role
   namespace: garden
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list"]
-- apiGroups: [""]
-  resources: ["pods/exec"]
-  verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -85,9 +127,9 @@ metadata:
   name: garden-backup-binding
   namespace: garden
 subjects:
-- kind: ServiceAccount
-  name: garden-backup-sa
-  namespace: garden
+  - kind: ServiceAccount
+    name: garden-backup-sa
+    namespace: garden
 roleRef:
   kind: Role
   name: garden-backup-role
