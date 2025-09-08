@@ -52,11 +52,6 @@ spec:
             secretKeyRef:
               name: cloudflare-api-token
               key: CF_API_TOKEN
-        - name: CF_API_EMAIL
-          valueFrom:
-            secretKeyRef:
-              name: cloudflare-api-token
-              key: CF_API_EMAIL
         resources:
           requests:
             memory: "64Mi"
