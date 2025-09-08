@@ -8,7 +8,7 @@ data:
   CORE_DEFAULT_DOMAIN: "zipline.timosur.com"
   CORE_HOST: "0.0.0.0"
   CORE_PORT: "3000"
-  DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@zipline-postgres-rw:5432/zipline"
+  DATABASE_URL: "postgres://zipline:${POSTGRES_PASSWORD}@zipline-postgres-rw:5432/zipline"
   CORE_LOGGER: "true"
   DATASOURCE_TYPE: "local"
   DATASOURCE_LOCAL_DIRECTORY: "/zipline/uploads"
