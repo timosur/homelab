@@ -196,6 +196,17 @@ EOT
 
   # Needs to be set until https://github.com/kube-hetzner/terraform-hcloud-kube-hetzner/issues/1887 is fixed
   kured_version = "1.19.0"
+
+  extra_firewall_rules = [
+    {
+      description = "Allow Apps to send email (SMTP)"
+      direction       = "out"
+      protocol        = "tcp"
+      port            = "587"
+      source_ips      = []
+      destination_ips = ["0.0.0.0/0", "::/0"]
+    },
+  ]
 }
 
 
