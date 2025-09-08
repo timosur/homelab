@@ -41,18 +41,6 @@ spec:
           requests:
             memory: "1000Mi"
             cpu: "200m"
-        livenessProbe:
-          httpGet:
-            path: /api2/ping
-            port: 80
-          initialDelaySeconds: 60
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /api2/ping
-            port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 10
       volumes:
       - name: seafile-data
         persistentVolumeClaim:
