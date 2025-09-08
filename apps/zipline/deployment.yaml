@@ -25,6 +25,9 @@ spec:
         image: ghcr.io/diced/zipline:latest
         ports:
         - containerPort: 3000
+        env:
+        - name: DATABASE_URL
+          value: "postgres://zipline:$(POSTGRES_PASSWORD)@zipline-postgres-rw:5432/zipline"
         envFrom:
         - configMapRef:
             name: zipline-config
