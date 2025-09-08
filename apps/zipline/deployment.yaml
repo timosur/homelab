@@ -31,7 +31,7 @@ spec:
         - secretRef:
             name: zipline-postgres-credentials
         - secretRef:
-            name: zipline-core-secret
+            name: zipline-secret
         volumeMounts:
         - name: zipline-data
           mountPath: /zipline/uploads
