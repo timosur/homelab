@@ -39,8 +39,6 @@ spec:
         - --txt-prefix=external-dns-
         # Cloudflare specific settings
         - --cloudflare-record-comment="provisioned by external-dns"
-        - --cloudflare-regional-services
-        - --cloudflare-region-key="eu"
         - --cloudflare-proxied
         # Log level for debugging
         - --log-level=info
