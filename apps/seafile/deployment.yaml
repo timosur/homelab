@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: seafile
-          image: seafileltd/seafile-pro-mc:13.0-latest
+          image: seafileltd/seafile-mc:13.0-latest
           ports:
             - containerPort: 80
           envFrom:
