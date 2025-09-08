@@ -56,13 +56,13 @@ spec:
           httpGet:
             path: /api/healthcheck
             port: 3000
-          initialDelaySeconds: 30
+          initialDelaySeconds: 120
           periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /api/healthcheck
             port: 3000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 120
           periodSeconds: 5
       volumes:
       - name: zipline-data
