@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: seafile
-        image: seafileltd/seafile-mc:11.0-latest
+        image: seafileltd/seafile-mc:13.0-latest
         ports:
         - containerPort: 80
         env:
@@ -30,20 +30,33 @@ spec:
         - /bin/sh
         - -c
         - |
-          # Modify the settings.py file before starting Seafile
-          SETTINGS_FILE="/opt/seafile/seafile-server-latest/seahub/seahub/settings.py"
+          # Find the seafile server directory
+          SEAFILE_SERVER_DIR=$(find /opt/seafile -maxdepth 1 -name "seafile-server-*" -type d | head -1)
           
-          if [ -f "$SETTINGS_FILE" ]; then
-            if ! grep -q "CSRF_TRUSTED_ORIGINS" "$SETTINGS_FILE"; then
-              echo "" >> "$SETTINGS_FILE"
-              echo "# Custom configuration for homelab" >> "$SETTINGS_FILE"
-              echo "CSRF_TRUSTED_ORIGINS = ['https://file.timosur.com']" >> "$SETTINGS_FILE"
-              echo "Added CSRF_TRUSTED_ORIGINS to settings.py"
+          if [ -n "$SEAFILE_SERVER_DIR" ]; then
+            echo "Found Seafile server directory: $SEAFILE_SERVER_DIR"
+            
+            # Modify the settings.py file before starting Seafile
+            SETTINGS_FILE="$SEAFILE_SERVER_DIR/seahub/seahub/settings.py"
+            
+            if [ -f "$SETTINGS_FILE" ]; then
+              if ! grep -q "CSRF_TRUSTED_ORIGINS" "$SETTINGS_FILE"; then
+                echo "" >> "$SETTINGS_FILE"
+                echo "# Custom configuration for homelab" >> "$SETTINGS_FILE"
+                echo "CSRF_TRUSTED_ORIGINS = ['https://file.timosur.com']" >> "$SETTINGS_FILE"
+                echo "Added CSRF_TRUSTED_ORIGINS to settings.py"
+              else
+                echo "CSRF_TRUSTED_ORIGINS already configured"
+              fi
+            else
+              echo "Settings file not found at $SETTINGS_FILE"
             fi
+          else
+            echo "No seafile-server-* directory found"
           fi
           
           # Start the original Seafile entrypoint
-          exec /sbin/my_init
+          exec /sbin/my_init -- /scripts/enterpoint.sh
         envFrom:
         - configMapRef:
             name: seafile-config
