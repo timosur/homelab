@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - mysql-secret.yaml
+  - mysql-init-configmap.yaml
   - mysql.yaml
   - redis.yaml
   - configmap.yaml

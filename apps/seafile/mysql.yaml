@@ -37,8 +37,6 @@ spec:
             secretKeyRef:
               name: seafile-mysql-password
               key: MYSQL_ROOT_PASSWORD
-        - name: MYSQL_DATABASE
-          value: "seafile_db"
         - name: MYSQL_USER
           value: "seafile"
         - name: MYSQL_PASSWORD
@@ -55,6 +53,8 @@ spec:
         volumeMounts:
         - name: mysql-data
           mountPath: /var/lib/mysql
+        - name: mysql-init
+          mountPath: /docker-entrypoint-initdb.d
         resources:
           limits:
             memory: "1000Mi"
@@ -76,6 +76,9 @@ spec:
       - name: mysql-data
         persistentVolumeClaim:
           claimName: seafile-mysql-data
+      - name: mysql-init
+        configMap:
+          name: seafile-mysql-init
 ---
 apiVersion: v1
 kind: Service
