@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: external-dns-system
+  labels:
+    app: external-dns
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: external-dns
+  template:
+    metadata:
+      labels:
+        app: external-dns
+    spec:
+      serviceAccountName: external-dns
+      containers:
+      - name: external-dns
+        image: registry.k8s.io/external-dns/external-dns:v0.19.0
+        args:
+        # Gateway API Route sources
+        - --source=gateway-httproute
+        - --source=gateway-grpcroute
+        - --source=gateway-tlsroute
+        - --source=gateway-tcproute
+        - --source=gateway-udproute
+        # Limit to your gateway
+        - --gateway-name=main-gateway
+        - --gateway-namespace=cert-manager
+        # Domain configuration for timosur.com
+        - --domain-filter=timosur.com
+        # Cloudflare provider configuration
+        - --provider=cloudflare
+        - --registry=txt
+        - --txt-owner-id=homelab-k8s
+        - --txt-prefix=external-dns-
+        # Cloudflare specific settings
+        - --cloudflare-record-comment="provisioned by external-dns"
+        - --cloudflare-regional-services
+        - --cloudflare-region-key="eu"
+        - --cloudflare-proxied
+        # Log level for debugging
+        - --log-level=info
+        # Sync policy - use upsert-only for safety
+        - --policy=upsert-only
+        env:
+        - name: CF_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: cloudflare-api-token
+              key: CF_API_TOKEN
+        - name: CF_API_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: cloudflare-api-token
+              key: CF_API_EMAIL
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          capabilities:
+            drop:
+            - ALL
