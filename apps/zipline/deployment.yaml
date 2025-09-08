@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipline
+  namespace: zipline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zipline
+  template:
+    metadata:
+      labels:
+        app: zipline
+    spec:
+      initContainers:
+      - name: init-directories
+        image: busybox:1.36
+        command: ['sh', '-c', 'mkdir -p /zipline/uploads /zipline/public /zipline/themes && chown -R 1000:1000 /zipline']
+        volumeMounts:
+        - name: zipline-data
+          mountPath: /zipline
+      containers:
+      - name: zipline
+        image: ghcr.io/diced/zipline:latest
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: zipline-config
+        - secretRef:
+            name: zipline-postgres-credentials
+        - secretRef:
+            name: zipline-core-secret
+        volumeMounts:
+        - name: zipline-data
+          mountPath: /zipline/uploads
+          subPath: uploads
+        - name: zipline-data
+          mountPath: /zipline/public
+          subPath: public
+        - name: zipline-data
+          mountPath: /zipline/themes
+          subPath: themes
+        resources:
+          limits:
+            memory: "1000Mi"
+            cpu: "1000m"
+          requests:
+            memory: "512Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /api/healthcheck
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/healthcheck
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: zipline-data
+        persistentVolumeClaim:
+          claimName: zipline-data

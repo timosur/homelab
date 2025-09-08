@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: seafile-config
+  namespace: seafile
+data:
+  DB_HOST: "seafile-mysql"
+  TIME_ZONE: "Europe/Berlin"
+  SEAFILE_SERVER_LETSENCRYPT: "false"
+  SEAFILE_SERVER_HOSTNAME: "file.timosur.com"

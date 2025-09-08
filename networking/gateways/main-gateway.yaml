@@ -98,3 +98,39 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: garden-timosur-com
+    - name: zipline-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "zipline.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: zipline-https
+      port: 443
+      protocol: HTTPS
+      hostname: "zipline.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: zipline-timosur-com
+    - name: seafile-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "file.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: seafile-https
+      port: 443
+      protocol: HTTPS
+      hostname: "file.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: seafile-timosur-com

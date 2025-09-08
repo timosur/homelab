@@ -7,3 +7,5 @@ resources:
 - ai-route.yaml
 - n8n-route.yaml
 - garden-route.yaml
+- zipline-route.yaml
+- seafile-route.yaml
