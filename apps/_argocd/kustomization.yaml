@@ -10,3 +10,5 @@ resources:
 - open-webui-app.yaml
 - n8n-app.yaml
 - garden-app.yaml
+- zipline-app.yaml
+- seafile-app.yaml

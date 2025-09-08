@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seafile
+  namespace: seafile
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Important for applications with persistent storage
+  selector:
+    matchLabels:
+      app: seafile
+  template:
+    metadata:
+      labels:
+        app: seafile
+    spec:
+      containers:
+      - name: seafile
+        image: seafileltd/seafile-mc:11.0-latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: DB_ROOT_PASSWD
+          valueFrom:
+            secretKeyRef:
+              name: seafile-mysql-password
+              key: MYSQL_ROOT_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: seafile-config
+        - secretRef:
+            name: seafile-admin-credentials
+        volumeMounts:
+        - name: seafile-data
+          mountPath: /shared
+        resources:
+          limits:
+            memory: "2000Mi"
+            cpu: "1000m"
+          requests:
+            memory: "1000Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: seafile-data
+        persistentVolumeClaim:
+          claimName: seafile-data

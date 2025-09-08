@@ -64,3 +64,25 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: garden-acme-http
+      # zipline.timosur.com
+      - selector:
+          dnsNames: ["zipline.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: zipline-acme-http
+      # file.timosur.com
+      - selector:
+          dnsNames: ["file.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: seafile-acme-http
