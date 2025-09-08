@@ -16,63 +16,27 @@ spec:
         app: seafile
     spec:
       containers:
-      - name: seafile
-        image: seafileltd/seafile-mc:13.0-latest
-        ports:
-        - containerPort: 80
-        env:
-        - name: DB_ROOT_PASSWD
-          valueFrom:
-            secretKeyRef:
-              name: seafile-mysql-password
-              key: MYSQL_ROOT_PASSWORD
-        # command:
-        # - /bin/sh
-        # - -c
-        # - |
-        #   # Find the seafile server directory
-        #   SEAFILE_SERVER_DIR=$(find /opt/seafile -maxdepth 1 -name "seafile-server-*" -type d | head -1)
-          
-        #   if [ -n "$SEAFILE_SERVER_DIR" ]; then
-        #     echo "Found Seafile server directory: $SEAFILE_SERVER_DIR"
-            
-        #     # Modify the settings.py file before starting Seafile
-        #     SETTINGS_FILE="$SEAFILE_SERVER_DIR/seahub/seahub/settings.py"
-            
-        #     if [ -f "$SETTINGS_FILE" ]; then
-        #       if ! grep -q "CSRF_TRUSTED_ORIGINS" "$SETTINGS_FILE"; then
-        #         echo "" >> "$SETTINGS_FILE"
-        #         echo "# Custom configuration for homelab" >> "$SETTINGS_FILE"
-        #         echo "CSRF_TRUSTED_ORIGINS = ['https://file.timosur.com']" >> "$SETTINGS_FILE"
-        #         echo "Added CSRF_TRUSTED_ORIGINS to settings.py"
-        #       else
-        #         echo "CSRF_TRUSTED_ORIGINS already configured"
-        #       fi
-        #     else
-        #       echo "Settings file not found at $SETTINGS_FILE"
-        #     fi
-        #   else
-        #     echo "No seafile-server-* directory found"
-        #   fi
-          
-        #   # Start the original Seafile entrypoint
-        #   exec /sbin/my_init -- /scripts/enterpoint.sh
-        envFrom:
-        - configMapRef:
-            name: seafile-config
-        - secretRef:
-            name: seafile-admin-credentials
-        volumeMounts:
-        - name: seafile-data
-          mountPath: /shared
-        resources:
-          limits:
-            memory: "2000Mi"
-            cpu: "1000m"
-          requests:
-            memory: "1000Mi"
-            cpu: "200m"
+        - name: seafile
+          image: seafileltd/seafile-pro-mc:13.0-latest
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: seafile-env 
+            - secretRef:
+                name: seafile-secret
+          volumeMounts:
+            - name: seafile-data
+              mountPath: /shared
+          resources:
+            limits:
+              memory: "2000Mi"
+              cpu: "1000m"
+            requests:
+              memory: "1000Mi"
+              cpu: "200m"
       volumes:
-      - name: seafile-data
-        persistentVolumeClaim:
-          claimName: seafile-data
+        - name: seafile-data
+          persistentVolumeClaim:
+            claimName: seafile-data
+      restartPolicy: Always

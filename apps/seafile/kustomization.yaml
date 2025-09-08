@@ -5,7 +5,7 @@ resources:
   - namespace.yaml
   - mysql-secret.yaml
   - mysql.yaml
-  - memcached.yaml
+  - redis.yaml
   - configmap.yaml
   - secret.yaml
   - pvc.yaml
