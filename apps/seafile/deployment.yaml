@@ -15,34 +15,6 @@ spec:
       labels:
         app: seafile
     spec:
-      initContainers:
-      - name: configure-seafile
-        image: seafileltd/seafile-mc:11.0-latest
-        command: 
-        - /bin/sh
-        - -c
-        - |
-          # Wait for the main seafile directory structure to be created
-          while [ ! -d /shared/seafile ]; do
-            echo "Waiting for seafile directory..."
-            sleep 5
-          done
-          
-          # Add CSRF_TRUSTED_ORIGINS to seahub settings if not already present
-          SETTINGS_FILE="/shared/seafile/conf/seahub_settings.py"
-          if [ -f "$SETTINGS_FILE" ]; then
-            if ! grep -q "CSRF_TRUSTED_ORIGINS" "$SETTINGS_FILE"; then
-              echo "CSRF_TRUSTED_ORIGINS = ['https://seafile.timosur.com']" >> "$SETTINGS_FILE"
-              echo "Added CSRF_TRUSTED_ORIGINS to seahub_settings.py"
-            else
-              echo "CSRF_TRUSTED_ORIGINS already configured"
-            fi
-          else
-            echo "seahub_settings.py not found, will be created on first run"
-          fi
-        volumeMounts:
-        - name: seafile-data
-          mountPath: /shared
       containers:
       - name: seafile
         image: seafileltd/seafile-mc:11.0-latest
@@ -54,6 +26,24 @@ spec:
             secretKeyRef:
               name: seafile-mysql-password
               key: MYSQL_ROOT_PASSWORD
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Modify the settings.py file before starting Seafile
+          SETTINGS_FILE="/opt/seafile/seafile-server-latest/seahub/seahub/settings.py"
+          
+          if [ -f "$SETTINGS_FILE" ]; then
+            if ! grep -q "CSRF_TRUSTED_ORIGINS" "$SETTINGS_FILE"; then
+              echo "" >> "$SETTINGS_FILE"
+              echo "# Custom configuration for homelab" >> "$SETTINGS_FILE"
+              echo "CSRF_TRUSTED_ORIGINS = ['https://file.timosur.com']" >> "$SETTINGS_FILE"
+              echo "Added CSRF_TRUSTED_ORIGINS to settings.py"
+            fi
+          fi
+          
+          # Start the original Seafile entrypoint
+          exec /sbin/my_init
         envFrom:
         - configMapRef:
             name: seafile-config
