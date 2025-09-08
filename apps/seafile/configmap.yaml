@@ -8,3 +8,4 @@ data:
   TIME_ZONE: "Europe/Berlin"
   SEAFILE_SERVER_LETSENCRYPT: "false"
   SEAFILE_SERVER_HOSTNAME: "file.timosur.com"
+  SEAFILE_SERVER_PROTOCOL: https
