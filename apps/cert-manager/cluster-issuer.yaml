@@ -86,3 +86,14 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: seafile-acme-http
+      # timosur.com
+      - selector:
+          dnsNames: ["timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: portfolio-acme-http
