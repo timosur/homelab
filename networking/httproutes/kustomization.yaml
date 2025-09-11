@@ -9,3 +9,4 @@ resources:
 - garden-route.yaml
 - zipline-route.yaml
 - seafile-route.yaml
+- portfolio-route.yaml
