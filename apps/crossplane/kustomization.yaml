@@ -4,5 +4,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - hcloud-provider.yaml
+  - hcloud-external-secret.yaml
+  - hcloud-provider-config.yaml
 
 namespace: crossplane-system
