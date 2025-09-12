@@ -13,3 +13,4 @@ resources:
 - zipline-app.yaml
 - seafile-app.yaml
 - portfolio-app.yaml
+- crossplane-app.yaml
