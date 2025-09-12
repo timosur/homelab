@@ -14,3 +14,4 @@ resources:
 - seafile-app.yaml
 - portfolio-app.yaml
 - crossplane-app.yaml
+- crossplane-config-app.yaml
