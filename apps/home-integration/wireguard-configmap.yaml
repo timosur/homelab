@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wireguard-config
+  namespace: home-integration
+data:
+  fritzbox-public-key: "REPLACE_WITH_YOUR_FRITZBOX_PUBLIC_KEY"
+  home-public-ip: "REPLACE_WITH_YOUR_HOME_PUBLIC_IP" 
+  wg-interface-address: "10.0.1.2/24"
+  wg-listen-port: "51820"
+  allowed-ips: "192.168.178.0/24,10.0.1.1/32"

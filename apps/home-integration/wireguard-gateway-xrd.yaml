@@ -1,0 +1,78 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xwireguardgateways.homelab.timosur.com
+spec:
+  group: homelab.timosur.com
+  names:
+    kind: XWireguardGateway
+    plural: xwireguardgateways
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              parameters:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Name of the Wireguard gateway server
+                  location:
+                    type: string
+                    description: Hetzner Cloud location
+                    default: "fsn1"
+                  serverType:
+                    type: string
+                    description: Hetzner Cloud server type
+                    default: "cax11"
+                  networkId:
+                    type: integer
+                    description: Hetzner Cloud network ID
+                  privateIP:
+                    type: string
+                    description: Private IP address for the server
+                  wireguardConfig:
+                    type: object
+                    properties:
+                      interfaceAddress:
+                        type: string
+                        description: Wireguard interface address
+                        default: "10.0.1.2/24"
+                      listenPort:
+                        type: string
+                        description: Wireguard listen port
+                        default: "51820"
+                      fritzboxPublicKey:
+                        type: string
+                        description: Fritz!Box public key
+                      homePublicIP:
+                        type: string
+                        description: Home public IP address
+                      allowedIPs:
+                        type: string
+                        description: Allowed IPs for the peer
+                        default: "192.168.178.0/24,10.0.1.1/32"
+                    required:
+                    - fritzboxPublicKey
+                    - homePublicIP
+                required:
+                - name
+                - networkId
+                - privateIP
+                - wireguardConfig
+          status:
+            type: object
+            properties:
+              serverIP:
+                type: string
+                description: The server's IP address
+              publicKey:
+                type: string
+                description: The server's Wireguard public key

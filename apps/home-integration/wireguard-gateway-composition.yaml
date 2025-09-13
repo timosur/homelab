@@ -1,0 +1,137 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: wireguard-gateway-composition
+  labels:
+    provider: hetzner
+    service: wireguard-gateway
+spec:
+  writeConnectionSecretsToNamespace: crossplane-system
+  compositeTypeRef:
+    apiVersion: homelab.timosur.com/v1alpha1
+    kind: XWireguardGateway
+  
+  functions:
+  - name: generate-userdata
+    type: function
+    step: generate-userdata
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      - name: wireguard-server
+        base:
+          apiVersion: hcloud.hcloud.upbound.io/v1alpha1
+          kind: Server
+          spec:
+            forProvider:
+              image: "ubuntu-24.04"
+              keepDisk: false
+              backups: false
+              rebuildProtection: false
+              deleteProtection: false
+              shutdownBeforeDeletion: false
+              ignoreRemoteFirewallIds: true
+              allowDeprecatedImages: false
+              publicNet:
+              - ipv4Enabled: false
+                ipv6Enabled: false
+              sshKeys:
+              - k3s
+            providerConfigRef:
+              name: default
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.name
+          toFieldPath: metadata.name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.serverType
+          toFieldPath: spec.forProvider.serverType
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkId
+          toFieldPath: spec.forProvider.network[0].networkId
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.privateIP
+          toFieldPath: spec.forProvider.network[0].ip
+        - type: CombineFromComposite
+          combine:
+            variables:
+            - fromFieldPath: spec.parameters.wireguardConfig.interfaceAddress
+            - fromFieldPath: spec.parameters.wireguardConfig.listenPort
+            - fromFieldPath: spec.parameters.wireguardConfig.fritzboxPublicKey
+            - fromFieldPath: spec.parameters.wireguardConfig.allowedIPs
+            - fromFieldPath: spec.parameters.wireguardConfig.homePublicIP
+            strategy: string
+            string:
+              fmt: |
+                #!/bin/bash
+                # Update system
+                apt-get update && apt-get upgrade -y
+                
+                # Install WireGuard
+                apt-get install -y wireguard wireguard-tools
+                
+                # Enable IP forwarding
+                echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
+                echo 'net.ipv6.conf.all.forwarding=1' >> /etc/sysctl.conf
+                sysctl -p
+                
+                # Create WireGuard directory
+                mkdir -p /etc/wireguard
+                chmod 700 /etc/wireguard
+                
+                # Generate WireGuard keys
+                cd /etc/wireguard
+                wg genkey | tee privatekey | wg pubkey > publickey
+                chmod 600 privatekey
+                
+                # Create WireGuard config with provided values
+                cat > /etc/wireguard/wg0.conf << EOF
+                [Interface]
+                PrivateKey = $(cat privatekey)
+                Address = %s
+                ListenPort = %s
+                PostUp = iptables -A FORWARD -i %%i -j ACCEPT; iptables -A FORWARD -o %%i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+                PostDown = iptables -D FORWARD -i %%i -j ACCEPT; iptables -D FORWARD -o %%i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+                
+                [Peer]
+                PublicKey = %s
+                AllowedIPs = %s
+                Endpoint = %s
+                PersistentKeepalive = 25
+                EOF
+                
+                # Enable and start WireGuard
+                systemctl enable wg-quick@wg0
+                systemctl start wg-quick@wg0
+                
+                # Install additional useful tools
+                apt-get install -y htop curl wget nano
+                
+                # Create a script to display the public key and status
+                cat > /root/show-wg-info.sh << 'SCRIPT_EOF'
+                #!/bin/bash
+                echo "WireGuard Public Key:"
+                cat /etc/wireguard/publickey
+                echo ""
+                echo "WireGuard Status:"
+                wg show
+                echo ""
+                echo "Network Configuration:"
+                ip addr show wg0 2>/dev/null || echo "WireGuard interface not up"
+                SCRIPT_EOF
+                chmod +x /root/show-wg-info.sh
+                
+                # Save public key to a file that can be retrieved
+                cat /etc/wireguard/publickey > /root/wireguard-public-key.txt
+                
+                # Log completion
+                echo "WireGuard gateway setup completed at $(date)" >> /var/log/wireguard-setup.log
+                echo "Public key: $(cat /etc/wireguard/publickey)" >> /var/log/wireguard-setup.log
+          toFieldPath: spec.forProvider.userData
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.ipv4Address
+          toFieldPath: status.serverIP

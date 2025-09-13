@@ -15,3 +15,4 @@ resources:
 - portfolio-app.yaml
 - crossplane-app.yaml
 - crossplane-config-app.yaml
+- home-integration-app.yaml
