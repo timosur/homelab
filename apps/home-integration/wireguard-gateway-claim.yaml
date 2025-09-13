@@ -1,0 +1,21 @@
+apiVersion: homelab.timosur.com/v1alpha1
+kind: XWireguardGateway
+metadata:
+  name: home-vpn-gateway
+  namespace: home-integration
+spec:
+  parameters:
+    name: wireguard-gateway
+    location: "fsn1"
+    serverType: "cax11"
+    networkId: 11403952
+    privateIP: "10.254.0.1"
+    wireguardConfig:
+      interfaceAddress: "10.0.1.2/24"
+      listenPort: "51820"
+      # These will be populated by the external secret
+      fritzboxPublicKey: ""
+      homePublicIP: ""
+      allowedIPs: "192.168.178.0/24,10.0.1.1/32"
+  compositionRef:
+    name: wireguard-gateway-composition
