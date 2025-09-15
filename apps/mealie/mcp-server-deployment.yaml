@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: mealie-mcp-server
-        image: ghcr.io/timosur/mealie-mcp-server:main
+        image: ghcr.io/timosur/mealie-mcp-server:main@sha256:36576e173c2bd5532a7d0b6a6c10cd5acdcdabeb0615a19ddd84e911d0f1ff57
         ports:
         - containerPort: 8000
         env:
