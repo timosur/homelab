@@ -6,8 +6,6 @@ resources:
   - wireguard-gateway-xrd.yaml
   - wireguard-gateway-composition.yaml
   - wireguard-external-secret.yaml
-  - wireguard-rbac.yaml
   - wireguard-gateway-claim.yaml
-  - wireguard-patcher-job.yaml
 
 namespace: home-integration
