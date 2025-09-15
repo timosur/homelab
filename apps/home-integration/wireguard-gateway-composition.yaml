@@ -10,11 +10,12 @@ spec:
   compositeTypeRef:
     apiVersion: homelab.timosur.com/v1alpha1
     kind: XWireguardGateway
+  mode: Pipeline
   
-  functions:
-  - name: generate-userdata
-    type: function
-    step: generate-userdata
+  pipeline:
+  - step: generate-resources
+    functionRef:
+      name: function-auto-ready
     input:
       apiVersion: pt.fn.crossplane.io/v1beta1
       kind: Resources
@@ -64,6 +65,7 @@ spec:
             - fromFieldPath: spec.parameters.wireguardConfig.fritzboxPublicKey
             - fromFieldPath: spec.parameters.wireguardConfig.allowedIPs
             - fromFieldPath: spec.parameters.wireguardConfig.homePublicIP
+            - fromFieldPath: spec.parameters.wireguardConfig.listenPort
             strategy: string
             string:
               fmt: |
@@ -100,7 +102,7 @@ spec:
                 [Peer]
                 PublicKey = %s
                 AllowedIPs = %s
-                Endpoint = %s
+                Endpoint = %s:%s
                 PersistentKeepalive = 25
                 EOF
                 
