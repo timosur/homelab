@@ -3,17 +3,32 @@ name: Renovate Auto-Approve
 on:
   pull_request:
     types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to validate (optional)"
+        required: false
+        type: string
+      skip_auto_approve:
+        description: "Skip auto-approval and only run validation"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
-    if: github.actor == 'renovate[bot]'
+    if: |
+      (github.event_name == 'pull_request' && github.actor == 'renovate[bot]') ||
+      (github.event_name == 'workflow_dispatch' && !inputs.skip_auto_approve)
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          # For manual dispatch, checkout specific PR if provided
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number && format('refs/pull/{0}/head', inputs.pr_number) || github.ref }}
 
       - name: Auto-approve minor and patch updates
         uses: hmarr/auto-approve-action@v4
@@ -36,11 +51,25 @@ jobs:
 
   validate-changes:
     runs-on: ubuntu-latest
-    if: github.actor == 'renovate[bot]'
+    if: |
+      (github.event_name == 'pull_request' && github.actor == 'renovate[bot]') ||
+      (github.event_name == 'workflow_dispatch')
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # For manual dispatch, checkout specific PR if provided
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number && format('refs/pull/{0}/head', inputs.pr_number) || github.ref }}
+
+      - name: Get PR info for manual run
+        if: github.event_name == 'workflow_dispatch' && inputs.pr_number
+        id: pr-info
+        run: |
+          echo "Getting PR #${{ inputs.pr_number }} information..."
+          gh pr view ${{ inputs.pr_number }} --json title,headRefName
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate Kubernetes manifests
         run: |
@@ -65,16 +94,27 @@ jobs:
           terraform fmt -check -recursive
 
       - name: Comment on PR with validation results
-        if: always()
+        if: always() && (github.event_name == 'pull_request' || inputs.pr_number)
         uses: actions/github-script@v7
         with:
           script: |
             const { context } = require('@actions/github');
             const validationStatus = '${{ job.status }}' === 'success' ? '✅ Validation passed' : '❌ Validation failed';
+            const triggerType = context.eventName === 'workflow_dispatch' ? 'Manual' : 'Automatic';
+
+            // Determine PR number
+            const prNumber = context.eventName === 'workflow_dispatch' 
+              ? '${{ inputs.pr_number }}' 
+              : context.issue.number;
+
+            if (!prNumber) {
+              console.log('No PR number available for commenting');
+              return;
+            }
 
             github.rest.issues.createComment({
-              issue_number: context.issue.number,
+              issue_number: parseInt(prNumber),
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Renovate PR Validation\n\n${validationStatus}\n\nThis PR was automatically validated for:\n- Kubernetes manifests\n- Terraform formatting\n- Basic syntax checks`
+              body: `## ${triggerType} Renovate PR Validation\n\n${validationStatus}\n\nThis PR was validated for:\n- Kubernetes manifests\n- Terraform formatting\n- Basic syntax checks\n\n_Triggered: ${triggerType.toLowerCase()}_`
             });

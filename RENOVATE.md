@@ -38,7 +38,14 @@ This repository is configured with Renovate Bot to automatically manage dependen
 
 ### Automation
 
-- `.github/workflows/renovate-auto-approve.yaml` - Auto-approval for safe updates
+- `.github/workflows/renovate-auto-approve.yaml` - Auto-approval for safe updates and manual validation
+
+### Manual Execution
+
+The auto-approve workflow can be triggered manually via GitHub Actions tab with these options:
+
+- **PR Number**: Specify a specific PR number to validate
+- **Skip Auto-Approve**: Run only validation without auto-approval
 
 ## Update Policies
 
@@ -111,6 +118,22 @@ Edit `renovate.json` to modify:
 - **Dependency Dashboard**: Check Issues tab for Renovate dashboard
 - **PR Labels**: All PRs tagged with `renovate` label
 - **Assignee**: Updates assigned to `timosur`
+
+### Manual Workflow Execution
+
+You can manually trigger the validation workflow from the GitHub Actions tab:
+
+1. **Navigate to Actions**: Go to your repository's Actions tab
+2. **Select Workflow**: Choose "Renovate Auto-Approve" workflow
+3. **Run Workflow**: Click "Run workflow" with options:
+   - **PR Number** (optional): Enter specific PR number to validate
+   - **Skip Auto-Approve**: Check to run validation only without approval
+
+**Use Cases:**
+
+- Validate a specific Renovate PR before merging
+- Re-run validation after making changes to a PR
+- Test validation logic on any PR
 
 ## Troubleshooting
 
