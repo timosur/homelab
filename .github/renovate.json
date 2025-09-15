@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "kubernetes",
+    "argocd", 
+    "terraform",
+    "github-actions",
+    "dockerfile",
+    "docker-compose",
+    "regex"
+  ],
+  "kubernetes": {
+    "fileMatch": [
+      "apps/.+\\.ya?ml$",
+      "networking/.+\\.ya?ml$"
+    ]
+  },
+  "argocd": {
+    "fileMatch": [
+      "apps/_argocd/.+\\.ya?ml$"
+    ]
+  },
+  "terraform": {
+    "fileMatch": [
+      "infrastructure/.+\\.tf$"
+    ]
+  }
+}

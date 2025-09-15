@@ -1,0 +1,181 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":automergeDigests",
+    ":automergeBranch"
+  ],
+  "timezone": "Europe/Zurich",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "labels": ["renovate"],
+  "assignees": ["timosur"],
+  "reviewers": ["timosur"],
+  "platformAutomerge": true,
+  "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
+  "repositories": ["timosur/homelab"],
+  "packageRules": [
+    {
+      "description": "Auto-merge minor and patch updates for stable tools",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchPackagePatterns": [
+        "^busybox$",
+        "^redis$",
+        "^memcached$",
+        "^mariadb$"
+      ],
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "description": "Group Kubernetes ecosystem updates",
+      "matchPackagePatterns": [
+        "external-dns",
+        "cert-manager",
+        "argocd"
+      ],
+      "groupName": "kubernetes-ecosystem",
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "Group Terraform updates",
+      "matchDatasources": ["terraform-provider", "terraform-module"],
+      "groupName": "terraform",
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "description": "Pin digest for custom images",
+      "matchPackagePatterns": [
+        "ghcr.io/timosur/"
+      ],
+      "pinDigests": true,
+      "automerge": false
+    },
+    {
+      "description": "Latest tag monitoring for development images",
+      "matchPackagePatterns": [
+        "ghcr.io/timosur/",
+        ":latest$",
+        ":main$"
+      ],
+      "schedule": ["at any time"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    }
+  ],
+  "kubernetes": {
+    "fileMatch": [
+      "apps/.+\\.ya?ml$",
+      "networking/.+\\.ya?ml$",
+      "infrastructure/extra-manifests/.+\\.ya?ml$"
+    ]
+  },
+  "argocd": {
+    "fileMatch": [
+      "apps/_argocd/.+\\.ya?ml$"
+    ]
+  },
+  "helm-values": {
+    "fileMatch": [
+      "apps/_argocd/.+\\.ya?ml$"
+    ]
+  },
+  "terraform": {
+    "fileMatch": [
+      "infrastructure/.+\\.tf$"
+    ]
+  },
+  "regexManagers": [
+    {
+      "description": "Update Crossplane providers",
+      "fileMatch": [
+        "apps/crossplane/.+\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "package:\\s*xpkg\\.upbound\\.io\\/(?<depName>[^:]+):(?<currentValue>v[0-9.]+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "{{{depName}}}",
+      "versioningTemplate": "semver"
+    },
+    {
+      "description": "Update kube-hetzner version comments",
+      "fileMatch": [
+        "infrastructure/kube\\.tf$"
+      ],
+      "matchStrings": [
+        "# kube\\.tf — Kube‑Hetzner v(?<currentValue>[0-9.]+)"
+      ],
+      "depNameTemplate": "kube-hetzner/kube-hetzner",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "description": "Update Cilium version in Terraform",
+      "fileMatch": [
+        "infrastructure/kube\\.tf$"
+      ],
+      "matchStrings": [
+        "cilium_version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "cilium/cilium",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "description": "Update container images with SHA references",
+      "fileMatch": [
+        "apps/.+\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "image:\\s*(?<depName>ghcr\\.io\\/timosur\\/[^:]+):sha-(?<currentValue>[a-f0-9]+)"
+      ],
+      "datasourceTemplate": "docker",
+      "autoReplaceStringTemplate": "image: {{{depName}}}:sha-{{{newValue}}}"
+    }
+  ],
+  "hostRules": [
+    {
+      "matchHost": "ghcr.io",
+      "hostType": "docker"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update PostgreSQL versions in CNPG manifests",
+      "fileMatch": [
+        "apps/.+/postgres\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "imageName:\\s*(?<depName>postgres):(?<currentValue>[0-9.]+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+  "osvVulnerabilityAlerts": true,
+  "semanticCommits": "enabled",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageAction": "Update",
+  "commitMessageExtra": "to {{newVersion}}",
+  "branchPrefix": "renovate/",
+  "baseBranches": ["main"],
+  "ignorePaths": [
+    "keys/**",
+    "**/*.md",
+    "**/kustomization.yaml"
+  ],
+  "ignoreTests": true
+}
