@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: portfolio
-          image: ghcr.io/timosur/portfolio:latest
+          image: ghcr.io/timosur/portfolio:latest@sha256:4d81614008d8e19f383c07600e7bf0dc92ff79da0f6eae7bfbeee65d17535116
           ports:
             - containerPort: 80
           resources:
