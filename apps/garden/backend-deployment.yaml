@@ -35,7 +35,7 @@ spec:
               mountPath: /app/db
       containers:
         - name: garden-backend
-          image: ghcr.io/timosur/life-as-a-garden/backend:sha-2797ce9
+          image: ghcr.io/timosur/life-as-a-garden/backend:sha-2797ce9@sha256:d8a3a4cf74342ad0ea7cf88ab5f6fb9c8f30dcb8a11060ea1b2b9673779fbd5f
           ports:
             - containerPort: 8000
           env:
