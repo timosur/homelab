@@ -4,7 +4,7 @@
     "config:recommended",
     ":dependencyDashboard",
     ":semanticCommits",
-    ":automergeDigests",
+    ":automergeMinor",
     ":automergeBranch"
   ],
   "timezone": "Europe/Zurich",
@@ -18,6 +18,12 @@
   "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
   "repositories": ["timosur/homelab"],
   "packageRules": [
+    {
+      "description": "Auto-merge digest updates",
+      "matchUpdateTypes": ["digest"],
+      "automerge": true,
+      "automergeType": "branch"
+    },
     {
       "description": "Auto-merge minor and patch updates for stable tools",
       "matchUpdateTypes": ["minor", "patch"],
