@@ -16,7 +16,6 @@
   "reviewers": ["timosur"],
   "platformAutomerge": true,
   "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
-  "repositories": ["timosur/homelab"],
   "packageRules": [
     {
       "description": "Auto-merge digest updates",
