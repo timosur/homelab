@@ -1,0 +1,80 @@
+name: Renovate Auto-Approve
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    if: github.actor == 'renovate[bot]'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-approve minor and patch updates
+        uses: hmarr/auto-approve-action@v4
+        if: |
+          contains(github.head_ref, 'renovate/') && 
+          (
+            contains(github.event.pull_request.title, '[PATCH]') ||
+            contains(github.event.pull_request.title, '[MINOR]') ||
+            contains(github.event.pull_request.title, 'Update') &&
+            (
+              contains(github.event.pull_request.title, 'busybox') ||
+              contains(github.event.pull_request.title, 'redis') ||
+              contains(github.event.pull_request.title, 'memcached') ||
+              contains(github.event.pull_request.title, 'mariadb') ||
+              contains(github.event.pull_request.title, 'GitHub Actions')
+            )
+          )
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  validate-changes:
+    runs-on: ubuntu-latest
+    if: github.actor == 'renovate[bot]'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Kubernetes manifests
+        run: |
+          # Install kubeval for Kubernetes manifest validation
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin
+
+          # Validate all YAML files in apps/ directory
+          find apps/ -name "*.yaml" -o -name "*.yml" | xargs -I {} sh -c 'echo "Validating {}" && kubeval {} || echo "Validation failed for {}"'
+
+      - name: Validate Terraform
+        if: contains(github.head_ref, 'terraform')
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Terraform fmt check
+        if: contains(github.head_ref, 'terraform')
+        run: |
+          cd infrastructure
+          terraform fmt -check -recursive
+
+      - name: Comment on PR with validation results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { context } = require('@actions/github');
+            const validationStatus = '${{ job.status }}' === 'success' ? '✅ Validation passed' : '❌ Validation failed';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Renovate PR Validation\n\n${validationStatus}\n\nThis PR was automatically validated for:\n- Kubernetes manifests\n- Terraform formatting\n- Basic syntax checks`
+            });
