@@ -44,17 +44,10 @@ spec:
         - name: REDIS_URL
           value: "redis://redis-service.open-webui.svc.cluster.local:6379"
         - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@open-webui-postgres-rw.open-webui.svc.cluster.local:5432/openwebui"
-        - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: open-webui-postgres-credentials
-              key: username
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: open-webui-postgres-credentials
-              key: password
+              name: open-webui-secrets
+              key: database-url
         - name: ENABLE_WEB_SEARCH
           value: "true"
         - name: WEB_SEARCH_ENGINE
@@ -74,7 +67,10 @@ spec:
         - name: VECTOR_DB
           value: "pgvector"
         - name: PGVECTOR_DB_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@open-webui-postgres-rw.open-webui.svc.cluster.local:5432/openwebui"
+          valueFrom:
+            secretKeyRef:
+              name: open-webui-secrets
+              key: pgvector-db-url
         - name: PGVECTOR_CREATE_EXTENSION
           value: "false"
         - name: OPENAI_API_KEY
