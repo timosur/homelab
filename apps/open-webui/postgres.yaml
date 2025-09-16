@@ -18,8 +18,6 @@ spec:
       owner: webui
       secret:
         name: open-webui-postgres-credentials
-      postInitSQL:
-        - CREATE EXTENSION IF NOT EXISTS vector;
 
   storage:
     size: 20Gi
