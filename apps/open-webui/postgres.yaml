@@ -5,27 +5,26 @@ metadata:
   namespace: open-webui
 spec:
   instances: 1
-  
+
   postgresql:
     parameters:
       max_connections: "200"
       shared_buffers: "256MB"
       effective_cache_size: "1GB"
-    
+
   bootstrap:
     initdb:
       database: openwebui
       owner: webui
       secret:
         name: open-webui-postgres-credentials
-        
-  extensions:
-    - name: vector
-  
+      postInitSQL:
+        - CREATE EXTENSION IF NOT EXISTS vector;
+
   storage:
     size: 20Gi
     storageClass: hcloud-volumes
-    
+
   resources:
     requests:
       memory: "512Mi"
