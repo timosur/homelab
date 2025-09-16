@@ -41,6 +41,47 @@ spec:
         env:
         - name: OLLAMA_BASE_URL
           value: "http://ollama-service.open-webui.svc.cluster.local:11434"
+        - name: REDIS_URL
+          value: "redis://redis-service.open-webui.svc.cluster.local:6379"
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@open-webui-postgres-rw.open-webui.svc.cluster.local:5432/openwebui"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: open-webui-postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: open-webui-postgres-credentials
+              key: password
+        - name: ENABLE_WEB_SEARCH
+          value: "true"
+        - name: WEB_SEARCH_ENGINE
+          value: "google_pse"
+        - name: GOOGLE_PSE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: open-webui-secrets
+              key: google-pse-api-key
+        - name: GOOGLE_PSE_ENGINE_ID
+          valueFrom:
+            secretKeyRef:
+              name: open-webui-secrets
+              key: google-pse-engine-id
+        - name: ENABLE_EVALUATION_ARENA_MODELS
+          value: "false"
+        - name: VECTOR_DB
+          value: "pgvector"
+        - name: PGVECTOR_DB_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@open-webui-postgres-rw.open-webui.svc.cluster.local:5432/openwebui"
+        - name: PGVECTOR_CREATE_EXTENSION
+          value: "false"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: open-webui-secrets
+              key: openai-api-key
         lifecycle:
           preStop:
             exec:
