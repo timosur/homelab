@@ -11,7 +11,6 @@ spec:
       max_connections: "200"
       shared_buffers: "256MB"
       effective_cache_size: "1GB"
-      shared_preload_libraries: "vector"
     
   bootstrap:
     initdb:
@@ -19,8 +18,9 @@ spec:
       owner: openwebui
       secret:
         name: open-webui-postgres-credentials
-      postInitSQL:
-        - "CREATE EXTENSION IF NOT EXISTS vector;"
+        
+  extensions:
+    - name: vector
   
   storage:
     size: 20Gi
