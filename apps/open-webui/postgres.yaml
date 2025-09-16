@@ -15,7 +15,7 @@ spec:
   bootstrap:
     initdb:
       database: openwebui
-      owner: openwebui
+      owner: webui
       secret:
         name: open-webui-postgres-credentials
         
