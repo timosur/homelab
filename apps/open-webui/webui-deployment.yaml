@@ -64,15 +64,6 @@ spec:
               key: google-pse-engine-id
         - name: ENABLE_EVALUATION_ARENA_MODELS
           value: "false"
-        - name: VECTOR_DB
-          value: "pgvector"
-        - name: PGVECTOR_DB_URL
-          valueFrom:
-            secretKeyRef:
-              name: open-webui-secrets
-              key: pgvector-db-url
-        - name: PGVECTOR_CREATE_EXTENSION
-          value: "false"
         - name: OPENAI_API_KEY
           valueFrom:
             secretKeyRef:
