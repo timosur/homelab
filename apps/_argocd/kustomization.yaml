@@ -6,6 +6,8 @@ resources:
 - cert-manager-app.yaml
 - external-secrets-app.yaml
 - cloudnative-pg-app.yaml
+- smb-csi-driver-app.yaml
+- storage-box-smb-app.yaml
 - mealie-app.yaml
 - open-webui-app.yaml
 - n8n-app.yaml
