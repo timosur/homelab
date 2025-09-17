@@ -17,3 +17,7 @@ mountOptions:
   - file_mode=0770
   - uid=1001
   - gid=1001
+  - vers=3.0
+  - cache=strict
+  - noserverino
+  - nobrl
