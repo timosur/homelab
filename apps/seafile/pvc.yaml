@@ -8,5 +8,5 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 50Gi
-  storageClassName: hcloud-volumes
+      storage: 1Ti
+  storageClassName: storage-box-smb
