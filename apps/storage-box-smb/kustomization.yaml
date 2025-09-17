@@ -5,5 +5,5 @@ resources:
 - namespace.yaml
 - external-secret.yaml
 - storage-class.yaml
- - static-pv.yaml
- - static-pvc.yaml
+- static-pv.yaml
+- static-pvc.yaml
