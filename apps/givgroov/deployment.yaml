@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: givgroov
+  namespace: givgroov
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: givgroov
+  template:
+    metadata:
+      labels:
+        app: givgroov
+    spec:
+      containers:
+        - name: givgroov
+          image: ghcr.io/timosur/givgroov:sha-6b6f8f6
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
