@@ -13,10 +13,5 @@ provisioner: smb.csi.k8s.io
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 mountOptions:
-  - dir_mode=0777
-  - file_mode=0777
-  - uid=1001
-  - gid=1001
-  - vers=3.0
-  - sec=ntlmssp
-  - noserverino
+  - vers=2.1
+  - cache=none
