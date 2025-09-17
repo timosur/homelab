@@ -4,7 +4,7 @@ metadata:
   name: storage-box-smb
 provisioner: smb.csi.k8s.io
 parameters:
-  # Use the specific Hetzner Storage Box provided
+  # Use the correct Hetzner Storage Box format with /backup subpath
   source: "//u492917.your-storagebox.de/backup"
   # Create a sub directory with PV name under source
   csi.storage.k8s.io/provisioner-secret-name: "storage-box-creds"
@@ -13,11 +13,11 @@ parameters:
   csi.storage.k8s.io/node-stage-secret-namespace: "storage-box-smb"
 volumeBindingMode: Immediate
 mountOptions:
+  - iocharset=utf8
+  - rw
+  - seal
+  - uid=1000
+  - gid=1000
+  - file_mode=0660
   - dir_mode=0770
-  - file_mode=0770
-  - uid=1001
-  - gid=1001
-  - vers=3.0
-  - cache=strict
-  - noserverino
-  - nobrl
+  - cache=none
