@@ -169,4 +169,4 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: givgroov-de
+          - name: givgroov-de-cert
