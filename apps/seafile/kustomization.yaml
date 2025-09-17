@@ -12,5 +12,7 @@ resources:
   - pvc.yaml
   - deployment.yaml
   - service.yaml
+  - backup-pvc.yaml
+  - backup-cronjob.yaml
 
 namespace: seafile
