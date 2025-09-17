@@ -12,6 +12,3 @@ parameters:
 provisioner: smb.csi.k8s.io
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
-mountOptions:
-  - vers=2.1
-  - cache=none
