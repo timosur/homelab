@@ -8,4 +8,4 @@ resources:
 - static-pv.yaml
 - static-pvc.yaml
 - test-pod.yaml
- - debug-pod.yaml
+- debug-pod.yaml
