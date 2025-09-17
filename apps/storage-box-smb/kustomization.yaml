@@ -7,3 +7,4 @@ resources:
 - storage-class.yaml
 - static-pv.yaml
 - static-pvc.yaml
+- test-pod.yaml

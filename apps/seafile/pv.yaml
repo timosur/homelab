@@ -13,7 +13,7 @@ spec:
     driver: smb.csi.k8s.io
     volumeHandle: seafile-data-pv
     volumeAttributes:
-      source: "//u492917.your-storagebox.de/backup/seafile"
+      source: "//u492917.your-storagebox.de/backup"
     nodeStageSecretRef:
       name: storage-box-creds
       namespace: storage-box-smb
