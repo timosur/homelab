@@ -47,21 +47,21 @@ spec:
 
                   # Test MySQL connection first
                   echo "Testing MySQL connection..."
-                  kubectl exec -n seafile "$POD_NAME" -- mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1" > /dev/null
+                  kubectl exec -n seafile "$POD_NAME" -- mariadb -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1" > /dev/null
 
                   # Backup all three Seafile databases
                   echo "Backing up ccnet_db..."
-                  kubectl exec -n seafile "$POD_NAME" -- mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" \
+                  kubectl exec -n seafile "$POD_NAME" -- mariadb-dump -u root -p"$MYSQL_ROOT_PASSWORD" \
                     --single-transaction --routines --triggers \
                     ccnet_db > "${BACKUP_DIR}/ccnet_db.sql"
 
                   echo "Backing up seafile_db..."
-                  kubectl exec -n seafile "$POD_NAME" -- mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" \
+                  kubectl exec -n seafile "$POD_NAME" -- mariadb-dump -u root -p"$MYSQL_ROOT_PASSWORD" \
                     --single-transaction --routines --triggers \
                     seafile_db > "${BACKUP_DIR}/seafile_db.sql"
 
                   echo "Backing up seahub_db..."
-                  kubectl exec -n seafile "$POD_NAME" -- mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" \
+                  kubectl exec -n seafile "$POD_NAME" -- mariadb-dump -u root -p"$MYSQL_ROOT_PASSWORD" \
                     --single-transaction --routines --triggers \
                     seahub_db > "${BACKUP_DIR}/seahub_db.sql"
 
@@ -80,13 +80,13 @@ spec:
                   MYSQL_ROOT_PASSWORD="$1"
 
                   echo "Restoring ccnet_db..."
-                  mysql -u root -p"$MYSQL_ROOT_PASSWORD" ccnet_db < ccnet_db.sql
+                  mariadb -u root -p"$MYSQL_ROOT_PASSWORD" ccnet_db < ccnet_db.sql
 
                   echo "Restoring seafile_db..."
-                  mysql -u root -p"$MYSQL_ROOT_PASSWORD" seafile_db < seafile_db.sql
+                  mariadb -u root -p"$MYSQL_ROOT_PASSWORD" seafile_db < seafile_db.sql
 
                   echo "Restoring seahub_db..."
-                  mysql -u root -p"$MYSQL_ROOT_PASSWORD" seahub_db < seahub_db.sql
+                  mariadb -u root -p"$MYSQL_ROOT_PASSWORD" seahub_db < seahub_db.sql
 
                   echo "Database restore completed successfully!"
                   EOF
