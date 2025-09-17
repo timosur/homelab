@@ -17,9 +17,3 @@ spec:
     nodeStageSecretRef:
       name: storage-box-creds
       namespace: storage-box-smb
-  mountOptions:
-    - file_mode=0777
-    - dir_mode=0777
-    - vers=3.0
-    - sec=ntlmssp
-    - noserverino
