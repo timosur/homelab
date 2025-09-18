@@ -30,7 +30,7 @@ spec:
         # Limit to your gateway
         - --gateway-name=main-gateway
         - --gateway-namespace=cert-manager
-        # Domain configuration for timosur.com
+        # Domain configuration for timosur.com and subdomains
         - --domain-filter=timosur.com
         # Cloudflare provider configuration
         - --provider=cloudflare
@@ -41,9 +41,11 @@ spec:
         - --cloudflare-record-comment="provisioned by external-dns"
         - --cloudflare-proxied
         # Log level for debugging
-        - --log-level=info
+        - --log-level=debug
         # Sync policy - use upsert-only for safety
         - --policy=upsert-only
+        # Increase sync interval to reduce log spam
+        - --interval=2m
         env:
         - name: CF_API_TOKEN
           valueFrom:
