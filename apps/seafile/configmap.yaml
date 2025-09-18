@@ -61,9 +61,6 @@ metadata:
   namespace: seafile
 data:
   seafdav.conf: |
-    [fileserver]
-    port=8082
-
     [WEBDAV]
 
     # Default is false. Change it to true to enable SeafDAV server.
