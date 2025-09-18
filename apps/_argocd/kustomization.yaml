@@ -20,3 +20,4 @@ resources:
 - givgroov-app.yaml
 - kube-prometheus-setup-app.yaml
 - kube-prometheus-app.yaml
+- grafana-config-app.yaml
