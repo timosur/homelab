@@ -1,0 +1,24 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: grafana-ingress-from-gateway
+  namespace: monitoring
+spec:
+  endpointSelector:
+    matchLabels:
+      component: grafana
+  ingress:
+  # Allow traffic from Cilium Gateway API ingress
+  - fromEntities:
+    - "ingress"
+    toPorts:
+    - ports:
+      - port: "3000"
+        protocol: TCP
+  # Allow traffic from reserved:ingress (source identity 8)
+  - fromEndpoints:
+    - {}  # Allow from any endpoint in the cluster
+    toPorts:
+    - ports:
+      - port: "3000"
+        protocol: TCP
