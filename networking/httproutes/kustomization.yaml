@@ -11,3 +11,4 @@ resources:
 - seafile-route.yaml
 - portfolio-route.yaml
 - givgroov-route.yaml
+- grafana-route.yaml

@@ -170,3 +170,21 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: givgroov-de-cert
+    - name: grafana-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "grafana.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: grafana-https
+      port: 443
+      protocol: HTTPS
+      hostname: "grafana.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: grafana-timosur-com
