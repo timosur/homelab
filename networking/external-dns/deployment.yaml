@@ -39,7 +39,6 @@ spec:
         - --txt-prefix=external-dns-
         # Cloudflare specific settings
         - --cloudflare-record-comment="provisioned by external-dns"
-        - --cloudflare-proxied
         # Log level for debugging
         - --log-level=debug
         # Sync policy - use upsert-only for safety
