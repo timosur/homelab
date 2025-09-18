@@ -20,6 +20,7 @@ spec:
           image: seafileltd/seafile-mc:13.0-latest
           ports:
             - containerPort: 80
+            - containerPort: 8080
           envFrom:
             - configMapRef:
                 name: seafile-env 
@@ -28,6 +29,9 @@ spec:
           volumeMounts:
             - name: seafile-data
               mountPath: /shared
+            - name: seafile-config
+              mountPath: /opt/seafile/conf/seafdav.conf
+              subPath: seafdav.conf
           resources:
             limits:
               memory: "2000Mi"
@@ -39,4 +43,7 @@ spec:
         - name: seafile-data
           persistentVolumeClaim:
             claimName: seafile-data
+        - name: seafile-config
+          configMap:
+            name: seafile-config-files
       restartPolicy: Always
