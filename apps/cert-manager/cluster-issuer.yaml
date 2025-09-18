@@ -108,3 +108,14 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: givgroov-acme-http
+      # grafana.timosur.com
+      - selector:
+          dnsNames: ["grafana.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: grafana-acme-http
