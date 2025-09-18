@@ -30,8 +30,15 @@ spec:
             - name: seafile-data
               mountPath: /shared
             - name: seafile-config
-              mountPath: /opt/seafile/conf/seafdav.conf
-              subPath: seafdav.conf
+              mountPath: /opt/seafile/conf-custom
+          command:
+            - /bin/bash
+            - -c
+            - |
+              # Copy the custom config file to the expected location
+              cp /opt/seafile/conf-custom/seafdav.conf /opt/seafile/conf/seafdav.conf
+              # Start the original entrypoint
+              exec /sbin/my_init
           resources:
             limits:
               memory: "2000Mi"
