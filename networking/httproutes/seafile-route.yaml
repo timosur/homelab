@@ -14,6 +14,13 @@ spec:
     - matches:
         - path:
             type: PathPrefix
+            value: /seafdav
+      backendRefs:
+        - name: seafile
+          port: 8080
+    - matches:
+        - path:
+            type: PathPrefix
             value: /
       backendRefs:
         - name: seafile
