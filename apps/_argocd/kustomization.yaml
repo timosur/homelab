@@ -20,4 +20,3 @@ resources:
 - givgroov-app.yaml
 - kube-prometheus-setup-app.yaml
 - kube-prometheus-app.yaml
-- monitoring-config-app.yaml
