@@ -188,3 +188,21 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: grafana-timosur-com
+    - name: pangolin-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "pangolin.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: pangolin-https
+      port: 443
+      protocol: HTTPS
+      hostname: "pangolin.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: pangolin-timosur-com

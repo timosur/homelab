@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pangolin-config
+  namespace: pangolin
+data:
+  config.yml.template: |
+    app:
+      dashboard_url: "https://pangolin.timosur.com"
+
+    domains:
+      domain1:
+        base_domain: "pangolin.timosur.com"
+        cert_resolver: "letsencrypt"
+
+    server:
+      secret: ${SERVER_SECRET}
+
+    postgres:
+      connection_string: "postgres://pangolin:${POSTGRES_PASSWORD}@pangolin-postgres-rw:5432/pangolin"
+
+    gerbil:
+      base_endpoint: "pangolin.timosur.com"
+
+    flags:
+      require_email_verification: false
+      disable_signup_without_invite: true
+      disable_user_create_org: true
