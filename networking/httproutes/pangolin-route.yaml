@@ -11,15 +11,7 @@ spec:
   hostnames:
     - "pangolin.timosur.com"
   rules:
-    # Next.js router (handles everything except API and WebSocket paths)
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name: pangolin
-          port: 3002
-    # API router (handles /api/v1 paths)
+    # API router (handles /api/v1 paths) - MUST come first
     - matches:
         - path:
             type: PathPrefix
@@ -36,3 +28,11 @@ spec:
       backendRefs:
         - name: pangolin
           port: 3000
+    # Next.js router (catch-all for everything else)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: pangolin
+          port: 3002
