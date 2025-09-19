@@ -20,7 +20,7 @@ data:
       connection_string: "postgres://pangolin:${POSTGRES_PASSWORD}@pangolin-postgres-rw:5432/pangolin"
 
     gerbil:
-      base_endpoint: "pangolin.timosur.com"
+      base_endpoint: "49.13.53.47"
 
     flags:
       require_email_verification: false
