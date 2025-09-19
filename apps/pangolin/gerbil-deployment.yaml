@@ -17,7 +17,6 @@ spec:
         - name: gerbil
           image: fosrl/gerbil:latest
           command:
-            - "/gerbil"
             - "--reachableAt=http://gerbil:3003"
             - "--generateAndSaveKeyTo=/var/config/key"
             - "--remoteConfig=http://pangolin:3001/api/v1/"
