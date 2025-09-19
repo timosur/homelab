@@ -206,3 +206,22 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: pangolin-timosur-com
+    # Gerbil TCP/UDP listeners for WireGuard and API
+    - name: gerbil-tcp
+      port: 3003
+      protocol: TCP
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: gerbil-udp-51820
+      port: 51820
+      protocol: UDP
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: gerbil-udp-21820
+      port: 21820
+      protocol: UDP
+      allowedRoutes:
+        namespaces:
+          from: All

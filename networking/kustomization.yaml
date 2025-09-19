@@ -4,5 +4,6 @@ kind: Kustomization
 resources:
 - gateways
 - httproutes
+- tcproutes
 - external-dns
 - cilium-network-policies
