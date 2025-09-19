@@ -16,15 +16,6 @@ spec:
         - path:
             type: PathPrefix
             value: /
-        - headers:
-            - name: upgrade
-              value: websocket
-              type: Exact
-          invert: true
-        - path:
-            type: PathPrefix
-            value: /api/v1
-          invert: true
       backendRefs:
         - name: pangolin
           port: 3002
