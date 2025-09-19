@@ -10,11 +10,11 @@ spec:
     - name: api
       protocol: TCP
       port: 3001
-      targetPort: 3001
+      targetPort: 3000
     - name: websocket
       protocol: TCP
       port: 3000
-      targetPort: 3000
+      targetPort: 3001
     - name: nextjs
       protocol: TCP
       port: 3002
