@@ -19,4 +19,4 @@ spec:
       protocol: UDP
       port: 21820
       targetPort: 21820
-  type: LoadBalancer
+  type: NodePort
