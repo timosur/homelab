@@ -1,0 +1,21 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pangolin-postgres
+  namespace: pangolin
+spec:
+  instances: 1
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+  bootstrap:
+    initdb:
+      database: pangolin
+      owner: pangolin
+      secret:
+        name: pangolin-postgres-credentials
+  storage:
+    size: 10Gi
+    storageClass: hcloud-volumes

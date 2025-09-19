@@ -12,3 +12,4 @@ resources:
 - portfolio-route.yaml
 - givgroov-route.yaml
 - grafana-route.yaml
+- pangolin-route.yaml

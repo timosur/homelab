@@ -119,3 +119,14 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: grafana-acme-http
+      # pangolin.timosur.com
+      - selector:
+          dnsNames: ["pangolin.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: pangolin-acme-http

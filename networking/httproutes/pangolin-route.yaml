@@ -1,0 +1,47 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pangolin
+  namespace: pangolin
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: cert-manager
+      sectionName: pangolin-https
+  hostnames:
+    - "pangolin.timosur.com"
+  rules:
+    # Next.js router (handles everything except API and WebSocket paths)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+        - headers:
+            - name: upgrade
+              value: websocket
+              type: Exact
+          invert: true
+        - path:
+            type: PathPrefix
+            value: /api/v1
+          invert: true
+      backendRefs:
+        - name: pangolin
+          port: 3002
+    # API router (handles /api/v1 paths)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/v1
+      backendRefs:
+        - name: pangolin
+          port: 3001
+    # WebSocket router (handles WebSocket upgrades)
+    - matches:
+        - headers:
+            - name: upgrade
+              value: websocket
+              type: Exact
+      backendRefs:
+        - name: pangolin
+          port: 3000
