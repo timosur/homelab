@@ -1,0 +1,44 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: TCPRoute
+metadata:
+  name: gerbil-tcp
+  namespace: pangolin
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: cert-manager
+      sectionName: gerbil-tcp
+  rules:
+    - backendRefs:
+        - name: gerbil
+          port: 3003
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: UDPRoute
+metadata:
+  name: gerbil-udp
+  namespace: pangolin
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: cert-manager
+      sectionName: gerbil-udp-51820
+  rules:
+    - backendRefs:
+        - name: gerbil
+          port: 51820
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: UDPRoute
+metadata:
+  name: gerbil-udp-alt
+  namespace: pangolin
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: cert-manager
+      sectionName: gerbil-udp-21820
+  rules:
+    - backendRefs:
+        - name: gerbil
+          port: 21820
