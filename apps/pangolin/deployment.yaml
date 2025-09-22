@@ -15,7 +15,7 @@ spec:
     spec:
       initContainers:
         - name: init-directories
-          image: busybox:1.36
+          image: busybox:1.37
           command: ["sh", "-c", "mkdir -p /app/config /var/certificates /var/dynamic && chown -R 1000:1000 /app /var/certificates /var/dynamic"]
           volumeMounts:
             - name: pangolin-config-pvc
