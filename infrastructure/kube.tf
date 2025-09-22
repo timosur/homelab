@@ -46,7 +46,7 @@ provider "hcloud" {
 ###############################################
 module "kube-hetzner" {
   source  = "kube-hetzner/kube-hetzner/hcloud"
-  version = "2.18.1"
+  version = "2.18.2"
 
   providers    = { hcloud = hcloud }
   hcloud_token = var.hcloud_token
