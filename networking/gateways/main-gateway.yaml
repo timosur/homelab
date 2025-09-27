@@ -206,6 +206,24 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: pangolin-timosur-com
+    - name: actual-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "finance.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: actual-https
+      port: 443
+      protocol: HTTPS
+      hostname: "finance.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: actual-timosur-com
     # Gerbil TCP/UDP listeners for WireGuard and API
     - name: gerbil-tcp
       port: 3003

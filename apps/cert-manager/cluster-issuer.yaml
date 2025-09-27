@@ -130,3 +130,14 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: pangolin-acme-http
+      # finance.timosur.com
+      - selector:
+          dnsNames: ["finance.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: actual-acme-http

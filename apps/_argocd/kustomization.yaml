@@ -22,3 +22,4 @@ resources:
 - kube-prometheus-app.yaml
 - grafana-config-app.yaml
 - pangolin-app.yaml
+- actual-app.yaml
