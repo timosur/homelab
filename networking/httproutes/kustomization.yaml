@@ -13,3 +13,4 @@ resources:
 - givgroov-route.yaml
 - grafana-route.yaml
 - pangolin-route.yaml
+- actual-route.yaml
