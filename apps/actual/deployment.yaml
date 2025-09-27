@@ -18,6 +18,15 @@ spec:
           image: docker.io/actualbudget/actual-server:latest
           ports:
             - containerPort: 5006
+          env:
+            - name: ACTUAL_PORT
+              value: "5006"
+            - name: ACTUAL_UPLOAD_FILE_SYNC_SIZE_LIMIT_MB
+              value: "20"
+            - name: ACTUAL_UPLOAD_SYNC_ENCRYPTED_FILE_SYNC_SIZE_LIMIT_MB
+              value: "50"
+            - name: ACTUAL_UPLOAD_FILE_SIZE_LIMIT_MB
+              value: "20"
           volumeMounts:
             - name: actual-data
               mountPath: /data
