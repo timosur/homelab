@@ -13,10 +13,22 @@ spec:
       labels:
         app: actual
     spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: "Always"
       initContainers:
         - name: init-directories
           image: busybox:1.36
-          command: ["sh", "-c", "mkdir -p /data && chown -R 1000:1000 /data"]
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /data
+              chown -R 1000:1000 /data
+              chmod -R 755 /data
+              echo "Directory setup complete. Testing write access..."
+              su -s /bin/sh -c 'echo "test" > /data/write_test.txt && rm -f /data/write_test.txt' 1000
+              echo "Write test successful!"
           volumeMounts:
             - name: actual-data
               mountPath: /data
@@ -42,8 +54,6 @@ spec:
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
-            fsGroup: 1000
-            fsGroupChangePolicy: "Always"
           resources:
             limits:
               memory: "1000Mi"
