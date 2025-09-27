@@ -2,24 +2,24 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- networking-app.yaml
-- cert-manager-app.yaml
-- external-secrets-app.yaml
-- cloudnative-pg-app.yaml
-- smb-csi-driver-app.yaml
-- storage-box-smb-app.yaml
-- mealie-app.yaml
-- open-webui-app.yaml
-- n8n-app.yaml
-- garden-app.yaml
-- zipline-app.yaml
-- seafile-app.yaml
-- portfolio-app.yaml
-- crossplane-app.yaml
-- crossplane-config-app.yaml
-- givgroov-app.yaml
-- kube-prometheus-setup-app.yaml
-- kube-prometheus-app.yaml
-- grafana-config-app.yaml
-- pangolin-app.yaml
-- actual-app.yaml
+  - networking-app.yaml
+  - cert-manager-app.yaml
+  - external-secrets-app.yaml
+  - cloudnative-pg-app.yaml
+  - smb-csi-driver-app.yaml
+  - storage-box-smb-app.yaml
+  - mealie-app.yaml
+  - open-webui-app.yaml
+  - n8n-app.yaml
+  - garden-app.yaml
+  - zipline-app.yaml
+  - seafile-app.yaml
+  - portfolio-app.yaml
+  - crossplane-app.yaml
+  - crossplane-config-app.yaml
+  - givgroov-app.yaml
+  - kube-prometheus-setup-app.yaml
+  - kube-prometheus-app.yaml
+  - grafana-config-app.yaml
+  - pangolin-app.yaml
+  - actual-app.yaml

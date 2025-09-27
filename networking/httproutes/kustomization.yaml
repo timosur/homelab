@@ -2,15 +2,15 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- argo-route.yaml
-- mealie-route.yaml
-- ai-route.yaml
-- n8n-route.yaml
-- garden-route.yaml
-- zipline-route.yaml
-- seafile-route.yaml
-- portfolio-route.yaml
-- givgroov-route.yaml
-- grafana-route.yaml
-- pangolin-route.yaml
-- actual-route.yaml
+  - argo-route.yaml
+  - mealie-route.yaml
+  - ai-route.yaml
+  - n8n-route.yaml
+  - garden-route.yaml
+  - zipline-route.yaml
+  - seafile-route.yaml
+  - portfolio-route.yaml
+  - givgroov-route.yaml
+  - grafana-route.yaml
+  - pangolin-route.yaml
+  - actual-route.yaml
