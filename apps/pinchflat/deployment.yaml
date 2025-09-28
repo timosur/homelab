@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinchflat
+  namespace: pinchflat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pinchflat
+  template:
+    metadata:
+      labels:
+        app: pinchflat
+    spec:
+      containers:
+        - name: pinchflat
+          image: ghcr.io/kieraneglin/pinchflat:latest
+          ports:
+            - containerPort: 8945
+          envFrom:
+            - configMapRef:
+                name: pinchflat-config
+            - secretRef:
+                name: pinchflat-auth-credentials
+          volumeMounts:
+            - name: pinchflat-config
+              mountPath: /config
+            - name: pinchflat-downloads
+              mountPath: /downloads
+          resources:
+            limits:
+              memory: "1000Mi"
+              cpu: "1000m"
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8945
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8945
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: pinchflat-config
+          persistentVolumeClaim:
+            claimName: pinchflat-config
+        - name: pinchflat-downloads
+          persistentVolumeClaim:
+            claimName: pinchflat-downloads
