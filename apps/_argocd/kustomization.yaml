@@ -24,3 +24,4 @@ resources:
   - pangolin-app.yaml
   - actual-app.yaml
   - pinchflat-app.yaml
+  - emby-app.yaml
