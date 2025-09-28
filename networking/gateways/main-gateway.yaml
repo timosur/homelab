@@ -242,6 +242,24 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: pinchflat-timosur-com
+    - name: emby-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "emby.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: emby-https
+      port: 443
+      protocol: HTTPS
+      hostname: "emby.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: emby-timosur-com
     # Gerbil TCP/UDP listeners for WireGuard and API
     - name: gerbil-tcp
       port: 3003
