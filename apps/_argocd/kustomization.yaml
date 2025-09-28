@@ -23,3 +23,4 @@ resources:
   - grafana-config-app.yaml
   - pangolin-app.yaml
   - actual-app.yaml
+  - pinchflat-app.yaml

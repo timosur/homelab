@@ -224,6 +224,24 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: actual-timosur-com
+    - name: pinchflat-acme-http
+      port: 80
+      protocol: HTTP
+      hostname: "pinchflat.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: pinchflat-https
+      port: 443
+      protocol: HTTPS
+      hostname: "pinchflat.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: pinchflat-timosur-com
     # Gerbil TCP/UDP listeners for WireGuard and API
     - name: gerbil-tcp
       port: 3003

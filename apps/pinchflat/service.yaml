@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pinchflat
+  namespace: pinchflat
+spec:
+  selector:
+    app: pinchflat
+  ports:
+    - protocol: TCP
+      port: 8945
+      targetPort: 8945
