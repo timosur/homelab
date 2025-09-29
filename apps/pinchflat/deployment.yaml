@@ -13,6 +13,11 @@ spec:
       labels:
         app: pinchflat
     spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
       containers:
         - name: pinchflat
           image: ghcr.io/kieraneglin/pinchflat:latest
