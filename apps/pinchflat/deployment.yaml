@@ -36,17 +36,19 @@ spec:
               memory: "256Mi"
               cpu: "100m"
           livenessProbe:
-            httpGet:
-              path: /
+            tcpSocket:
+              port: 8945
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 10
+          readinessProbe:
+            tcpSocket:
               port: 8945
             initialDelaySeconds: 30
-            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 8945
-            initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: pinchflat-config
           persistentVolumeClaim:
