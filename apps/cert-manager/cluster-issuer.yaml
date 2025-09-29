@@ -152,3 +152,14 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: pinchflat-acme-http
+      # emby.timosur.com
+      - selector:
+          dnsNames: ["emby.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: emby-acme-http
