@@ -38,7 +38,7 @@ spec:
               mountPath: /mnt/media
           resources:
             requests:
-              memory: "512Mi"
+              memory: "250Mi"
               cpu: "250m"
             limits:
               memory: "2Gi"
