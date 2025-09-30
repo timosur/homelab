@@ -7,7 +7,7 @@ data:
   PAPERLESS_REDIS: "redis://paperless-redis:6379"
   PAPERLESS_DBHOST: "paperless-postgres-rw"
   PAPERLESS_DBNAME: "paperless"
-  PAPERLESS_DBUSER: "paperless"
+  PAPERLESS_DBPORT: "5432"
   PAPERLESS_TIME_ZONE: "Europe/Berlin"
   PAPERLESS_OCR_LANGUAGE: "deu+eng"
   PAPERLESS_URL: "https://docs.timosur.com"
