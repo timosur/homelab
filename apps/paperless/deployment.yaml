@@ -13,16 +13,6 @@ spec:
       labels:
         app: paperless-redis
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values:
-                      - amd64
-                      - x86_64
       containers:
         - name: redis
           image: docker.io/library/redis:8
