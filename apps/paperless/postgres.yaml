@@ -1,8 +1,8 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: pangolin-postgres
-  namespace: pangolin
+  name: paperless-postgres
+  namespace: paperless
 spec:
   instances: 2
 
@@ -11,12 +11,22 @@ spec:
       max_connections: "200"
       shared_buffers: "256MB"
       effective_cache_size: "1GB"
+
   bootstrap:
     initdb:
-      database: pangolin
-      owner: pangolin
+      database: paperless
+      owner: paperless
       secret:
-        name: pangolin-postgres-credentials
+        name: paperless-postgres-credentials
+
   storage:
     size: 10Gi
     storageClass: hcloud-volumes
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"

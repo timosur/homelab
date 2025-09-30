@@ -25,3 +25,4 @@ resources:
   - actual-app.yaml
   - pinchflat-app.yaml
   - emby-app.yaml
+  - paperless-app.yaml
