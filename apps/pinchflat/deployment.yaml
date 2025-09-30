@@ -88,7 +88,7 @@ spec:
             claimName: pinchflat-config
         - name: pinchflat-downloads
           persistentVolumeClaim:
-            claimName: pinchflat-downloads
+            claimName: shared-downloads
         - name: pinchflat-cookies-secret
           secret:
             secretName: pinchflat-cookies
