@@ -74,6 +74,11 @@ spec:
           image: ghcr.io/paperless-ngx/paperless-ngx:latest
           ports:
             - containerPort: 8000
+          env:
+            - name: USERMAP_UID
+              value: "1000"
+            - name: USERMAP_GID
+              value: "1000"
           envFrom:
             - configMapRef:
                 name: paperless-config
@@ -81,6 +86,10 @@ spec:
                 name: paperless-postgres-password
             - secretRef:
                 name: paperless-secret-key
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
           volumeMounts:
             - name: paperless-data
               mountPath: /usr/src/paperless/data
