@@ -104,7 +104,7 @@ spec:
               memory: "2Gi"
               cpu: "1000m"
             requests:
-              memory: "1Gi"
+              memory: "500m"
               cpu: "200m"
           livenessProbe:
             httpGet:
