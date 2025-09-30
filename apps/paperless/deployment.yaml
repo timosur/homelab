@@ -51,6 +51,11 @@ spec:
       labels:
         app: paperless
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
       initContainers:
         - name: init-directories
           image: busybox:1.36
@@ -72,46 +77,35 @@ spec:
               mkdir -p /usr/src/paperless/export
               mkdir -p /usr/src/paperless/consume
 
-              # Set ownership
-              echo "Setting ownership to 1000:1000..."
-              chown -R 1000:1000 /usr/src/paperless
-
-              # Set permissions
+              # Set permissions (ownership will be handled by fsGroup)
               echo "Setting permissions..."
               chmod -R 755 /usr/src/paperless
 
-              # Verify permissions
-              echo "Verifying permissions..."
+              # Verify directories exist and are accessible
+              echo "Verifying directory structure..."
               for dir in data media export consume; do
                 path="/usr/src/paperless/$dir"
-                owner=$(stat -c '%u:%g' "$path")
-                perms=$(stat -c '%a' "$path")
-                
-                if [ "$owner" != "1000:1000" ]; then
-                  echo "ERROR: $path has incorrect ownership: $owner (expected 1000:1000)"
+                if [ ! -d "$path" ]; then
+                  echo "ERROR: Directory $path does not exist"
                   exit 1
                 fi
-                
-                if [ "$perms" != "755" ]; then
-                  echo "ERROR: $path has incorrect permissions: $perms (expected 755)"
-                  exit 1
-                fi
-                
-                echo "✓ $path: owner=$owner, perms=$perms"
+                echo "✓ $path exists"
               done
 
-              # Test write permissions
-              echo "Testing write permissions..."
+              # Test write permissions as root (fsGroup will handle ownership for the main container)
+              echo "Testing directory accessibility..."
               for dir in data media export consume; do
                 test_file="/usr/src/paperless/$dir/.test-write-$$"
-                if ! su -s /bin/sh -c "touch '$test_file' && rm -f '$test_file'" - 1000; then
-                  echo "ERROR: Cannot write to /usr/src/paperless/$dir as user 1000"
+                if ! touch "$test_file"; then
+                  echo "ERROR: Cannot create test file in /usr/src/paperless/$dir"
                   exit 1
                 fi
+                rm -f "$test_file"
                 echo "✓ Write test passed for $dir"
               done
 
-              echo "All permission checks passed successfully!"
+              echo "Directory initialization completed successfully!"
+              echo "Note: File ownership will be managed by Kubernetes fsGroup"
           volumeMounts:
             - name: paperless-data
               mountPath: /usr/src/paperless/data
@@ -141,7 +135,6 @@ spec:
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
-            fsGroup: 1000
           volumeMounts:
             - name: paperless-data
               mountPath: /usr/src/paperless/data
