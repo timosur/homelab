@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - storage-class.yaml
   - postgres.yaml
   - external-secret.yaml
   - secret.yaml
