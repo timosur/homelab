@@ -152,15 +152,13 @@ spec:
               memory: "500m"
               cpu: "200m"
           livenessProbe:
-            httpGet:
-              path: /
+            tcpSocket:
               port: 8000
             initialDelaySeconds: 60
             periodSeconds: 30
             timeoutSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /
+            tcpSocket:
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 10
