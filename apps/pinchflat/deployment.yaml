@@ -29,8 +29,6 @@ spec:
               mkdir -p /config/extras
               if [ -f /tmp/cookies/cookies.txt ]; then
                 cp /tmp/cookies/cookies.txt /config/extras/cookies.txt
-                chown 1000:1000 /config/extras/cookies.txt
-                chmod 644 /config/extras/cookies.txt
               fi
           volumeMounts:
             - name: pinchflat-config
@@ -38,9 +36,6 @@ spec:
             - name: pinchflat-cookies-secret
               mountPath: /tmp/cookies
               readOnly: true
-          securityContext:
-            runAsUser: 0 # Need root to set ownership
-            runAsGroup: 0
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
