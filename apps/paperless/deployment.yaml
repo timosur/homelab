@@ -99,13 +99,13 @@ spec:
               mountPath: /usr/src/paperless/export
             - name: paperless-consume
               mountPath: /usr/src/paperless/consume
-          resources:
-            limits:
-              memory: "2Gi"
-              cpu: "1000m"
-            requests:
-              memory: "1Gi"
-              cpu: "200m"
+          # resources:
+          #   limits:
+          #     memory: "2Gi"
+          #     cpu: "1000m"
+          #   requests:
+          #     memory: "1Gi"
+          #     cpu: "200m"
           livenessProbe:
             httpGet:
               path: /
