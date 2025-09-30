@@ -5,6 +5,8 @@ metadata:
   namespace: pinchflat
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: pinchflat
@@ -44,7 +46,8 @@ spec:
             - name: pinchflat-downloads
               mountPath: /downloads
             - name: pinchflat-cookies
-              mountPath: /config/extras
+              mountPath: /config/extras/cookies.txt
+              subPath: cookies.txt
               readOnly: true
           resources:
             limits:
