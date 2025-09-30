@@ -74,52 +74,52 @@ spec:
           image: ghcr.io/paperless-ngx/paperless-ngx:latest
           ports:
             - containerPort: 8000
-          # env:
-          #   - name: USERMAP_UID
-          #     value: "1000"
-          #   - name: USERMAP_GID
-          #     value: "1000"
-          # envFrom:
-          #   - configMapRef:
-          #       name: paperless-config
-          #   - secretRef:
-          #       name: paperless-postgres-password
-          #   - secretRef:
-          #       name: paperless-secret-key
-          # securityContext:
-          #   runAsUser: 1000
-          #   runAsGroup: 1000
-          #   fsGroup: 1000
-          # volumeMounts:
-          #   - name: paperless-data
-          #     mountPath: /usr/src/paperless/data
-          #   - name: paperless-media
-          #     mountPath: /usr/src/paperless/media
-          #   - name: paperless-export
-          #     mountPath: /usr/src/paperless/export
-          #   - name: paperless-consume
-          #     mountPath: /usr/src/paperless/consume
-          # resources:
-          #   limits:
-          #     memory: "2Gi"
-          #     cpu: "1000m"
-          #   requests:
-          #     memory: "1Gi"
-          #     cpu: "200m"
-          # livenessProbe:
-          #   httpGet:
-          #     path: /
-          #     port: 8000
-          #   initialDelaySeconds: 60
-          #   periodSeconds: 30
-          #   timeoutSeconds: 10
-          # readinessProbe:
-          #   httpGet:
-          #     path: /
-          #     port: 8000
-          #   initialDelaySeconds: 30
-          #   periodSeconds: 10
-          #   timeoutSeconds: 5
+          env:
+            - name: USERMAP_UID
+              value: "1000"
+            - name: USERMAP_GID
+              value: "1000"
+          envFrom:
+            - configMapRef:
+                name: paperless-config
+            - secretRef:
+                name: paperless-postgres-password
+            - secretRef:
+                name: paperless-secret-key
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          volumeMounts:
+            - name: paperless-data
+              mountPath: /usr/src/paperless/data
+            - name: paperless-media
+              mountPath: /usr/src/paperless/media
+            - name: paperless-export
+              mountPath: /usr/src/paperless/export
+            - name: paperless-consume
+              mountPath: /usr/src/paperless/consume
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+            requests:
+              memory: "1Gi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
       volumes:
         - name: paperless-data
           persistentVolumeClaim:
