@@ -9,7 +9,7 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: storage-box-smb
+  storageClassName: hcloud-volumes
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
