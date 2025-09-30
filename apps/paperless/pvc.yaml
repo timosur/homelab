@@ -9,7 +9,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: storage-box-smb
+  storageClassName: paperless-storage-box-smb
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -22,7 +22,7 @@ spec:
   resources:
     requests:
       storage: 100Gi
-  storageClassName: storage-box-smb
+  storageClassName: paperless-storage-box-smb
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -35,7 +35,7 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: storage-box-smb
+  storageClassName: paperless-storage-box-smb
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -48,4 +48,4 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: storage-box-smb
+  storageClassName: paperless-storage-box-smb
