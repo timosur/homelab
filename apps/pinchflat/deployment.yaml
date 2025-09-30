@@ -43,6 +43,9 @@ spec:
               mountPath: /config
             - name: pinchflat-downloads
               mountPath: /downloads
+            - name: pinchflat-cookies
+              mountPath: /config/extras
+              readOnly: true
           resources:
             limits:
               memory: "1000Mi"
@@ -71,3 +74,6 @@ spec:
         - name: pinchflat-downloads
           persistentVolumeClaim:
             claimName: pinchflat-downloads
+        - name: pinchflat-cookies
+          secret:
+            secretName: pinchflat-cookies
