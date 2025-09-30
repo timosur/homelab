@@ -43,13 +43,13 @@ spec:
             - name: SMB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: hetzner-storage-box
-                  key: hetzner-storage-box-username
+                  name: storage-box-creds
+                  key: username
             - name: SMB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: hetzner-storage-box
-                  key: hetzner-storage-box-password
+                  name: storage-box-creds
+                  key: password
           resources:
             requests:
               memory: "250Mi"
@@ -83,5 +83,5 @@ spec:
             volumeAttributes:
               source: "//u492917-sub1.your-storagebox.de/u492917-sub1/pvc-ba666bd3-a2b8-4d9b-a115-e3b133bbedf6"
             nodeStageSecretRef:
-              name: hetzner-storage-box
+              name: storage-box-creds
               namespace: emby
