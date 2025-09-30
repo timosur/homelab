@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: shared-downloads-pv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: storage-box-smb-shared
+  csi:
+    driver: smb.csi.k8s.io
+    volumeHandle: shared-downloads-volume
+    volumeAttributes:
+      source: "//u492917-sub1.your-storagebox.de/u492917-sub1/shared-downloads"
+    nodeStageSecretRef:
+      name: storage-box-creds
+      namespace: storage-box-smb
