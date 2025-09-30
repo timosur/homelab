@@ -9,7 +9,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: hcloud-volumes
+  storageClassName: storage-box-smb
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -34,8 +34,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
-  storageClassName: hcloud-volumes
+      storage: 20Gi
+  storageClassName: storage-box-smb
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -48,4 +48,4 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: hcloud-volumes
+  storageClassName: storage-box-smb
