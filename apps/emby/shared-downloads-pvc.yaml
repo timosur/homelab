@@ -10,3 +10,4 @@ spec:
     requests:
       storage: 100Gi
   storageClassName: storage-box-smb
+  volumeName: pvc-ba666bd3-a2b8-4d9b-a115-e3b133bbedf6
