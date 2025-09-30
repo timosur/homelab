@@ -45,6 +45,8 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
+      nodeSelector:
+        kubernetes.io/arch: amd64
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -52,3 +54,7 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: emby-media
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
