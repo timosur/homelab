@@ -7,6 +7,7 @@ resources:
   - cookies-external-secret.yaml
   - configmap.yaml
   - pvc.yaml
+  - shared-downloads-pvc.yaml
   - deployment.yaml
   - service.yaml
 
