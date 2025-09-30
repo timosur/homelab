@@ -16,3 +16,4 @@ resources:
   - actual-route.yaml
   - pinchflat-route.yaml
   - emby-route.yaml
+  - docs-route.yaml

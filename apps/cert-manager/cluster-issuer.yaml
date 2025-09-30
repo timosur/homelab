@@ -163,3 +163,14 @@ spec:
                 name: main-gateway
                 namespace: cert-manager
                 sectionName: emby-acme-http
+      # docs.timosur.com
+      - selector:
+          dnsNames: ["docs.timosur.com"]
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: main-gateway
+                namespace: cert-manager
+                sectionName: docs-acme-http
