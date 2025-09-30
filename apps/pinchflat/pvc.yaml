@@ -8,8 +8,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
-  storageClassName: storage-box-smb
+      storage: 5Gi
+  storageClassName: hcloud-volumes
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
