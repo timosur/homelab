@@ -21,13 +21,6 @@ spec:
               name: http
             - containerPort: 8920
               name: https
-          env:
-            - name: UID
-              value: "1000"
-            - name: GID
-              value: "100"
-            - name: GIDLIST
-              value: "100"
           volumeMounts:
             - name: config
               mountPath: /config
@@ -59,7 +52,3 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: emby-media
-      securityContext:
-        runAsUser: 1000
-        runAsGroup: 100
-        fsGroup: 100
