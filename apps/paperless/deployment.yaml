@@ -58,11 +58,60 @@ spec:
             runAsUser: 0
             runAsGroup: 0
           command:
-            [
-              "sh",
-              "-c",
-              "mkdir -p /usr/src/paperless/data /usr/src/paperless/media /usr/src/paperless/export /usr/src/paperless/consume && chown -R 1000:1000 /usr/src/paperless && chmod -R 755 /usr/src/paperless",
-            ]
+            - "sh"
+            - "-c"
+            - |
+              set -e
+              echo "Starting directory initialization..."
+
+              # Create directories
+              echo "Creating directories..."
+              mkdir -p /usr/src/paperless/data/index
+              mkdir -p /usr/src/paperless/media/documents/originals
+              mkdir -p /usr/src/paperless/media/documents/thumbnails
+              mkdir -p /usr/src/paperless/export
+              mkdir -p /usr/src/paperless/consume
+
+              # Set ownership
+              echo "Setting ownership to 1000:1000..."
+              chown -R 1000:1000 /usr/src/paperless
+
+              # Set permissions
+              echo "Setting permissions..."
+              chmod -R 755 /usr/src/paperless
+
+              # Verify permissions
+              echo "Verifying permissions..."
+              for dir in data media export consume; do
+                path="/usr/src/paperless/$dir"
+                owner=$(stat -c '%u:%g' "$path")
+                perms=$(stat -c '%a' "$path")
+                
+                if [ "$owner" != "1000:1000" ]; then
+                  echo "ERROR: $path has incorrect ownership: $owner (expected 1000:1000)"
+                  exit 1
+                fi
+                
+                if [ "$perms" != "755" ]; then
+                  echo "ERROR: $path has incorrect permissions: $perms (expected 755)"
+                  exit 1
+                fi
+                
+                echo "✓ $path: owner=$owner, perms=$perms"
+              done
+
+              # Test write permissions
+              echo "Testing write permissions..."
+              for dir in data media export consume; do
+                test_file="/usr/src/paperless/$dir/.test-write-$$"
+                if ! su -s /bin/sh -c "touch '$test_file' && rm -f '$test_file'" - 1000; then
+                  echo "ERROR: Cannot write to /usr/src/paperless/$dir as user 1000"
+                  exit 1
+                fi
+                echo "✓ Write test passed for $dir"
+              done
+
+              echo "All permission checks passed successfully!"
           volumeMounts:
             - name: paperless-data
               mountPath: /usr/src/paperless/data
