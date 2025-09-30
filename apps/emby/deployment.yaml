@@ -36,9 +36,20 @@ spec:
               mountPath: /config
             - name: media
               mountPath: /mnt/media
-            - name: shared-downloads
-              mountPath: /mnt/downloads
+            - name: pinchflat-downloads
+              mountPath: /mnt/pinchflat
               readOnly: true
+          env:
+            - name: SMB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: hetzner-storage-box
+                  key: hetzner-storage-box-username
+            - name: SMB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hetzner-storage-box
+                  key: hetzner-storage-box-password
           resources:
             requests:
               memory: "250Mi"
@@ -65,6 +76,12 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: emby-media
-        - name: shared-downloads
-          persistentVolumeClaim:
-            claimName: shared-downloads
+        - name: pinchflat-downloads
+          csi:
+            driver: smb.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              source: "//u492917-sub1.your-storagebox.de/u492917-sub1/pvc-ba666bd3-a2b8-4d9b-a115-e3b133bbedf6"
+            nodeStageSecretRef:
+              name: hetzner-storage-box
+              namespace: emby
