@@ -20,6 +20,27 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         runAsNonRoot: true
+      initContainers:
+        - name: setup-cookies
+          image: busybox:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              mkdir -p /config/extras
+              if [ -f /tmp/cookies/cookies.txt ]; then
+                cp /tmp/cookies/cookies.txt /config/extras/cookies.txt
+                chown 1000:1000 /config/extras/cookies.txt
+                chmod 644 /config/extras/cookies.txt
+              fi
+          volumeMounts:
+            - name: pinchflat-config
+              mountPath: /config
+            - name: pinchflat-cookies-secret
+              mountPath: /tmp/cookies
+              readOnly: true
+          securityContext:
+            runAsUser: 0 # Need root to set ownership
+            runAsGroup: 0
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -45,10 +66,6 @@ spec:
               mountPath: /config
             - name: pinchflat-downloads
               mountPath: /downloads
-            - name: pinchflat-cookies
-              mountPath: /config/extras/cookies.txt
-              subPath: cookies.txt
-              readOnly: true
           resources:
             limits:
               memory: "1000Mi"
@@ -77,6 +94,6 @@ spec:
         - name: pinchflat-downloads
           persistentVolumeClaim:
             claimName: pinchflat-downloads
-        - name: pinchflat-cookies
+        - name: pinchflat-cookies-secret
           secret:
             secretName: pinchflat-cookies
