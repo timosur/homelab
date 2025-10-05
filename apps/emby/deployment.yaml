@@ -28,12 +28,14 @@ spec:
           image: alpine:latest
           securityContext:
             privileged: true
+            seLinuxOptions:
+              type: spc_t
           command: ["sh", "-c"]
           args:
             - |
               apk add --no-cache cifs-utils
-              mkdir -p /mnt/media
-              mount -t cifs //u492917-sub1.your-storagebox.de/u492917-sub1/pvc-ba666bd3-a2b8-4d9b-a115-e3b133bbedf6 /mnt/media -o username=${SMB_USERNAME},password=${SMB_PASSWORD},uid=0,gid=0,iocharset=utf8,file_mode=0777,dir_mode=0777
+              mkdir -p /mnt/pinchflat
+              mount -t cifs //u492917-sub1.your-storagebox.de/u492917-sub1/pvc-ba666bd3-a2b8-4d9b-a115-e3b133bbedf6 /mnt/pinchflat -o username=${SMB_USERNAME},password=${SMB_PASSWORD},uid=0,gid=0,iocharset=utf8,file_mode=0777,dir_mode=0777
               echo "SMB mount successful"
           env:
             - name: SMB_USERNAME
@@ -48,13 +50,15 @@ spec:
                   key: password
           volumeMounts:
             - name: media
-              mountPath: /mnt/media
+              mountPath: /mnt/pinchflat
               mountPropagation: Bidirectional
       containers:
         - name: emby
           image: emby/embyserver:latest
           securityContext:
             privileged: true
+            seLinuxOptions:
+              type: spc_t
           ports:
             - containerPort: 8096
               name: http
@@ -64,7 +68,7 @@ spec:
             - name: config
               mountPath: /config
             - name: media
-              mountPath: /mnt/media
+              mountPath: /mnt/pinchflat
               mountPropagation: HostToContainer
           resources:
             requests:
@@ -90,4 +94,9 @@ spec:
           persistentVolumeClaim:
             claimName: emby-config
         - name: media
-          emptyDir: {}
+          hostPath:
+            path: /tmp/pinchflat
+            type: DirectoryOrCreate
+      securityContext:
+        seLinuxOptions:
+          type: spc_t
