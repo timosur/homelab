@@ -10,16 +10,3 @@ spec:
     requests:
       storage: 5Gi
   storageClassName: hcloud-volumes
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: emby-media
-  namespace: emby
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 500Gi
-  storageClassName: storage-box-smb
