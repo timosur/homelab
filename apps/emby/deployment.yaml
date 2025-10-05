@@ -5,8 +5,6 @@ metadata:
   namespace: emby
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: emby
@@ -25,26 +23,18 @@ spec:
                     values:
                       - amd64
                       - x86_64
-      containers:
-        - name: emby
-          image: emby/embyserver:latest
+      initContainers:
+        - name: mount-smb
+          image: alpine:latest
           securityContext:
             privileged: true
-            seLinuxOptions:
-              type: spc_t
-          entrypoint: ["/bin/bash", "-c"]
+          command: ["sh", "-c"]
           args:
             - |
-              # Install cifs-utils for SMB mounting
-              apt-get update && apt-get install -y cifs-utils
-
-              # Create mount point and mount SMB share
+              apk add --no-cache cifs-utils
               mkdir -p /mnt/pinchflat
               mount -t cifs //u492917-sub1.your-storagebox.de/u492917-sub1/pvc-ba666bd3-a2b8-4d9b-a115-e3b133bbedf6 /mnt/pinchflat -o username=${SMB_USERNAME},password=${SMB_PASSWORD},uid=0,gid=0,iocharset=utf8,file_mode=0777,dir_mode=0777
               echo "SMB mount successful"
-
-              # Start Emby
-              exec /init
           env:
             - name: SMB_USERNAME
               valueFrom:
@@ -56,6 +46,15 @@ spec:
                 secretKeyRef:
                   name: storage-box-creds
                   key: password
+          volumeMounts:
+            - name: media
+              mountPath: /mnt/pinchflat
+              mountPropagation: Bidirectional
+      containers:
+        - name: emby
+          image: emby/embyserver:latest
+          securityContext:
+            privileged: true
           ports:
             - containerPort: 8096
               name: http
@@ -64,8 +63,9 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: pinchflat
-              mountPath: /mnt/pinchflat
+            - name: media
+              mountPath: /mnt/media
+              mountPropagation: HostToContainer
           resources:
             requests:
               memory: "50Mi"
@@ -89,5 +89,6 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: emby-config
-        - name: pinchflat
-          emptyDir: {}
+        - name: media
+          persistentVolumeClaim:
+            claimName: emby-media
