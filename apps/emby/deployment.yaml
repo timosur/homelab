@@ -68,7 +68,7 @@ spec:
               mountPropagation: HostToContainer
           resources:
             requests:
-              memory: "250Mi"
+              memory: "50Mi"
               cpu: "150m"
             limits:
               memory: "2Gi"
