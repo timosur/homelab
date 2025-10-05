@@ -25,20 +25,26 @@ spec:
                     values:
                       - amd64
                       - x86_64
-      initContainers:
-        - name: mount-smb
-          image: alpine:latest
+      containers:
+        - name: emby
+          image: emby/embyserver:latest
           securityContext:
             privileged: true
             seLinuxOptions:
               type: spc_t
-          command: ["sh", "-c"]
+          entrypoint: ["/bin/bash", "-c"]
           args:
             - |
-              apk add --no-cache cifs-utils
+              # Install cifs-utils for SMB mounting
+              apt-get update && apt-get install -y cifs-utils
+
+              # Create mount point and mount SMB share
               mkdir -p /mnt/pinchflat
               mount -t cifs //u492917-sub1.your-storagebox.de/u492917-sub1/pvc-ba666bd3-a2b8-4d9b-a115-e3b133bbedf6 /mnt/pinchflat -o username=${SMB_USERNAME},password=${SMB_PASSWORD},uid=0,gid=0,iocharset=utf8,file_mode=0777,dir_mode=0777
               echo "SMB mount successful"
+
+              # Start Emby
+              exec /init
           env:
             - name: SMB_USERNAME
               valueFrom:
@@ -50,17 +56,6 @@ spec:
                 secretKeyRef:
                   name: storage-box-creds
                   key: password
-          volumeMounts:
-            - name: media
-              mountPath: /mnt/pinchflat
-              mountPropagation: Bidirectional
-      containers:
-        - name: emby
-          image: emby/embyserver:latest
-          securityContext:
-            privileged: true
-            seLinuxOptions:
-              type: spc_t
           ports:
             - containerPort: 8096
               name: http
@@ -69,9 +64,8 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: media
+            - name: pinchflat
               mountPath: /mnt/pinchflat
-              mountPropagation: HostToContainer
           resources:
             requests:
               memory: "50Mi"
@@ -95,10 +89,5 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: emby-config
-        - name: media
-          hostPath:
-            path: /tmp/pinchflat
-            type: DirectoryOrCreate
-      securityContext:
-        seLinuxOptions:
-          type: spc_t
+        - name: pinchflat
+          emptyDir: {}
