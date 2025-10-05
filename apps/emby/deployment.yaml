@@ -90,5 +90,4 @@ spec:
           persistentVolumeClaim:
             claimName: emby-config
         - name: media
-          persistentVolumeClaim:
-            claimName: emby-media
+          emptyDir: {}
