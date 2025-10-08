@@ -199,7 +199,7 @@ EOT
 
   extra_firewall_rules = [
     {
-      description = "Allow Apps to send email (SMTP)"
+      description     = "Allow Apps to send email (SMTP)"
       direction       = "out"
       protocol        = "tcp"
       port            = "587"
@@ -207,10 +207,18 @@ EOT
       destination_ips = ["0.0.0.0/0", "::/0"]
     },
     {
-      description = "Allow SMB (CIFS) to Storage Box"
+      description     = "Allow SMB (CIFS) to Storage Box"
       direction       = "out"
       protocol        = "tcp"
       port            = "445"
+      source_ips      = []
+      destination_ips = ["0.0.0.0/0", "::/0"]
+    },
+    {
+      description     = "Allow VPN (WireGuard) to Home VPN"
+      direction       = "out"
+      protocol        = "tcp"
+      port            = "57277"
       source_ips      = []
       destination_ips = ["0.0.0.0/0", "::/0"]
     }
