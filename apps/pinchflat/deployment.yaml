@@ -44,7 +44,7 @@ spec:
               value: "Europe/Berlin"
           volumeMounts:
             - name: pinchflat-wireguard-config
-              mountPath: /etc/wireguard/
+              mountPath: /config/wg_confs
               readOnly: true
           securityContext:
             privileged: true
