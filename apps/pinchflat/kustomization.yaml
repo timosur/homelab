@@ -5,7 +5,6 @@ resources:
   - namespace.yaml
   - external-secret.yaml
   - cookies-external-secret.yaml
-  - wireguard-external-secret.yaml
   - configmap.yaml
   - pvc.yaml
   - shared-downloads-pvc.yaml
