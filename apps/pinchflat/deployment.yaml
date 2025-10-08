@@ -17,6 +17,9 @@ spec:
     spec:
       securityContext:
         fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
       initContainers:
         - name: setup-cookies
           image: busybox:latest
@@ -33,32 +36,6 @@ spec:
             - name: pinchflat-cookies-secret
               mountPath: /tmp/cookies
               readOnly: true
-          securityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
-            runAsNonRoot: true
-        - name: wireguard
-          image: linuxserver/wireguard:latest
-          env:
-            - name: TZ
-              value: "Europe/Berlin"
-          volumeMounts:
-            - name: pinchflat-wireguard-config
-              mountPath: /config/wg_confs
-              readOnly: true
-          securityContext:
-            privileged: true
-            capabilities:
-              add:
-                - NET_ADMIN
-          restartPolicy: Always
-          resources:
-            limits:
-              memory: "128Mi"
-              cpu: "100m"
-            requests:
-              memory: "64Mi"
-              cpu: "50m"
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -84,10 +61,6 @@ spec:
               mountPath: /config
             - name: pinchflat-downloads
               mountPath: /downloads
-          securityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
-            runAsNonRoot: true
           resources:
             limits:
               memory: "1000Mi"
@@ -95,6 +68,20 @@ spec:
             requests:
               memory: "256Mi"
               cpu: "100m"
+          livenessProbe:
+            tcpSocket:
+              port: 8945
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 8945
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: pinchflat-config
           persistentVolumeClaim:
@@ -105,6 +92,3 @@ spec:
         - name: pinchflat-cookies-secret
           secret:
             secretName: pinchflat-cookies
-        - name: pinchflat-wireguard-config
-          secret:
-            secretName: pinchflat-wireguard-config
