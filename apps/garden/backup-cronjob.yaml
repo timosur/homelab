@@ -24,8 +24,6 @@ spec:
               command: ["sh", "-c"]
               args:
                 - |
-                  set -e  # Exit on any error
-
                   # Get the backend pod name
                   POD_NAME=$(kubectl get pods -n garden -l app=garden-backend -o jsonpath='{.items[0].metadata.name}')
 
