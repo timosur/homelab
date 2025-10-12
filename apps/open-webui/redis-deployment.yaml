@@ -15,37 +15,37 @@ spec:
         app: redis
     spec:
       containers:
-      - name: redis
-        image: redis:8-alpine
-        ports:
-        - containerPort: 6379
+        - name: redis
+          image: redis:8-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - "128mb"
+            - --maxmemory-policy
+            - "allkeys-lru"
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: hcloud-volumes
         resources:
           requests:
-            memory: "64Mi"
-            cpu: "50m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
-        volumeMounts:
-        - name: redis-data
-          mountPath: /data
-        command:
-        - redis-server
-        - --appendonly
-        - "yes"
-        - --maxmemory
-        - "128mb"
-        - --maxmemory-policy
-        - "allkeys-lru"
-  volumeClaimTemplates:
-  - metadata:
-      name: redis-data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      storageClassName: hcloud-volumes
-      resources:
-        requests:
-          storage: 1Gi
+            storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -56,6 +56,6 @@ spec:
   selector:
     app: redis
   ports:
-  - port: 6379
-    targetPort: 6379
+    - port: 6379
+      targetPort: 6379
   clusterIP: None

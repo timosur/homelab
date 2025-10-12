@@ -19,7 +19,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate  # Important for databases with persistent storage
+    type: Recreate # Important for databases with persistent storage
   selector:
     matchLabels:
       app: seafile-mysql
@@ -29,56 +29,56 @@ spec:
         app: seafile-mysql
     spec:
       containers:
-      - name: mysql
-        image: mariadb:12.0
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: seafile-mysql-password
-              key: MYSQL_ROOT_PASSWORD
-        - name: MYSQL_USER
-          value: "seafile"
-        - name: MYSQL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: seafile-secret
-              key: SEAFILE_MYSQL_DB_PASSWORD
-        - name: MYSQL_LOG_CONSOLE
-          value: "true"
-        - name: MARIADB_AUTO_UPGRADE
-          value: "1"
-        ports:
-        - containerPort: 3306
-        volumeMounts:
-        - name: mysql-data
-          mountPath: /var/lib/mysql
-        - name: mysql-init
-          mountPath: /docker-entrypoint-initdb.d
-        resources:
-          limits:
-            memory: "1000Mi"
-            cpu: "500m"
-          requests:
-            memory: "512Mi"
-            cpu: "100m"
-        livenessProbe:
-          tcpSocket:
-            port: 3306
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          tcpSocket:
-            port: 3306
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: mysql
+          image: mariadb:12.0
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: seafile-mysql-password
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_USER
+              value: "seafile"
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: seafile-secret
+                  key: SEAFILE_MYSQL_DB_PASSWORD
+            - name: MYSQL_LOG_CONSOLE
+              value: "true"
+            - name: MARIADB_AUTO_UPGRADE
+              value: "1"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+            - name: mysql-init
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "100m"
+            requests:
+              memory: "128Mi"
+              cpu: "25m"
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 3306
+            initialDelaySeconds: 5
+            periodSeconds: 5
       volumes:
-      - name: mysql-data
-        persistentVolumeClaim:
-          claimName: seafile-mysql-data
-      - name: mysql-init
-        configMap:
-          name: seafile-mysql-init
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: seafile-mysql-data
+        - name: mysql-init
+          configMap:
+            name: seafile-mysql-init
 ---
 apiVersion: v1
 kind: Service

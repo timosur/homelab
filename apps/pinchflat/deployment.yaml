@@ -63,11 +63,11 @@ spec:
               mountPath: /downloads
           resources:
             limits:
-              memory: "1000Mi"
-              cpu: "1000m"
-            requests:
               memory: "256Mi"
               cpu: "100m"
+            requests:
+              memory: "64Mi"
+              cpu: "25m"
           livenessProbe:
             tcpSocket:
               port: 8945

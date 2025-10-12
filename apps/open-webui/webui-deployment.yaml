@@ -20,82 +20,82 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: arch
-                operator: NotIn
-                values:
-                - arm64
+              - matchExpressions:
+                  - key: arch
+                    operator: NotIn
+                    values:
+                      - arm64
       containers:
-      - name: open-webui
-        image: ghcr.io/open-webui/open-webui:main
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            cpu: "500m"
-            memory: "500Mi"
-          limits:
-            cpu: "2000m"
-            memory: "4Gi"
-        env:
-        - name: OLLAMA_BASE_URL
-          value: "http://ollama-service.open-webui.svc.cluster.local:11434"
-        - name: REDIS_URL
-          value: "redis://redis-service.open-webui.svc.cluster.local:6379"
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: open-webui-secrets
-              key: database-url
-        - name: ENABLE_WEB_SEARCH
-          value: "true"
-        - name: WEB_SEARCH_ENGINE
-          value: "google_pse"
-        - name: GOOGLE_PSE_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: open-webui-secrets
-              key: google-pse-api-key
-        - name: GOOGLE_PSE_ENGINE_ID
-          valueFrom:
-            secretKeyRef:
-              name: open-webui-secrets
-              key: google-pse-engine-id
-        - name: ENABLE_EVALUATION_ARENA_MODELS
-          value: "false"
-        - name: OPENAI_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: open-webui-secrets
-              key: openai-api-key
-        lifecycle:
-          preStop:
-            exec:
-              command: ["/bin/sh", "-c", "sleep 10"]
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 3
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 30
-          timeoutSeconds: 10
-          successThreshold: 1
-          failureThreshold: 3
-        tty: true
-        volumeMounts:
-        - name: webui-volume
-          mountPath: /app/backend/data
+        - name: open-webui
+          image: ghcr.io/open-webui/open-webui:main
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          env:
+            - name: OLLAMA_BASE_URL
+              value: "http://ollama-service.open-webui.svc.cluster.local:11434"
+            - name: REDIS_URL
+              value: "redis://redis-service.open-webui.svc.cluster.local:6379"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: database-url
+            - name: ENABLE_WEB_SEARCH
+              value: "true"
+            - name: WEB_SEARCH_ENGINE
+              value: "google_pse"
+            - name: GOOGLE_PSE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: google-pse-api-key
+            - name: GOOGLE_PSE_ENGINE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: google-pse-engine-id
+            - name: ENABLE_EVALUATION_ARENA_MODELS
+              value: "false"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: openai-api-key
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          tty: true
+          volumeMounts:
+            - name: webui-volume
+              mountPath: /app/backend/data
       volumes:
-      - name: webui-volume
-        persistentVolumeClaim:
-          claimName: open-webui-pvc
+        - name: webui-volume
+          persistentVolumeClaim:
+            claimName: open-webui-pvc
