@@ -32,11 +32,11 @@ spec:
               mountPath: /data
           resources:
             limits:
-              memory: "1000Mi"
-              cpu: "1"
-            requests:
               memory: "256Mi"
               cpu: "100m"
+            requests:
+              memory: "64Mi"
+              cpu: "25m"
           livenessProbe:
             exec:
               command: ["node", "src/scripts/health-check.js"]

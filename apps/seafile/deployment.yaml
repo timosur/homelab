@@ -6,7 +6,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate  # Important for applications with persistent storage
+    type: Recreate # Important for applications with persistent storage
   selector:
     matchLabels:
       app: seafile
@@ -23,7 +23,7 @@ spec:
             - containerPort: 8080
           envFrom:
             - configMapRef:
-                name: seafile-env 
+                name: seafile-env
             - secretRef:
                 name: seafile-secret
           volumeMounts:
@@ -34,11 +34,11 @@ spec:
               subPath: seafdav.conf
           resources:
             limits:
-              memory: "2000Mi"
-              cpu: "1000m"
-            requests:
-              memory: "1000Mi"
+              memory: "512Mi"
               cpu: "200m"
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
       volumes:
         - name: seafile-data
           persistentVolumeClaim:
