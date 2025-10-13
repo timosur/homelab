@@ -61,6 +61,8 @@ spec:
               mountPath: /config
             - name: pinchflat-downloads
               mountPath: /downloads
+            - name: pinchflat-yt-dlp-config
+              mountPath: /config/extras/yt-dlp-configs
           resources:
             limits:
               memory: "1Gi"
@@ -92,3 +94,6 @@ spec:
         - name: pinchflat-cookies-secret
           secret:
             secretName: pinchflat-cookies
+        - name: pinchflat-yt-dlp-config
+          configMap:
+            name: pinchflat-yt-dlp-config

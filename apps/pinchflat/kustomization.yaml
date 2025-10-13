@@ -6,6 +6,9 @@ resources:
   - external-secret.yaml
   - cookies-external-secret.yaml
   - configmap.yaml
+  - yt-dlp-config.yaml
+  - bgutil-provider-deployment.yaml
+  - bgutil-provider-service.yaml
   - pvc.yaml
   - shared-downloads-pvc.yaml
   - deployment.yaml
