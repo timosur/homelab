@@ -52,6 +52,9 @@ spec:
             - name: media
               mountPath: /mnt/pinchflat
               mountPropagation: Bidirectional
+            - name: pinchflat-local
+              mountPath: /mnt/pinchflat-local
+              mountPropagation: Bidirectional
       containers:
         - name: emby
           image: emby/embyserver:latest
@@ -67,6 +70,9 @@ spec:
               mountPath: /config
             - name: media
               mountPath: /mnt/media
+              mountPropagation: HostToContainer
+            - name: pinchflat-local
+              mountPath: /mnt/pinchflat-local
               mountPropagation: HostToContainer
           resources:
             requests:
@@ -94,3 +100,5 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: emby-media
+        - name: pinchflat-local
+          emptyDir: {}
