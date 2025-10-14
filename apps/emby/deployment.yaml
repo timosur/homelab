@@ -101,4 +101,6 @@ spec:
           persistentVolumeClaim:
             claimName: emby-media
         - name: pinchflat-local
-          emptyDir: {}
+          hostPath:
+            path: /tmp/pinchflat-local
+            type: DirectoryOrCreate
