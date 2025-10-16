@@ -23,3 +23,16 @@ spec:
     requests:
       storage: 500Gi
   storageClassName: storage-box-smb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: emby-pinchflat-local
+  namespace: emby
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Gi
+  storageClassName: storage-box-smb
