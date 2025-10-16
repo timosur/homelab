@@ -102,4 +102,4 @@ spec:
             claimName: emby-media
         - name: pinchflat-local
           persistentVolumeClaim:
-            claimName: pinchflat-local
+            claimName: emby-pinchflat-local
