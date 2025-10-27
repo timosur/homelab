@@ -19,7 +19,7 @@ spec:
         workload-type: arm
       containers:
       - name: garden-frontend
-        image: ghcr.io/timosur/life-as-a-garden/frontend:sha-2797ce9@sha256:a47dcdbf2cdc3587c87ab674d8371f60b353317cd7f7bbe0a238ec899b371b7c
+        image: ghcr.io/timosur/life-as-a-garden/frontend:sha-81e6faf
         ports:
         - containerPort: 80
         resources:
