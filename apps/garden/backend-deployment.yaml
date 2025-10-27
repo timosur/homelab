@@ -75,13 +75,12 @@ spec:
             timeoutSeconds: 120
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /api/health
+            tcpSocket:
               port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 3600
-            timeoutSeconds: 120
-            failureThreshold: 12
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: backend-input
           persistentVolumeClaim:
