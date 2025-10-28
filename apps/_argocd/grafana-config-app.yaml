@@ -11,6 +11,11 @@ spec:
     path: apps/grafana-config
   destination:
     server: https://kubernetes.default.svc
+  ignoreDifferences:
+  - group: ""
+    kind: Secret
+    name: grafana-config
+    namespace: monitoring
   syncPolicy:
     automated:
       prune: true
