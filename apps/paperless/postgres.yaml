@@ -20,7 +20,7 @@ spec:
         name: paperless-postgres-credentials
 
   storage:
-    size: 10Gi
+    size: 20Gi
     storageClass: hcloud-volumes
 
   resources:
