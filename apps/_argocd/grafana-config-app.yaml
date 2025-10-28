@@ -16,6 +16,9 @@ spec:
     kind: Secret
     name: grafana-config
     namespace: monitoring
+    jsonPointers:
+    - /metadata/annotations/argocd.argoproj.io~1tracking-id
+    - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
   syncPolicy:
     automated:
       prune: true
