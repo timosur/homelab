@@ -5,7 +5,10 @@ namespace: open-webui
 
 resources:
   - namespace.yaml
+  - redis-configmap.yaml
+  - redis-pvc.yaml
   - redis-deployment.yaml
+  - redis-service.yaml
   - postgres.yaml
   - external-secret.yaml
   - ollama-service.yaml
