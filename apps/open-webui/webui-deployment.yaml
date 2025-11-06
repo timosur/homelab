@@ -82,6 +82,11 @@ spec:
                 secretKeyRef:
                   name: open-webui-secrets
                   key: openai-api-key
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: webui-secret-key
           lifecycle:
             preStop:
               exec:
