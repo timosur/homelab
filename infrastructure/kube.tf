@@ -84,6 +84,14 @@ module "kube-hetzner" {
       taints      = []
     },
     {
+      name        = "workers-v2"
+      server_type = "cx33"
+      location    = "fsn1"
+      count       = 3
+      labels      = []
+      taints      = []
+    },
+    {
       name        = "workers-arm"
       server_type = "cax21"
       location    = "fsn1"
