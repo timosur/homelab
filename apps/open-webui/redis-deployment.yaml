@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: redis
   namespace: open-webui
 spec:
-  serviceName: redis-service
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: redis
@@ -21,41 +22,37 @@ spec:
             - containerPort: 6379
           resources:
             requests:
-              memory: "32Mi"
-              cpu: "25m"
+              memory: "64Mi"
+              cpu: "50m"
             limits:
-              memory: "128Mi"
-              cpu: "100m"
+              memory: "256Mi"
+              cpu: "200m"
           volumeMounts:
             - name: redis-data
               mountPath: /data
+            - name: redis-config
+              mountPath: /usr/local/etc/redis
           command:
             - redis-server
-            - --appendonly
-            - "yes"
-            - --maxmemory
-            - "128mb"
-            - --maxmemory-policy
-            - "allkeys-lru"
-  volumeClaimTemplates:
-    - metadata:
-        name: redis-data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        storageClassName: hcloud-volumes
-        resources:
-          requests:
-            storage: 1Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis-service
-  namespace: open-webui
-spec:
-  selector:
-    app: redis
-  ports:
-    - port: 6379
-      targetPort: 6379
-  clusterIP: None
+            - /usr/local/etc/redis/redis.conf
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-pvc
+        - name: redis-config
+          configMap:
+            name: redis-config
