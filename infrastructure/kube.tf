@@ -76,14 +76,6 @@ module "kube-hetzner" {
 
   agent_nodepools = [
     {
-      name        = "workers"
-      server_type = "cx32"
-      location    = "fsn1"
-      count       = 2
-      labels      = []
-      taints      = []
-    },
-    {
       name        = "workers-v2"
       server_type = "cx33"
       location    = "fsn1"
