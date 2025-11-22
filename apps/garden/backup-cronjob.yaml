@@ -80,9 +80,9 @@ spec:
                     exit 1
                   fi
 
-                  # Clean up old backups (keep last 7 days) - ignore permission errors on lost+found
+                  # Clean up old backups (keep last 30 days) - ignore permission errors on lost+found
                   echo "Cleaning up old backups..."
-                  find /backups -name "backup-*.tar.gz" -mtime +7 -delete 2>/dev/null || true
+                  find /backups -name "backup-*.tar.gz" -mtime +30 -delete 2>/dev/null || true
 
                   # Show current backups
                   echo "Current backups:"
