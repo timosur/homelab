@@ -1,9 +1,9 @@
 ###############################################
 # kube.tf — Kube‑Hetzner v2.18.0
 # Goal: low‑cost GitOps cluster w/ TLS on *.timosur.com
-# Stack: k3s + Cilium + Cilium GatewayAPI + cert-manager
+# Stack: k3s + Cilium + Envoy Gateway + Coraza WAF + MetalLB + cert-manager
 # Shape: 1× control plane (cpx11) + 2× workers (cpx11)
-# LB: Hetzner Cloud Load Balancer (lb11) in fsn1 pointing to Cilium Gateway
+# LB: MetalLB (replacing Hetzner Cloud LB)
 ###############################################
 
 ###############################################
@@ -97,7 +97,6 @@ module "kube-hetzner" {
   cni_plugin         = "cilium"
   disable_kube_proxy = true
 
-  # Enable Cilium Gateway API support
   cilium_version = "1.18.1"
   cilium_values  = <<EOT
 # Enable Kubernetes host-scope IPAM mode (required for K3s + Hetzner CCM)
@@ -157,12 +156,6 @@ hubble:
       - icmp
       - http
 
-# Enable Gateway API support
-gatewayAPI:
-  enabled: true
-  gatewayClass:
-    create: "true"
-
 # Operator tolerations to ensure it can schedule during cluster initialization
 operator:
   tolerations:
@@ -173,10 +166,11 @@ operator:
 MTU: 1450
 EOT
 
-  # Default LB that CCM will use when Services of type LoadBalancer are created
-  load_balancer_type     = "lb11"
-  load_balancer_location = "fsn1"
+  # Disable default LB (using MetalLB instead)
+  # load_balancer_type     = "lb11"
+  # load_balancer_location = "fsn1"
 
+  # Disable ingress controller (using Envoy Gateway)
   ingress_controller = "none"
 
   # ——— TLS ———

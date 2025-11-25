@@ -5,7 +5,7 @@ metadata:
   namespace: zipline
 spec:
   parentRefs:
-    - name: main-gateway
+    - name: envoy-gateway
       namespace: cert-manager
       sectionName: zipline-https
   hostnames:

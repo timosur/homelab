@@ -5,7 +5,7 @@ metadata:
   namespace: monitoring
 spec:
   parentRefs:
-    - name: main-gateway
+    - name: envoy-gateway
       namespace: cert-manager
       sectionName: grafana-https
   hostnames:

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coraza-config
+  namespace: coraza-system
+data:
+  coraza.conf: |
+    # Basic Coraza configuration for Envoy Gateway
+    SecRuleEngine On
+    SecRequestBodyAccess On
+    SecResponseBodyAccess Off
+    SecRequestBodyLimit 13107200
+    SecRequestBodyNoFilesLimit 131072
+    SecDebugLog /dev/stdout
+    SecDebugLogLevel 3
+    SecAuditEngine On
+    SecAuditLog /dev/stdout
+    
+    # OWASP CRS v4.0 - Core Rules
+    Include @crs-setup-conf
+    Include @owasp_crs/*.conf
+    
+    # Custom rules for common attacks
+    SecRule REQUEST_HEADERS:User-Agent "@detectSQLi" \
+        "id:1001,phase:1,block,msg:'SQL Injection in User-Agent',logdata:'Matched Data: %{MATCHED_VAR} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}'"
+    
+    SecRule ARGS "@detectXSS" \
+        "id:1002,phase:2,block,msg:'XSS Attack Detected',logdata:'Matched Data: %{MATCHED_VAR} found within %{MATCHED_VAR_NAME}: %{MATCHED_VAR}'"
+    
+    # Rate limiting rules
+    SecRule IP:bf_counter "@gt 10" \
+        "id:1003,phase:1,deny,status:429,msg:'Rate limit exceeded',setvar:'ip.bf_block=1',expirevar:'ip.bf_block=300'"
+    
+    SecRule REQUEST_URI "@unconditionalMatch" \
+        "id:1004,phase:1,pass,setvar:'ip.bf_counter=+1',expirevar:'ip.bf_counter=60'"
