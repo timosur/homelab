@@ -8,6 +8,9 @@ resources:
   - cloudnative-pg-app.yaml
   - smb-csi-driver-app.yaml
   - storage-box-smb-app.yaml
+  - metallb-app.yaml          # New MetalLB for load balancing
+  - envoy-gateway-app.yaml    # New Envoy Gateway replacing Cilium Gateway
+  - coraza-app.yaml           # New Coraza WAF integration
   - mealie-app.yaml
   - open-webui-app.yaml
   - n8n-app.yaml

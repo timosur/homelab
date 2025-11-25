@@ -5,7 +5,7 @@ metadata:
   namespace: n8n
 spec:
   parentRefs:
-    - name: main-gateway
+    - name: envoy-gateway
       namespace: cert-manager
       sectionName: automate-https
   hostnames:

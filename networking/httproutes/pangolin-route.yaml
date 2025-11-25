@@ -5,7 +5,7 @@ metadata:
   namespace: pangolin
 spec:
   parentRefs:
-    - name: main-gateway
+    - name: envoy-gateway
       namespace: cert-manager
       sectionName: pangolin-https
   hostnames:

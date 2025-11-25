@@ -5,7 +5,7 @@ metadata:
   namespace: emby
 spec:
   parentRefs:
-    - name: main-gateway
+    - name: envoy-gateway
       namespace: cert-manager
       sectionName: emby-https
   hostnames:

@@ -5,7 +5,7 @@ metadata:
   namespace: actual
 spec:
   parentRefs:
-    - name: main-gateway
+    - name: envoy-gateway
       namespace: cert-manager
       sectionName: actual-https
   hostnames:

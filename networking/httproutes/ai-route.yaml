@@ -5,7 +5,7 @@ metadata:
   namespace: open-webui
 spec:
   parentRefs:
-    - name: main-gateway
+    - name: envoy-gateway
       namespace: cert-manager
       sectionName: ai-https
   hostnames:
