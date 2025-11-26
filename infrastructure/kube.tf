@@ -1,9 +1,9 @@
 ###############################################
 # kube.tf — Kube‑Hetzner v2.18.0
 # Goal: low‑cost GitOps cluster w/ TLS on *.timosur.com
-# Stack: k3s + Cilium + Envoy Gateway + Coraza WAF + MetalLB + cert-manager
+# Stack: k3s + Cilium + Envoy Gateway + Coraza WAF + Klipper LB + cert-manager
 # Shape: 1× control plane (cpx11) + 2× workers (cpx11)
-# LB: MetalLB (replacing Hetzner Cloud LB)
+# LB: Klipper LB (built-in k3s load balancer)
 ###############################################
 
 ###############################################
@@ -79,7 +79,7 @@ module "kube-hetzner" {
       name        = "workers-v2"
       server_type = "cx33"
       location    = "fsn1"
-      count       = 3
+      count       = 2
       labels      = []
       taints      = []
     },
@@ -96,6 +96,9 @@ module "kube-hetzner" {
   # ——— Networking / LB ———
   cni_plugin         = "cilium"
   disable_kube_proxy = true
+
+  # Use Klipper LB (built-in k3s load balancer)
+  using_klipper_lb = true
 
   cilium_version = "1.18.1"
   cilium_values  = <<EOT
@@ -138,6 +141,9 @@ encryption:
   nodeEncryption: true
   type: wireguard
 
+egressGateways:
+  enabled: true
+
 debug:
   enabled: true
 
@@ -166,7 +172,7 @@ operator:
 MTU: 1450
 EOT
 
-  # Disable default LB (using MetalLB instead)
+  # Use Klipper LB instead of external load balancers
   # load_balancer_type     = "lb11"
   # load_balancer_location = "fsn1"
 
