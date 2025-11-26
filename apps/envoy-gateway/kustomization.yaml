@@ -4,6 +4,16 @@ kind: Kustomization
 namespace: envoy-gateway-system
 
 resources:
-- namespace.yaml
-- https://github.com/envoyproxy/gateway/releases/download/v1.2.2/install.yaml
+- https://github.com/envoyproxy/gateway/releases/download/v1.6.0/install.yaml
 - gatewayclass.yaml
+
+patchesStrategicMerge:
+- |-
+  apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: envoy-gateway-system
+    labels:
+      pod-security.kubernetes.io/enforce: privileged
+      pod-security.kubernetes.io/audit: privileged
+      pod-security.kubernetes.io/warn: privileged
