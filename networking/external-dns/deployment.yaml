@@ -28,7 +28,7 @@ spec:
         - --source=gateway-tcproute
         - --source=gateway-udproute
         # Limit to your gateway
-        - --gateway-name=main-gateway
+        - --gateway-name=envoy-gateway
         - --gateway-namespace=cert-manager
         # Domain configuration for timosur.com and subdomains
         - --domain-filter=timosur.com

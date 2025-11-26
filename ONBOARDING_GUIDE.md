@@ -298,7 +298,7 @@ metadata:
   namespace: <app-name>
 spec:
   parentRefs:
-    - name: main-gateway
+    - name: envoy-gateway
       namespace: cert-manager
       sectionName: <app-name>-https
   hostnames:
@@ -325,7 +325,7 @@ resources:
   - <app-name>-route.yaml # Add this line
 ```
 
-### 4.3 Update Gateway (`networking/gateways/main-gateway.yaml`)
+### 4.3 Update Gateway (`networking/gateways/envoy-gateway.yaml`)
 
 Add HTTP and HTTPS listeners:
 
@@ -366,7 +366,7 @@ Add a new solver for the domain:
       parentRefs:
         - group: gateway.networking.k8s.io
           kind: Gateway
-          name: main-gateway
+          name: envoy-gateway
           namespace: cert-manager
           sectionName: <app-name>-acme-http
 ```
