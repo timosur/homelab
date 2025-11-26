@@ -17,7 +17,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: argo-acme-http
       # mealie.timosur.com
@@ -28,7 +28,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: mealie-acme-http
       # ai.timosur.com
@@ -39,7 +39,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: ai-acme-http
       # automate.timosur.com
@@ -50,7 +50,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: automate-acme-http
       # garden.timosur.com
@@ -61,7 +61,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: garden-acme-http
       # zipline.timosur.com
@@ -72,7 +72,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: zipline-acme-http
       # file.timosur.com
@@ -83,7 +83,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: seafile-acme-http
       # timosur.com
@@ -94,7 +94,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: portfolio-acme-http
       # givgroov.de
@@ -105,7 +105,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: givgroov-acme-http
       # grafana.timosur.com
@@ -116,7 +116,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: grafana-acme-http
       # pangolin.timosur.com
@@ -127,7 +127,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: pangolin-acme-http
       # finance.timosur.com
@@ -138,7 +138,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: actual-acme-http
       # pinchflat.timosur.com
@@ -149,7 +149,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: pinchflat-acme-http
       # emby.timosur.com
@@ -160,7 +160,7 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: emby-acme-http
       # docs.timosur.com
@@ -171,6 +171,6 @@ spec:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: main-gateway
+                name: envoy-gateway
                 namespace: cert-manager
                 sectionName: docs-acme-http
