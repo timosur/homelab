@@ -98,7 +98,7 @@ module "kube-hetzner" {
   disable_kube_proxy = true
 
   # Use Klipper LB (built-in k3s load balancer)
-  using_klipper_lb = true
+  enable_klipper_metal_lb = true
 
   cilium_version = "1.18.1"
   cilium_values  = <<EOT
