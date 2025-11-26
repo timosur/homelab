@@ -6,16 +6,16 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/timosur/homelab.git
-    path: apps/envoy-gateway
-    targetRevision: main
+    chart: gateway-helm
+    repoURL: docker.io/envoyproxy
+    targetRevision: v1.6.0
   destination:
-    server: https://kubernetes.default.svc
     namespace: envoy-gateway-system
+    server: https://kubernetes.default.svc
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
     syncOptions:
     - CreateNamespace=true
     - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
