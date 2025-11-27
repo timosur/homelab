@@ -13,37 +13,39 @@ spec:
       recurse: true
   destination:
     server: https://kubernetes.default.svc
+
   patches:
-  - target:
-      kind: Deployment
-      name: grafana
-      namespace: monitoring
-    patch: |
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
+    - target:
+        kind: Deployment
         name: grafana
         namespace: monitoring
-      spec:
-        template:
-          spec:
-            containers:
-            - name: grafana
-              env:
-              - name: GF_DATABASE_PASSWORD
-                valueFrom:
-                  secretKeyRef:
-                    name: grafana-postgres-credentials
-                    key: password
+      patch: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: grafana
+          namespace: monitoring
+        spec:
+          template:
+            spec:
+              containers:
+              - name: grafana
+                env:
+                - name: PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-postgres-credentials
+                      key: password
+
   ignoreDifferences:
-  - group: ""
-    kind: Secret
-    name: grafana-config
-    namespace: monitoring
-    jsonPointers:
-    - /data/grafana.ini
-    - /metadata/annotations/argocd.argoproj.io~1tracking-id
-    - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
+    - group: ""
+      kind: Secret
+      name: grafana-config
+      namespace: monitoring
+      jsonPointers:
+        - /data/grafana.ini
+        - /metadata/annotations/argocd.argoproj.io~1tracking-id
+        - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
   syncPolicy:
     automated:
       prune: true
@@ -52,7 +54,6 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - RespectIgnoreDifferences=true
-  # Ensure setup is deployed first
   info:
     - name: Dependencies
       value: "Requires kube-prometheus-setup to be deployed first"
