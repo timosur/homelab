@@ -19,14 +19,22 @@ spec:
       name: grafana
       namespace: monitoring
     patch: |
-      - op: add
-        path: /spec/template/spec/containers/0/env/-
-        value:
-          name: GF_DATABASE_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: grafana-postgres-credentials
-              key: password
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: grafana
+        namespace: monitoring
+      spec:
+        template:
+          spec:
+            containers:
+            - name: grafana
+              env:
+              - name: GF_DATABASE_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: grafana-postgres-credentials
+                    key: password
   ignoreDifferences:
   - group: ""
     kind: Secret
