@@ -14,28 +14,22 @@ spec:
   destination:
     server: https://kubernetes.default.svc
 
-  patches:
+  patchesJson6902:
     - target:
+        group: apps
+        version: v1
         kind: Deployment
         name: grafana
         namespace: monitoring
       patch: |
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: grafana
-          namespace: monitoring
-        spec:
-          template:
-            spec:
-              containers:
-              - name: grafana
-                env:
-                - name: PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: grafana-postgres-credentials
-                      key: password
+        - op: add
+          path: /spec/template/spec/containers/0/env/-
+          value:
+            name: GF_DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: grafana-postgres-credentials
+                key: password
 
   ignoreDifferences:
     - group: ""
