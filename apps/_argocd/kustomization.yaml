@@ -8,8 +8,7 @@ resources:
   - cloudnative-pg-app.yaml
   - smb-csi-driver-app.yaml
   - storage-box-smb-app.yaml
-  - envoy-gateway-app.yaml    # New Envoy Gateway replacing Cilium Gateway
-  - coraza-app.yaml           # New Coraza WAF integration
+  - envoy-gateway-app.yaml
   - mealie-app.yaml
   - open-webui-app.yaml
   - n8n-app.yaml
@@ -20,7 +19,6 @@ resources:
   - crossplane-app.yaml
   - crossplane-config-app.yaml
   - givgroov-app.yaml
-  - kube-prometheus-setup-app.yaml
   - kube-prometheus-app.yaml
   - grafana-config-app.yaml
   - pangolin-app.yaml

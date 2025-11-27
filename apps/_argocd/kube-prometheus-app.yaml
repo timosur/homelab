@@ -1,45 +1,38 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: kube-prometheus
+  name: kube-prometheus-stack
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/prometheus-operator/kube-prometheus.git
-    targetRevision: main
-    path: manifests
-    directory:
-      recurse: true
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 68.2.2
+    helm:
+      valuesObject:
+        grafana:
+          env:
+            GF_DATABASE_PASSWORD:
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-postgres-credentials
+                  key: password
+          grafana.ini:
+            date_formats:
+              default_timezone: UTC
+            server:
+              domain: grafana.timosur.com
+            database:
+              type: postgres
+              host: grafana-postgres-rw.monitoring.svc.cluster.local:5432
+              name: grafana
+              user: grafana
+              password: $__env{GF_DATABASE_PASSWORD}
+              ssl_mode: disable
   destination:
     server: https://kubernetes.default.svc
-
-  patchesJson6902:
-    - target:
-        group: apps
-        version: v1
-        kind: Deployment
-        name: grafana
-        namespace: monitoring
-      patch: |
-        - op: add
-          path: /spec/template/spec/containers/0/env/-
-          value:
-            name: GF_DATABASE_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: grafana-postgres-credentials
-                key: password
-
-  ignoreDifferences:
-    - group: ""
-      kind: Secret
-      name: grafana-config
-      namespace: monitoring
-      jsonPointers:
-        - /data/grafana.ini
-        - /metadata/annotations/argocd.argoproj.io~1tracking-id
-        - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
+    namespace: monitoring
   syncPolicy:
     automated:
       prune: true
@@ -47,7 +40,3 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-      - RespectIgnoreDifferences=true
-  info:
-    - name: Dependencies
-      value: "Requires kube-prometheus-setup to be deployed first"
