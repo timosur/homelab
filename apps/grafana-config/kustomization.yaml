@@ -5,7 +5,3 @@ resources:
 - postgres.yaml
 - postgres-external-secret.yaml
 - grafana-config-secret.yaml
-
-patchesStrategicMerge:
-- grafana-config-secret.yaml
-- grafana-deployment-patch.yaml
