@@ -9,23 +9,24 @@ spec:
     repoURL: https://github.com/prometheus-operator/kube-prometheus.git
     targetRevision: main
     path: manifests
-    kustomize:
-      patches:
-      - target:
-          kind: Deployment
-          name: grafana
-          namespace: monitoring
-        patch: |
-          - op: add
-            path: /spec/template/spec/containers/0/env/-
-            value:
-              name: GF_DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: grafana-postgres-credentials
-                  key: password
+    directory:
+      recurse: true
   destination:
     server: https://kubernetes.default.svc
+  patches:
+  - target:
+      kind: Deployment
+      name: grafana
+      namespace: monitoring
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GF_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana-postgres-credentials
+              key: password
   ignoreDifferences:
   - group: ""
     kind: Secret
