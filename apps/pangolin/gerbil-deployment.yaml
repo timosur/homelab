@@ -49,4 +49,4 @@ spec:
       volumes:
         - name: pangolin-config
           persistentVolumeClaim:
-            claimName: pangolin-config
+            claimName: gerbil-config
