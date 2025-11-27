@@ -6,6 +6,12 @@ metadata:
 spec:
   project: default
   source:
+    helm:
+      valuesObject:
+        certgen:
+          rbac:
+            annotations:
+              argocd.argoproj.io/sync-wave: "-1"
     chart: gateway-helm
     repoURL: docker.io/envoyproxy
     targetRevision: v1.6.0
