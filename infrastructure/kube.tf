@@ -108,12 +108,6 @@ ipam:
 k8s:
   requireIPv4PodCIDR: true
 
-# Enable IPv4 and masquerading (required for native routing)
-ipv4:
-  enabled: true
-enableIPv4Masquerade: true
-enableIPMasqAgent: false
-
 # Replace kube-proxy with Cilium
 kubeProxyReplacement: true
 # Enable health check server (healthz) for the kube-proxy replacement
@@ -123,16 +117,8 @@ kubeProxyReplacementHealthzBindAddr: "0.0.0.0:10256"
 k8sServiceHost: "127.0.0.1"
 k8sServicePort: "6444"
 
-# Use native routing mode for Hetzner Cloud
-routingMode: "native"
-
-# Native routing CIDR (required for native routing mode with Kubernetes IPAM)
-# Only pod CIDR, not service CIDR
-ipv4NativeRoutingCIDR: "10.42.0.0/16"
-
-# Disable auto-direct node routes - let Hetzner CCM handle routing via its route controller
-# This is necessary because nodes are on different private network subnets
-autoDirectNodeRoutes: false
+# Set Tunnel Mode or Native Routing Mode (supported by Hetzner CCM Route Controller)
+routingMode: "tunnel"
 
 # Perform a gradual roll out on config update.
 rollOutCiliumPods: true
@@ -141,8 +127,8 @@ endpointRoutes:
   # Enable use of per endpoint routes instead of routing via the cilium_host interface.
   enabled: true
 
-# Use native load balancer acceleration for Hetzner Cloud
 loadBalancer:
+  # Enable LoadBalancer & NodePort XDP Acceleration (direct routing (routingMode=native) is recommended to achieve optimal performance)
   acceleration: native
 
 bpf:
