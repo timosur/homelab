@@ -130,11 +130,9 @@ routingMode: "native"
 # Only pod CIDR, not service CIDR
 ipv4NativeRoutingCIDR: "10.42.0.0/16"
 
-# Auto-direct node routes for native routing
-autoDirectNodeRoutes: true
-
-# Skip unreachable node routes (nodes are on different subnets, Hetzner CCM handles routing)
-directRoutingSkipUnreachable: true
+# Disable auto-direct node routes - let Hetzner CCM handle routing via its route controller
+# This is necessary because nodes are on different private network subnets
+autoDirectNodeRoutes: false
 
 # Perform a gradual roll out on config update.
 rollOutCiliumPods: true
