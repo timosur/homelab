@@ -1,0 +1,14 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: custom-proxy-config
+  namespace: cert-manager
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: LoadBalancer
+        # Use Cluster mode to allow cross-node routing via pod IPs
+        # This is necessary when nodes are on different private network subnets
+        externalTrafficPolicy: Cluster
