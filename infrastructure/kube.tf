@@ -117,8 +117,8 @@ kubeProxyReplacementHealthzBindAddr: "0.0.0.0:10256"
 k8sServiceHost: "127.0.0.1"
 k8sServicePort: "6444"
 
-# Set Tunnel Mode or Native Routing Mode (supported by Hetzner CCM Route Controller)
-routingMode: "tunnel"
+# Use native routing mode for Hetzner Cloud
+routingMode: "native"
 
 # Perform a gradual roll out on config update.
 rollOutCiliumPods: true
@@ -127,8 +127,8 @@ endpointRoutes:
   # Enable use of per endpoint routes instead of routing via the cilium_host interface.
   enabled: true
 
+# Use native load balancer acceleration for Hetzner Cloud
 loadBalancer:
-  # Enable LoadBalancer & NodePort XDP Acceleration (direct routing (routingMode=native) is recommended to achieve optimal performance)
   acceleration: native
 
 bpf:
