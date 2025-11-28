@@ -108,6 +108,12 @@ ipam:
 k8s:
   requireIPv4PodCIDR: true
 
+# Enable IPv4 and masquerading (required for native routing)
+ipv4:
+  enabled: true
+enableIPv4Masquerade: true
+enableIPMasqAgent: false
+
 # Replace kube-proxy with Cilium
 kubeProxyReplacement: true
 # Enable health check server (healthz) for the kube-proxy replacement
@@ -121,7 +127,11 @@ k8sServicePort: "6444"
 routingMode: "native"
 
 # Native routing CIDR (required for native routing mode with Kubernetes IPAM)
+# Only pod CIDR, not service CIDR
 ipv4NativeRoutingCIDR: "10.42.0.0/16"
+
+# Auto-direct node routes for native routing
+autoDirectNodeRoutes: true
 
 # Perform a gradual roll out on config update.
 rollOutCiliumPods: true
