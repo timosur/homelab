@@ -30,8 +30,9 @@ spec:
         # Limit to your gateway
         - --gateway-name=envoy-gateway
         - --gateway-namespace=cert-manager
-        # Domain configuration for timosur.com and subdomains
+        # Domain configuration for which to manage DNS records
         - --domain-filter=timosur.com
+        - --domain-filter=givgroov.de
         # Cloudflare provider configuration
         - --provider=cloudflare
         - --registry=txt
