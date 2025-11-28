@@ -133,6 +133,9 @@ ipv4NativeRoutingCIDR: "10.42.0.0/16"
 # Auto-direct node routes for native routing
 autoDirectNodeRoutes: true
 
+# Skip unreachable node routes (nodes are on different subnets, Hetzner CCM handles routing)
+directRoutingSkipUnreachable: true
+
 # Perform a gradual roll out on config update.
 rollOutCiliumPods: true
 
