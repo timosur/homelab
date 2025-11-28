@@ -120,6 +120,9 @@ k8sServicePort: "6444"
 # Use native routing mode for Hetzner Cloud
 routingMode: "native"
 
+# Native routing CIDR (required for native routing mode with Kubernetes IPAM)
+ipv4NativeRoutingCIDR: "10.42.0.0/16"
+
 # Perform a gradual roll out on config update.
 rollOutCiliumPods: true
 
