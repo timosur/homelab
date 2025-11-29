@@ -3,5 +3,4 @@ kind: Kustomization
 
 resources:
   - envoy-gateway.yaml
-  - envoy-proxy-config.yaml
   - rbac.yaml
