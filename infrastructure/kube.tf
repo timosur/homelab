@@ -97,7 +97,6 @@ module "kube-hetzner" {
   cni_plugin         = "cilium"
   disable_kube_proxy = true
 
-  # Use Klipper LB (built-in k3s load balancer)
   enable_klipper_metal_lb = false
 
   cilium_version = "1.18.1"
@@ -141,9 +140,6 @@ encryption:
   nodeEncryption: true
   type: wireguard
 
-egressGateways:
-  enabled: true
-
 debug:
   enabled: true
 
@@ -168,13 +164,10 @@ operator:
     - key: node.cloudprovider.kubernetes.io/uninitialized
       operator: Exists
       effect: NoSchedule
-
-MTU: 1450
 EOT
 
-  # Use Klipper LB instead of external load balancers
-  # load_balancer_type     = "lb11"
-  # load_balancer_location = "fsn1"
+  load_balancer_type     = "lb11"
+  load_balancer_location = "fsn1"
 
   # Disable ingress controller (using Envoy Gateway)
   ingress_controller = "none"
