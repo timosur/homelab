@@ -65,12 +65,17 @@
     mode: "0644"
   notify: Restart k3s
 
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
 - name: Enable and start k3s service
   ansible.builtin.systemd:
     name: k3s
     enabled: true
     state: started
-    daemon_reload: true
+  become: true
 
 - name: Wait for k3s to be ready
   ansible.builtin.wait_for:
@@ -98,7 +103,8 @@
   until: kubectl_get_nodes.rc == 0
   changed_when: false
 
-- debug:
+- name: Display kubectl get nodes output
+  ansible.builtin.debug:
     msg: "{{ kubectl_get_nodes.stdout }}"
 
 - name: Set control_plane_ip fact

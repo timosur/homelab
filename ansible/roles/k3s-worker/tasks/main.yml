@@ -66,12 +66,17 @@
     mode: "0644"
   notify: Restart k3s-agent
 
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
 - name: Enable and start k3s agent service
   ansible.builtin.systemd:
     name: k3s-agent
     enabled: true
     state: started
-    daemon_reload: true
+  become: true
 
 - name: Wait for node to register
   ansible.builtin.pause:
