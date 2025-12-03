@@ -1,0 +1,191 @@
+---
+- name: Update k3s cluster safely
+  hosts: k3s_cluster
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Ensure k3s token is set
+      ansible.builtin.assert:
+        that:
+          - k3s_token is defined
+          - k3s_token | length > 0
+        fail_msg: "K3S_TOKEN environment variable must be set"
+      run_once: true
+      delegate_to: localhost
+      when: strategy != 'free'
+
+    - name: Display target k3s version
+      ansible.builtin.debug:
+        msg: "Updating k3s to version {{ k3s_version }}"
+      run_once: true
+      when: strategy != 'free'
+
+- name: Get current cluster status
+  hosts: control_plane
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Check current k3s version on control plane
+      ansible.builtin.shell:
+        cmd: k3s --version | head -n1
+        executable: /bin/bash
+      register: current_version
+      changed_when: false
+      failed_when: false
+      args:
+        _uses_shell: true
+
+    - name: Display current version
+      ansible.builtin.debug:
+        msg: "Current version: {{ current_version.stdout }}"
+
+    - name: Get node status before update
+      ansible.builtin.command: kubectl get nodes -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: nodes_before
+      changed_when: false
+      failed_when: false
+
+    - name: Display node status
+      ansible.builtin.debug:
+        var: nodes_before.stdout_lines
+
+- name: Update k3s control plane
+  hosts: control_plane
+  gather_facts: true
+  become: true
+  serial: 1
+  roles:
+    - k3s-update
+
+  post_tasks:
+    - name: Wait for control plane to be ready
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/{{ ansible_hostname }} --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      retries: 5
+      delay: 10
+      register: result
+      until: result.rc == 0
+      changed_when: false
+
+    - name: Verify control plane health
+      ansible.builtin.command: kubectl get nodes {{ ansible_hostname }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: node_status
+      changed_when: false
+
+    - name: Show node status
+      ansible.builtin.debug:
+        var: node_status.stdout_lines
+
+- name: Update k3s worker nodes
+  hosts: workers
+  gather_facts: true
+  become: true
+  serial: 1
+  roles:
+    - role: k3s-update
+
+  pre_tasks:
+    - name: Cordon node before update
+      ansible.builtin.command: kubectl cordon {{ ansible_hostname }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      delegate_to: "{{ groups['control_plane'][0] }}"
+      changed_when: true
+
+    - name: Drain node before update
+      ansible.builtin.command:
+        cmd: >
+          kubectl drain {{ ansible_hostname }}
+          --ignore-daemonsets
+          --delete-emptydir-data
+          --timeout=300s
+          --force
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      delegate_to: "{{ groups['control_plane'][0] }}"
+      changed_when: true
+      failed_when: false
+
+  post_tasks:
+    - name: Wait for node to be ready
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/{{ ansible_hostname }} --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      delegate_to: "{{ groups['control_plane'][0] }}"
+      retries: 5
+      delay: 10
+      register: result
+      until: result.rc == 0
+      changed_when: false
+
+    - name: Uncordon node after update
+      ansible.builtin.command: kubectl uncordon {{ ansible_hostname }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      delegate_to: "{{ groups['control_plane'][0] }}"
+      changed_when: true
+
+    - name: Verify node health
+      ansible.builtin.command: kubectl get nodes {{ ansible_hostname }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      delegate_to: "{{ groups['control_plane'][0] }}"
+      register: node_status
+      changed_when: false
+
+    - name: Show node status
+      ansible.builtin.debug:
+        var: node_status.stdout_lines
+
+    - name: Wait between worker updates
+      ansible.builtin.pause:
+        seconds: 30
+        prompt: "Waiting 30 seconds before updating next worker node..."
+
+- name: Verify cluster after update
+  hosts: control_plane
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Get final cluster status
+      ansible.builtin.command: kubectl get nodes -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: nodes_after
+      changed_when: false
+
+    - name: Display final cluster status
+      ansible.builtin.debug:
+        var: nodes_after.stdout_lines
+
+    - name: Check all pods status
+      ansible.builtin.shell:
+        cmd: set -o pipefail && kubectl get pods -A | grep -v "Running\|Completed" || echo "All pods are running"
+        executable: /bin/bash
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: pods_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display pods status
+      ansible.builtin.debug:
+        var: pods_status.stdout_lines
+
+    - name: Verify Cilium status
+      ansible.builtin.command: cilium status
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: cilium_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display Cilium status
+      ansible.builtin.debug:
+        var: cilium_status.stdout_lines

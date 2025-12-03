@@ -1,0 +1,187 @@
+name: Setup k3s Cluster with Cilium
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - setup-cluster
+          - update-cluster
+          - teardown-cluster
+        default: 'setup-cluster'
+
+env:
+  ANSIBLE_HOST_KEY_CHECKING: 'False'
+  ANSIBLE_FORCE_COLOR: 'True'
+
+jobs:
+  setup-k3s-cluster:
+    if: github.event.inputs.action == 'setup-cluster'
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: |
+          if ! command -v ansible &> /dev/null; then
+            echo "Installing Ansible..."
+            pip3 install ansible
+          else
+            echo "Ansible is already installed"
+            ansible --version
+          fi
+
+      - name: Verify SSH access to nodes
+        run: |
+          echo "Testing SSH connectivity to all nodes..."
+          ssh -o ConnectTimeout=10 homelab-amd 'echo "homelab-amd: OK"'
+          ssh -o ConnectTimeout=10 homelab-arm-small 'echo "homelab-arm-small: OK"'
+          ssh -o ConnectTimeout=10 homelab-arm-large 'echo "homelab-arm-large: OK"'
+
+      - name: Run Ansible syntax check
+        working-directory: ansible
+        run: |
+          ansible-playbook playbooks/k3s-cluster.yml \
+            --syntax-check \
+            -i inventory.yml
+
+      - name: Run Ansible playbook
+        working-directory: ansible
+        env:
+          K3S_TOKEN: ${{ secrets.K3S_TOKEN }}
+        run: |
+          ansible-playbook playbooks/k3s-cluster.yml \
+            -i inventory.yml \
+            -v
+
+      - name: Verify cluster status
+        run: |
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+          echo "=== Cluster Nodes ==="
+          kubectl get nodes -o wide
+          echo ""
+          echo "=== Cilium Status ==="
+          cilium status
+          echo ""
+          echo "=== Hubble Status ==="
+          kubectl get pods -n kube-system -l k8s-app=hubble-relay
+          echo ""
+          echo "=== Cluster Mesh Status ==="
+          cilium clustermesh status
+
+      - name: Export kubeconfig
+        run: |
+          mkdir -p ${{ github.workspace }}/kubeconfig
+          cp /etc/rancher/k3s/k3s.yaml ${{ github.workspace }}/kubeconfig/config
+          echo "Kubeconfig exported to ${{ github.workspace }}/kubeconfig/config"
+
+  update-k3s-cluster:
+    if: github.event.inputs.action == 'update-cluster'
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: |
+          if ! command -v ansible &> /dev/null; then
+            echo "Installing Ansible..."
+            pip3 install ansible
+          else
+            echo "Ansible is already installed"
+            ansible --version
+          fi
+
+      - name: Verify SSH access to nodes
+        run: |
+          echo "Testing SSH connectivity to all nodes..."
+          ssh -o ConnectTimeout=10 homelab-amd 'echo "homelab-amd: OK"'
+          ssh -o ConnectTimeout=10 homelab-arm-small 'echo "homelab-arm-small: OK"'
+          ssh -o ConnectTimeout=10 homelab-arm-large 'echo "homelab-arm-large: OK"'
+
+      - name: Display current cluster status
+        run: |
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+          echo "=== Current Cluster Status ==="
+          kubectl get nodes -o wide
+          echo ""
+          echo "=== Current k3s Versions ==="
+          ssh homelab-amd 'k3s --version | head -n1'
+          ssh homelab-arm-small 'k3s --version | head -n1'
+          ssh homelab-arm-large 'k3s --version | head -n1'
+
+      - name: Run Ansible syntax check
+        working-directory: ansible
+        run: |
+          ansible-playbook playbooks/k3s-update.yml \
+            --syntax-check \
+            -i inventory.yml
+
+      - name: Run Ansible update playbook
+        working-directory: ansible
+        env:
+          K3S_TOKEN: ${{ secrets.K3S_TOKEN }}
+        run: |
+          ansible-playbook playbooks/k3s-update.yml \
+            -i inventory.yml \
+            -v
+
+      - name: Verify updated cluster status
+        run: |
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+          echo "=== Updated Cluster Status ==="
+          kubectl get nodes -o wide
+          echo ""
+          echo "=== Updated k3s Versions ==="
+          ssh homelab-amd 'k3s --version | head -n1'
+          ssh homelab-arm-small 'k3s --version | head -n1'
+          ssh homelab-arm-large 'k3s --version | head -n1'
+          echo ""
+          echo "=== Cilium Status ==="
+          cilium status
+          echo ""
+          echo "=== Pod Status ==="
+          kubectl get pods -A
+
+  teardown-k3s-cluster:
+    if: github.event.inputs.action == 'teardown-cluster'
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Stop k3s on worker nodes
+        run: |
+          echo "Stopping k3s agent on worker nodes..."
+          ssh homelab-arm-small 'systemctl stop k3s-agent || true'
+          ssh homelab-arm-large 'systemctl stop k3s-agent || true'
+
+      - name: Stop k3s on control plane
+        run: |
+          echo "Stopping k3s on control plane..."
+          ssh homelab-amd 'systemctl stop k3s || true'
+
+      - name: Uninstall k3s from worker nodes
+        run: |
+          echo "Uninstalling k3s from worker nodes..."
+          ssh homelab-arm-small 'k3s-agent-uninstall.sh || /usr/local/bin/k3s-agent-uninstall.sh || true'
+          ssh homelab-arm-large 'k3s-agent-uninstall.sh || /usr/local/bin/k3s-agent-uninstall.sh || true'
+
+      - name: Uninstall k3s from control plane
+        run: |
+          echo "Uninstalling k3s from control plane..."
+          ssh homelab-amd 'k3s-uninstall.sh || /usr/local/bin/k3s-uninstall.sh || true'
+
+      - name: Clean up residual files
+        run: |
+          echo "Cleaning up residual files..."
+          for node in homelab-amd homelab-arm-small homelab-arm-large; do
+            ssh $node 'rm -rf /etc/rancher /var/lib/rancher /var/lib/kubelet /var/lib/cni || true'
+          done

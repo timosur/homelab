@@ -1,0 +1,101 @@
+---
+# tasks file for k3s-control-plane
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Download k3s binary
+  ansible.builtin.get_url:
+    url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/k3s{{ '-arm64' if ansible_architecture == 'aarch64' else '' }}"
+    dest: /usr/local/bin/k3s
+    mode: "0755"
+  when: not k3s_binary.stat.exists
+
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Create k3s config file
+  ansible.builtin.copy:
+    content: |
+      write-kubeconfig-mode: "0644"
+      token: "{{ k3s_token }}"
+      node-ip: "{{ node_ip }}"
+      flannel-backend: none
+      disable-network-policy: true
+      disable-kube-proxy: true
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0600"
+
+- name: Create k3s service file
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Lightweight Kubernetes
+      Documentation=https://k3s.io
+      Wants=network-online.target
+      After=network-online.target
+
+      [Install]
+      WantedBy=multi-user.target
+
+      [Service]
+      Type=notify
+      EnvironmentFile=-/etc/default/%N
+      EnvironmentFile=-/etc/sysconfig/%N
+      EnvironmentFile=-/etc/systemd/system/k3s.service.env
+      KillMode=process
+      Delegate=yes
+      LimitNOFILE=1048576
+      LimitNPROC=infinity
+      LimitCORE=infinity
+      TasksMax=infinity
+      TimeoutStartSec=0
+      Restart=always
+      RestartSec=5s
+      ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service'
+      ExecStartPre=-/sbin/modprobe br_netfilter
+      ExecStartPre=-/sbin/modprobe overlay
+      ExecStart=/usr/local/bin/k3s server --disable=traefik --flannel-backend=none --disable-network-policy --disable-kube-proxy
+    dest: /etc/systemd/system/k3s.service
+    mode: "0644"
+  notify: restart k3s
+
+- name: Enable and start k3s service
+  ansible.builtin.systemd:
+    name: k3s
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for k3s to be ready
+  ansible.builtin.wait_for:
+    path: /etc/rancher/k3s/k3s.yaml
+    timeout: 300
+
+- name: Create .kube directory for root
+  ansible.builtin.file:
+    state: directory
+    path: /root/.kube
+    mode: "0755"
+
+- name: Copy k3s kubeconfig
+  ansible.builtin.copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /root/.kube/config
+    remote_src: true
+    mode: "0600"
+
+- name: Wait for k3s node to be ready
+  ansible.builtin.command: kubectl wait --for=condition=Ready node/{{ ansible_hostname }} --timeout=300s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  retries: 5
+  delay: 10
+  register: result
+  until: result.rc == 0
+  changed_when: false
