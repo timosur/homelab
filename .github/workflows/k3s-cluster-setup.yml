@@ -110,7 +110,22 @@ jobs:
         run: |
           if ! command -v ansible &> /dev/null; then
             echo "Installing Ansible..."
-            pip3 install ansible
+            if command -v pip3 &> /dev/null; then
+              pip3 install --user ansible
+            elif command -v pip &> /dev/null; then
+              pip install --user ansible
+            elif command -v apt-get &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y ansible
+            elif command -v dnf &> /dev/null; then
+              sudo dnf install -y ansible
+            elif command -v yum &> /dev/null; then
+              sudo yum install -y ansible
+            else
+              echo "Error: No package manager found to install Ansible"
+              exit 1
+            fi
+            # Add user bin to PATH if pip install was used
+            export PATH="$HOME/.local/bin:$PATH"
           else
             echo "Ansible is already installed"
             ansible --version
@@ -118,10 +133,10 @@ jobs:
 
       - name: Verify SSH access to nodes
         run: |
-          echo "Testing SSH connectivity to all nodes..."
-          ssh -o ConnectTimeout=10 homelab-amd 'echo "homelab-amd: OK"'
+          echo "Testing SSH connectivity to worker nodes..."
           ssh -o ConnectTimeout=10 homelab-arm-small 'echo "homelab-arm-small: OK"'
           ssh -o ConnectTimeout=10 homelab-arm-large 'echo "homelab-arm-large: OK"'
+          echo "homelab-amd: OK (local)"
 
       - name: Display current cluster status
         run: |
@@ -130,9 +145,9 @@ jobs:
           kubectl get nodes -o wide
           echo ""
           echo "=== Current k3s Versions ==="
-          ssh homelab-amd 'k3s --version | head -n1'
-          ssh homelab-arm-small 'k3s --version | head -n1'
-          ssh homelab-arm-large 'k3s --version | head -n1'
+          echo "homelab-amd: $(k3s --version 2>/dev/null | head -n1 || echo 'Not installed')"
+          echo "homelab-arm-small: $(ssh homelab-arm-small 'k3s --version | head -n1')"
+          echo "homelab-arm-large: $(ssh homelab-arm-large 'k3s --version | head -n1')"
 
       - name: Run Ansible syntax check
         working-directory: ansible
@@ -160,9 +175,9 @@ jobs:
           kubectl get nodes -o wide
           echo ""
           echo "=== Updated k3s Versions ==="
-          ssh homelab-amd 'k3s --version | head -n1'
-          ssh homelab-arm-small 'k3s --version | head -n1'
-          ssh homelab-arm-large 'k3s --version | head -n1'
+          echo "homelab-amd: $(k3s --version | head -n1)"
+          echo "homelab-arm-small: $(ssh homelab-arm-small 'k3s --version | head -n1')"
+          echo "homelab-arm-large: $(ssh homelab-arm-large 'k3s --version | head -n1')"
           echo ""
           echo "=== Cilium Status ==="
           cilium status
@@ -187,7 +202,7 @@ jobs:
       - name: Stop k3s on control plane
         run: |
           echo "Stopping k3s on control plane..."
-          ssh homelab-amd 'systemctl stop k3s || true'
+          systemctl stop k3s || true
 
       - name: Uninstall k3s from worker nodes
         run: |
@@ -198,11 +213,14 @@ jobs:
       - name: Uninstall k3s from control plane
         run: |
           echo "Uninstalling k3s from control plane..."
-          ssh homelab-amd 'k3s-uninstall.sh || /usr/local/bin/k3s-uninstall.sh || true'
+          k3s-uninstall.sh || /usr/local/bin/k3s-uninstall.sh || true
 
       - name: Clean up residual files
         run: |
           echo "Cleaning up residual files..."
-          for node in homelab-amd homelab-arm-small homelab-arm-large; do
+          # Clean up local node (homelab-amd)
+          rm -rf /etc/rancher /var/lib/rancher /var/lib/kubelet /var/lib/cni || true
+          # Clean up worker nodes
+          for node in homelab-arm-small homelab-arm-large; do
             ssh $node 'rm -rf /etc/rancher /var/lib/rancher /var/lib/kubelet /var/lib/cni || true'
           done
