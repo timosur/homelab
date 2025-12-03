@@ -32,14 +32,6 @@ jobs:
             echo "Installing Ansible..."
             if command -v pip3 &> /dev/null; then
               pip3 install --user ansible
-            elif command -v pip &> /dev/null; then
-              pip install --user ansible
-            elif command -v apt-get &> /dev/null; then
-              sudo apt-get update && sudo apt-get install -y ansible
-            elif command -v dnf &> /dev/null; then
-              sudo dnf install -y ansible
-            elif command -v yum &> /dev/null; then
-              sudo yum install -y ansible
             else
               echo "Error: No package manager found to install Ansible"
               exit 1
