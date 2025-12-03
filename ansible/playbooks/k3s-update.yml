@@ -5,16 +5,6 @@
   become: true
 
   pre_tasks:
-    - name: Ensure k3s token is set
-      ansible.builtin.assert:
-        that:
-          - k3s_token is defined
-          - k3s_token | length > 0
-        fail_msg: "K3S_TOKEN environment variable must be set"
-      run_once: true
-      delegate_to: localhost
-      when: strategy != 'free'
-
     - name: Display target k3s version
       ansible.builtin.debug:
         msg: "Updating k3s to version {{ k3s_version }}"
