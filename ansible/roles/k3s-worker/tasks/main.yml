@@ -1,0 +1,78 @@
+---
+# tasks file for k3s-worker
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Download k3s binary
+  ansible.builtin.get_url:
+    url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/k3s{{ '-arm64' if ansible_architecture == 'aarch64' else '' }}"
+    dest: /usr/local/bin/k3s
+    mode: "0755"
+  when: not k3s_binary.stat.exists
+
+- name: Get control plane IP
+  ansible.builtin.set_fact:
+    control_plane_ip: "{{ hostvars['homelab-amd']['node_ip'] }}"
+
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Create k3s config file
+  ansible.builtin.copy:
+    content: |
+      server: https://{{ control_plane_ip }}:6443
+      token: "{{ k3s_token }}"
+      node-ip: "{{ node_ip }}"
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0600"
+
+- name: Create k3s agent service file
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Lightweight Kubernetes Agent
+      Documentation=https://k3s.io
+      Wants=network-online.target
+      After=network-online.target
+
+      [Install]
+      WantedBy=multi-user.target
+
+      [Service]
+      Type=notify
+      EnvironmentFile=-/etc/default/%N
+      EnvironmentFile=-/etc/sysconfig/%N
+      EnvironmentFile=-/etc/systemd/system/k3s-agent.service.env
+      KillMode=process
+      Delegate=yes
+      LimitNOFILE=1048576
+      LimitNPROC=infinity
+      LimitCORE=infinity
+      TasksMax=infinity
+      TimeoutStartSec=0
+      Restart=always
+      RestartSec=5s
+      ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service'
+      ExecStartPre=-/sbin/modprobe br_netfilter
+      ExecStartPre=-/sbin/modprobe overlay
+      ExecStart=/usr/local/bin/k3s agent
+    dest: /etc/systemd/system/k3s-agent.service
+    mode: "0644"
+  notify: restart k3s-agent
+
+- name: Enable and start k3s agent service
+  ansible.builtin.systemd:
+    name: k3s-agent
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for node to register
+  ansible.builtin.pause:
+    seconds: 30

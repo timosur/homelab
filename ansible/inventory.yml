@@ -1,0 +1,26 @@
+---
+all:
+  vars:
+    ansible_user: root
+    k3s_version: v1.28.5+k3s1
+    k3s_token: "{{ lookup('env', 'K3S_TOKEN') }}"  # Set this in GitHub Secrets
+    cilium_cli_version: v0.15.22
+    
+  children:
+    k3s_cluster:
+      children:
+        control_plane:
+          hosts:
+            homelab-amd:
+              ansible_host: homelab-amd
+              node_ip: "{{ lookup('pipe', 'ssh homelab-amd hostname -I | awk \"{print \\$1}\"') }}"
+              
+        workers:
+          hosts:
+            homelab-arm-small:
+              ansible_host: homelab-arm-small
+              node_ip: "{{ lookup('pipe', 'ssh homelab-arm-small hostname -I | awk \"{print \\$1}\"') }}"
+              
+            homelab-arm-large:
+              ansible_host: homelab-arm-large
+              node_ip: "{{ lookup('pipe', 'ssh homelab-arm-large hostname -I | awk \"{print \\$1}\"') }}"

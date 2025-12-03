@@ -1,0 +1,8 @@
+---
+# handlers file for k3s-control-plane
+
+- name: Restart k3s
+  ansible.builtin.systemd:
+    name: k3s
+    state: restarted
+    daemon_reload: true
