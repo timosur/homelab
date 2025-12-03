@@ -55,18 +55,6 @@
     mode: "0600"
   become: true
 
-- name: Wait for k3s node to be available in nodes overview
-  ansible.builtin.command: kubectl get nodes
-  register: kubectl_get_nodes
-  retries: 10
-  delay: 15
-  until: kubectl_get_nodes.rc == 0
-  changed_when: false
-
-- name: Display kubectl get nodes output
-  ansible.builtin.debug:
-    msg: "{{ kubectl_get_nodes.stdout }}"
-
 - name: Set control_plane_ip fact
   ansible.builtin.set_fact:
     control_plane_ip: "{{ node_ip }}"
