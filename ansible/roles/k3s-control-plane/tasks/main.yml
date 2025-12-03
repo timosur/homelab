@@ -26,6 +26,17 @@
     path: /etc/rancher/k3s/k3s.yaml
     timeout: 300
 
+- name: Ensure k3s service is running
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+  become: true
+
+- name: Wait for node-token file to be available
+  ansible.builtin.wait_for:
+    path: /var/lib/rancher/k3s/server/node-token
+    timeout: 60
+
 - name: Read k3s node token
   ansible.builtin.slurp:
     src: /var/lib/rancher/k3s/server/node-token
@@ -35,6 +46,10 @@
 - name: Set k3s token fact
   ansible.builtin.set_fact:
     k3s_token: "{{ k3s_node_token_raw['content'] | b64decode | trim }}"
+
+- name: Display token info for debugging
+  ansible.builtin.debug:
+    msg: "K3S Token retrieved: {{ k3s_token[:5] }}..."
 
 - name: Create .kube directory for timosur
   ansible.builtin.file:
