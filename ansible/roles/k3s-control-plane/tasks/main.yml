@@ -9,14 +9,12 @@
 - name: Install k3s server
   ansible.builtin.shell: |
     curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
-      K3S_TOKEN="{{ k3s_token }}" \
       INSTALL_K3S_EXEC="server \
         --write-kubeconfig-mode=644 \
         --disable=traefik \
         --flannel-backend=none \
         --disable-network-policy \
-        --disable-kube-proxy \
-        --node-ip={{ node_ip }}" \
+        --disable-kube-proxy" \
       sh -
   become: true
   when: not k3s_binary.stat.exists
@@ -27,6 +25,16 @@
   ansible.builtin.wait_for:
     path: /etc/rancher/k3s/k3s.yaml
     timeout: 300
+
+- name: Read k3s node token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token_raw
+  become: true
+
+- name: Set k3s token fact
+  ansible.builtin.set_fact:
+    k3s_token: "{{ k3s_node_token_raw['content'] | b64decode | trim }}"
 
 - name: Create .kube directory for timosur
   ansible.builtin.file:

@@ -10,6 +10,10 @@
   ansible.builtin.set_fact:
     control_plane_ip: "{{ hostvars['homelab-amd']['node_ip'] }}"
 
+- name: Get k3s token from control plane
+  ansible.builtin.set_fact:
+    k3s_token: "{{ hostvars['homelab-amd']['k3s_token'] }}"
+
 - name: Debug connection information
   ansible.builtin.debug:
     msg:
@@ -22,7 +26,6 @@
     curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
       K3S_URL="https://{{ control_plane_ip }}:6443" \
       K3S_TOKEN="{{ k3s_token }}" \
-      INSTALL_K3S_EXEC="agent --node-ip={{ node_ip }}" \
       sh -
   become: true
   when: not k3s_binary.stat.exists
