@@ -6,76 +6,22 @@
     path: /usr/local/bin/k3s
   register: k3s_binary
 
-- name: Download k3s binary
-  ansible.builtin.get_url:
-    url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/k3s{{ '-arm64' if ansible_architecture == 'aarch64' else '' }}"
-    dest: /usr/local/bin/k3s
-    mode: "0755"
+- name: Install k3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
+      K3S_TOKEN="{{ k3s_token }}" \
+      INSTALL_K3S_EXEC="server \
+        --write-kubeconfig-mode=644 \
+        --disable=traefik \
+        --flannel-backend=none \
+        --disable-network-policy \
+        --disable-kube-proxy \
+        --node-ip={{ node_ip }}" \
+      sh -
+  become: true
   when: not k3s_binary.stat.exists
-
-- name: Create k3s config directory
-  ansible.builtin.file:
-    path: /etc/rancher/k3s
-    state: directory
-    mode: "0755"
-
-- name: Create k3s config file
-  ansible.builtin.copy:
-    content: |
-      write-kubeconfig-mode: "0644"
-      token: "{{ k3s_token }}"
-      node-ip: "{{ node_ip }}"
-      flannel-backend: none
-      disable-network-policy: true
-      disable-kube-proxy: true
-    dest: /etc/rancher/k3s/config.yaml
-    mode: "0600"
-
-- name: Create k3s service file
-  ansible.builtin.copy:
-    content: |
-      [Unit]
-      Description=Lightweight Kubernetes
-      Documentation=https://k3s.io
-      Wants=network-online.target
-      After=network-online.target
-
-      [Install]
-      WantedBy=multi-user.target
-
-      [Service]
-      Type=notify
-      EnvironmentFile=-/etc/default/%N
-      EnvironmentFile=-/etc/sysconfig/%N
-      EnvironmentFile=-/etc/systemd/system/k3s.service.env
-      KillMode=process
-      Delegate=yes
-      LimitNOFILE=1048576
-      LimitNPROC=infinity
-      LimitCORE=infinity
-      TasksMax=infinity
-      TimeoutStartSec=0
-      Restart=always
-      RestartSec=5s
-      ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service'
-      ExecStartPre=-/sbin/modprobe br_netfilter
-      ExecStartPre=-/sbin/modprobe overlay
-      ExecStart=/usr/local/bin/k3s server --disable=traefik --flannel-backend=none --disable-network-policy --disable-kube-proxy
-    dest: /etc/systemd/system/k3s.service
-    mode: "0644"
-  notify: Restart k3s
-
-- name: Reload systemd daemon
-  ansible.builtin.systemd:
-    daemon_reload: true
-  become: true
-
-- name: Enable and start k3s service
-  ansible.builtin.systemd:
-    name: k3s
-    enabled: true
-    state: started
-  become: true
+  args:
+    creates: /usr/local/bin/k3s
 
 - name: Wait for k3s to be ready
   ansible.builtin.wait_for:
@@ -86,14 +32,20 @@
   ansible.builtin.file:
     state: directory
     path: /home/timosur/.kube
+    owner: timosur
+    group: timosur
     mode: "0755"
+  become: true
 
 - name: Copy k3s kubeconfig
   ansible.builtin.copy:
     src: /etc/rancher/k3s/k3s.yaml
     dest: /home/timosur/.kube/config
+    owner: timosur
+    group: timosur
     remote_src: true
     mode: "0600"
+  become: true
 
 - name: Wait for k3s node to be available in nodes overview
   ansible.builtin.command: kubectl get nodes
