@@ -17,6 +17,13 @@
   ansible.builtin.set_fact:
     control_plane_ip: "{{ hostvars['homelab-amd']['node_ip'] }}"
 
+- name: Debug connection information
+  ansible.builtin.debug:
+    msg:
+      - "Control plane IP: {{ control_plane_ip }}"
+      - "Worker node IP: {{ node_ip }}"
+      - "K3S Token set: {{ k3s_token is defined and k3s_token | length > 0 }}"
+
 - name: Create k3s config directory
   ansible.builtin.file:
     path: /etc/rancher/k3s
@@ -61,7 +68,7 @@
       ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service'
       ExecStartPre=-/sbin/modprobe br_netfilter
       ExecStartPre=-/sbin/modprobe overlay
-      ExecStart=/usr/local/bin/k3s agent
+      ExecStart=/usr/local/bin/k3s agent --server https://{{ control_plane_ip }}:6443 --token {{ k3s_token }} --node-ip {{ node_ip }}
     dest: /etc/systemd/system/k3s-agent.service
     mode: "0644"
   notify: Restart k3s-agent
@@ -81,3 +88,13 @@
 - name: Wait for node to register
   ansible.builtin.pause:
     seconds: 30
+
+- name: Check k3s-agent service status
+  ansible.builtin.systemd:
+    name: k3s-agent
+  register: k3s_agent_status
+  become: true
+
+- name: Display k3s-agent service status
+  ansible.builtin.debug:
+    msg: "k3s-agent is {{ k3s_agent_status.status.ActiveState }}"
