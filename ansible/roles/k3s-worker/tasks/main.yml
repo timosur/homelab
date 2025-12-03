@@ -64,7 +64,7 @@
       ExecStart=/usr/local/bin/k3s agent
     dest: /etc/systemd/system/k3s-agent.service
     mode: "0644"
-  notify: restart k3s-agent
+  notify: Restart k3s-agent
 
 - name: Enable and start k3s agent service
   ansible.builtin.systemd:
