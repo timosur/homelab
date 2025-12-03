@@ -12,8 +12,9 @@ all:
         control_plane:
           hosts:
             homelab-amd:
-              ansible_host: homelab-amd
-              node_ip: "{{ lookup('pipe', 'ssh homelab-amd hostname -I | awk \"{print \\$1}\"') }}"
+              ansible_connection: local
+              ansible_host: localhost
+              node_ip: "{{ lookup('pipe', 'hostname -I | awk \"{print \\$1}\"') }}"
               
         workers:
           hosts:
