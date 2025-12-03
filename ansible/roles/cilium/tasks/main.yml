@@ -64,16 +64,6 @@
   register: cilium_install
   changed_when: "'✅ Cilium was successfully installed!' in cilium_install.stdout or 'Cilium is already installed' not in cilium_install.stdout"
 
-- name: Wait for Cilium to be ready
-  ansible.builtin.command: cilium status --wait --wait-duration=5m
-  environment:
-    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-  retries: 3
-  delay: 10
-  register: result
-  until: result.rc == 0
-  changed_when: false
-
 - name: Display Cilium status
   ansible.builtin.command: cilium status
   environment:
