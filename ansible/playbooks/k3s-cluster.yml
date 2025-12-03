@@ -4,16 +4,6 @@
   gather_facts: yes
   become: yes
 
-  pre_tasks:
-    - name: Ensure k3s token is set
-      assert:
-        that:
-          - k3s_token is defined
-          - k3s_token | length > 0
-        fail_msg: "K3S_TOKEN environment variable must be set"
-      run_once: true
-      delegate_to: localhost
-
 - name: Setup k3s control plane
   hosts: control_plane
   gather_facts: yes
