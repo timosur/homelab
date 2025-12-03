@@ -52,10 +52,22 @@
   ansible.builtin.set_fact:
     control_plane_ip: "{{ hostvars['homelab-amd']['node_ip'] }}"
 
-- name: Install Cilium with cluster mesh support
+- name: Check if Cilium is already installed in cluster
+  ansible.builtin.command: kubectl get pods -n kube-system -l k8s-app=cilium -o json
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: cilium_pods
+  changed_when: false
+  failed_when: false
+
+- name: Set Cilium operation mode
+  ansible.builtin.set_fact:
+    cilium_operation: "{{ 'upgrade' if (cilium_pods.stdout | from_json | json_query('items') | length > 0) else 'install' }}"
+
+- name: Install or upgrade Cilium with cluster mesh support
   ansible.builtin.command:
     cmd: >
-      cilium install
+      cilium {{ cilium_operation }}
       --set cluster.name=home
       --set cluster.id=2
       --set ipam.mode=kubernetes
@@ -69,8 +81,8 @@
       --set bpf.masquerade=true
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-  register: cilium_install
-  changed_when: "'✅ Cilium was successfully installed!' in cilium_install.stdout or 'Cilium is already installed' not in cilium_install.stdout"
+  register: cilium_result
+  changed_when: "'✅ Cilium was successfully' in cilium_result.stdout"
 
 - name: Enable Hubble
   ansible.builtin.command: cilium hubble enable
