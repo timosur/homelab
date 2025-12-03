@@ -77,16 +77,16 @@
     path: /etc/rancher/k3s/k3s.yaml
     timeout: 300
 
-- name: Create .kube directory for root
+- name: Create .kube directory for timosur
   ansible.builtin.file:
     state: directory
-    path: /root/.kube
+    path: /home/timosur/.kube
     mode: "0755"
 
 - name: Copy k3s kubeconfig
   ansible.builtin.copy:
     src: /etc/rancher/k3s/k3s.yaml
-    dest: /root/.kube/config
+    dest: /home/timosur/.kube/config
     remote_src: true
     mode: "0600"
 
