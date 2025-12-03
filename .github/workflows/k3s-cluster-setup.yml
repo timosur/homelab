@@ -54,7 +54,6 @@ jobs:
       - name: Verify SSH access to nodes
         run: |
           echo "Testing SSH connectivity to all nodes..."
-          ssh -o ConnectTimeout=10 homelab-amd 'echo "homelab-amd: OK"'
           ssh -o ConnectTimeout=10 homelab-arm-small 'echo "homelab-arm-small: OK"'
           ssh -o ConnectTimeout=10 homelab-arm-large 'echo "homelab-arm-large: OK"'
 
