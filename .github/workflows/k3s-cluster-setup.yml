@@ -26,18 +26,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Ansible
+      - name: Verify installation of Ansible
         run: |
           if ! command -v ansible &> /dev/null; then
-            echo "Installing Ansible..."
-            if command -v pip3 &> /dev/null; then
-              pip3 install --user ansible
-            else
-              echo "Error: No package manager found to install Ansible"
-              exit 1
-            fi
-            # Add user bin to PATH if pip install was used
-            export PATH="$HOME/.local/bin:$PATH"
+            echo "Error: Ansible is not installed. Please install Ansible to proceed."
+            exit 1
           else
             echo "Ansible is already installed"
             ansible --version
@@ -68,20 +61,15 @@ jobs:
             -i inventory.yml \
             -v
 
-      - name: Verify cluster status
+      - name: Verify installation of Ansible
         run: |
-          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-          echo "=== Cluster Nodes ==="
-          kubectl get nodes -o wide
-          echo ""
-          echo "=== Cilium Status ==="
-          cilium status
-          echo ""
-          echo "=== Hubble Status ==="
-          kubectl get pods -n kube-system -l k8s-app=hubble-relay
-          echo ""
-          echo "=== Cluster Mesh Status ==="
-          cilium clustermesh status
+          if ! command -v ansible &> /dev/null; then
+            echo "Error: Ansible is not installed. Please install Ansible to proceed."
+            exit 1
+          else
+            echo "Ansible is already installed"
+            ansible --version
+          fi
 
       - name: Export kubeconfig
         run: |
@@ -97,26 +85,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Ansible
+      - name: Verify installation of Ansible
         run: |
           if ! command -v ansible &> /dev/null; then
-            echo "Installing Ansible..."
-            if command -v pip3 &> /dev/null; then
-              pip3 install --user ansible
-            elif command -v pip &> /dev/null; then
-              pip install --user ansible
-            elif command -v apt-get &> /dev/null; then
-              sudo apt-get update && sudo apt-get install -y ansible
-            elif command -v dnf &> /dev/null; then
-              sudo dnf install -y ansible
-            elif command -v yum &> /dev/null; then
-              sudo yum install -y ansible
-            else
-              echo "Error: No package manager found to install Ansible"
-              exit 1
-            fi
-            # Add user bin to PATH if pip install was used
-            export PATH="$HOME/.local/bin:$PATH"
+            echo "Error: Ansible is not installed. Please install Ansible to proceed."
+            exit 1
           else
             echo "Ansible is already installed"
             ansible --version
