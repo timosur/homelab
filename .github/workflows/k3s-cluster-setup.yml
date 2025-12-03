@@ -44,8 +44,6 @@ jobs:
 
       - name: Run Ansible syntax check
         working-directory: ansible
-        env:
-          PATH: ${{ env.PATH }}:$HOME/.local/bin
         run: |
           ansible-playbook playbooks/k3s-cluster.yml \
             --syntax-check \
@@ -55,7 +53,6 @@ jobs:
         working-directory: ansible
         env:
           K3S_TOKEN: ${{ secrets.K3S_TOKEN }}
-          PATH: ${{ env.PATH }}:$HOME/.local/bin
         run: |
           ansible-playbook playbooks/k3s-cluster.yml \
             -i inventory.yml \
@@ -115,8 +112,6 @@ jobs:
 
       - name: Run Ansible syntax check
         working-directory: ansible
-        env:
-          PATH: ${{ env.PATH }}:$HOME/.local/bin
         run: |
           ansible-playbook playbooks/k3s-update.yml \
             --syntax-check \
@@ -126,7 +121,6 @@ jobs:
         working-directory: ansible
         env:
           K3S_TOKEN: ${{ secrets.K3S_TOKEN }}
-          PATH: ${{ env.PATH }}:$HOME/.local/bin
         run: |
           ansible-playbook playbooks/k3s-update.yml \
             -i inventory.yml \
