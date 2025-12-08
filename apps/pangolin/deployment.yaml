@@ -27,7 +27,7 @@ spec:
               mountPath: /var/dynamic
               subPath: dynamic
         - name: config-generator
-          image: alpine:3.22
+          image: alpine:3.23
           env:
             - name: SERVER_SECRET
               valueFrom:
