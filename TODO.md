@@ -14,3 +14,12 @@
 - Add ip route to CP node
 - Check how to exchange root ca certs in local cluster
 - Open firewall on port 32379 or change to use the node internal IP, if possible for CP node on hetzner
+
+## ArgoCD
+
+- How can I make it work that I can connect to the API server of my local k3s cluster? Can I use cilium cluster mesh for that? Can I somehow use natting for that within cilium?
+
+## Apps to be installed locally
+
+1. Home Assistant
+2. pihole
