@@ -8,3 +8,9 @@
 - How can I expose the gerbil TCP/UDP routes to the public on the same domain?
   -> Currently cilium gateway API does not support UDPRoutes and the Hetzner LB also does not support UDP
   -> Maybe I need to switch to MetalLB? How do I then get a public IP for my setup? Would I need to open a Port directly to my VM? This would mean gerbil could only run on one single node?
+
+## Cluster Mesh
+
+- Add ip route to CP node
+- Check how to exchange root ca certs in local cluster
+- Open firewall on port 32379 or change to use the node internal IP, if possible for CP node on hetzner
