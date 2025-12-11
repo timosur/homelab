@@ -54,6 +54,7 @@ jobs:
           export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
           export TF_VAR_hcloud_token=$HCLOUD_TOKEN
           export TF_VAR_ssh_public_key_file="$(pwd)/ssh_public_key"
+          export TF_VAR_ssh_private_key="$SSH_PRIVATE_KEY"
 
           terraform init
           terraform plan
@@ -61,6 +62,7 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
   terraform_apply:
     needs: terraform_plan
@@ -93,6 +95,7 @@ jobs:
           export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
           export TF_VAR_hcloud_token=$HCLOUD_TOKEN
           export TF_VAR_ssh_public_key_file="$(pwd)/ssh_public_key"
+          export TF_VAR_ssh_private_key="$SSH_PRIVATE_KEY"
           
           terraform init
           terraform apply -auto-approve
@@ -100,4 +103,5 @@ jobs:
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
