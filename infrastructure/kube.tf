@@ -107,6 +107,10 @@ module "kube-hetzner" {
 
   cilium_version = "1.18.1"
   cilium_values  = <<EOT
+cluster:
+  name: "hetzner"
+  id: 1
+  
 # Enable Kubernetes host-scope IPAM mode (required for K3s + Hetzner CCM)
 ipam:
   mode: kubernetes
