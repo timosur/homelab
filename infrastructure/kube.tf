@@ -24,6 +24,12 @@ variable "ssh_public_key_file" {
   default = ""
 }
 
+variable "ssh_private_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
 ###############################################
 # Terraform & provider
 ###############################################
@@ -224,8 +230,119 @@ output "kubeconfig" {
   sensitive = true
 }
 
-
 output "ingress_public_ipv4" {
   description = "Public IPv4 of the default ingress/load balancer (or first CP if none)."
   value       = module.kube-hetzner.ingress_public_ipv4
+}
+
+output "control_planes_public_ipv4" {
+  value = module.kube-hetzner.control_planes_public_ipv4
+}
+
+output "agents_public_ipv4" {
+  value = module.kube-hetzner.agents_public_ipv4
+}
+
+# Configure static routes on control plane nodes
+resource "null_resource" "configure_routes_control_plane" {
+  depends_on = [module.kube-hetzner]
+  count      = length(module.kube-hetzner.control_planes_public_ipv4)
+
+  triggers = {
+    node_ip = module.kube-hetzner.control_planes_public_ipv4[count.index]
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "IFACE=$(ip route | grep 'default via 10.0.0.1' | awk '{print $5}' | head -n1)",
+      "ip route add 192.168.255.0/24 via 10.0.0.1 dev $IFACE || true",
+      "ip route add 192.168.1.0/24 via 10.0.0.1 dev $IFACE || true",
+      "ip route add 192.168.2.0/24 via 10.0.0.1 dev $IFACE || true",
+      "mkdir -p /etc/systemd/system",
+      "cat > /usr/local/bin/static-route.sh << 'EOF'",
+      "#!/bin/bash",
+      "IFACE=$(ip route | grep 'default via 10.0.0.1' | awk '{print $5}' | head -n1)",
+      "ip route add 192.168.255.0/24 via 10.0.0.1 dev $IFACE || true",
+      "ip route add 192.168.1.0/24 via 10.0.0.1 dev $IFACE || true",
+      "ip route add 192.168.2.0/24 via 10.0.0.1 dev $IFACE || true",
+      "EOF",
+      "chmod +x /usr/local/bin/static-route.sh",
+      "cat > /etc/systemd/system/static-route.service << 'EOF'",
+      "[Unit]",
+      "Description=Add static route to home network",
+      "After=network-online.target",
+      "Wants=network-online.target",
+      "",
+      "[Service]",
+      "Type=oneshot",
+      "ExecStart=/usr/local/bin/static-route.sh",
+      "RemainAfterExit=yes",
+      "",
+      "[Install]",
+      "WantedBy=multi-user.target",
+      "EOF",
+      "systemctl daemon-reload",
+      "systemctl enable static-route.service",
+      "systemctl start static-route.service"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = "root"
+      private_key = var.ssh_private_key
+      host        = module.kube-hetzner.control_planes_public_ipv4[count.index]
+    }
+  }
+}
+
+# Configure static routes on agent nodes
+resource "null_resource" "configure_routes_agents" {
+  depends_on = [module.kube-hetzner]
+  count      = length(module.kube-hetzner.agents_public_ipv4)
+
+  triggers = {
+    node_ip = module.kube-hetzner.agents_public_ipv4[count.index]
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "IFACE=$(ip route | grep 'default via 10.0.0.1' | awk '{print $5}' | head -n1)",
+      "ip route add 192.168.255.0/24 via 10.0.0.1 dev $IFACE || true",
+      "ip route add 192.168.1.0/24 via 10.0.0.1 dev $IFACE || true",
+      "ip route add 192.168.2.0/24 via 10.0.0.1 dev $IFACE || true",
+      "mkdir -p /etc/systemd/system",
+      "cat > /usr/local/bin/static-route.sh << 'EOF'",
+      "#!/bin/bash",
+      "IFACE=$(ip route | grep 'default via 10.0.0.1' | awk '{print $5}' | head -n1)",
+      "ip route add 192.168.255.0/24 via 10.0.0.1 dev $IFACE || true",
+      "ip route add 192.168.1.0/24 via 10.0.0.1 dev $IFACE || true",
+      "ip route add 192.168.2.0/24 via 10.0.0.1 dev $IFACE || true",
+      "EOF",
+      "chmod +x /usr/local/bin/static-route.sh",
+      "cat > /etc/systemd/system/static-route.service << 'EOF'",
+      "[Unit]",
+      "Description=Add static route to home network",
+      "After=network-online.target",
+      "Wants=network-online.target",
+      "",
+      "[Service]",
+      "Type=oneshot",
+      "ExecStart=/usr/local/bin/static-route.sh",
+      "RemainAfterExit=yes",
+      "",
+      "[Install]",
+      "WantedBy=multi-user.target",
+      "EOF",
+      "systemctl daemon-reload",
+      "systemctl enable static-route.service",
+      "systemctl start static-route.service"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = "root"
+      private_key = var.ssh_private_key
+      host        = module.kube-hetzner.agents_public_ipv4[count.index]
+    }
+  }
 }
