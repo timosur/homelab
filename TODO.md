@@ -9,15 +9,15 @@
   -> Currently cilium gateway API does not support UDPRoutes and the Hetzner LB also does not support UDP
   -> Maybe I need to switch to MetalLB? How do I then get a public IP for my setup? Would I need to open a Port directly to my VM? This would mean gerbil could only run on one single node?
 
-## Cluster Mesh
+## Networking
 
-- Add ip route to CP node
-- Check how to exchange root ca certs in local cluster
-- Open firewall on port 32379 or change to use the node internal IP, if possible for CP node on hetzner
+- Switch the local k3s cluster to another CIDR, which is not conflicting with the hetzner k3s cluster
+  --> (PodCIDR ranges in all clusters and all nodes must be non-conflicting and unique IP addresses.)
 
 ## ArgoCD
 
 - How can I make it work that I can connect to the API server of my local k3s cluster? Can I use cilium cluster mesh for that? Can I somehow use natting for that within cilium?
+  --> Should be possible after changing cluster cidr on local cluster
 
 ## Apps to be installed locally
 
