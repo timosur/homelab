@@ -6,7 +6,6 @@ resources:
   - mealie-route.yaml
   - ai-route.yaml
   - garden-route.yaml
-  - seafile-route.yaml
   - portfolio-route.yaml
   - givgroov-route.yaml
   - actual-route.yaml

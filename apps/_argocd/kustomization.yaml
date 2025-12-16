@@ -12,7 +12,6 @@ resources:
   - mealie-app.yaml
   - open-webui-app.yaml
   - garden-app.yaml
-  - seafile-app.yaml
   - portfolio-app.yaml
   - givgroov-app.yaml
   - actual-app.yaml
