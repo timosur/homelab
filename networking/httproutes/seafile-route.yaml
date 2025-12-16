@@ -25,3 +25,5 @@ spec:
       backendRefs:
         - name: seafile
           port: 80
+      timeouts:
+        request: "60s"
