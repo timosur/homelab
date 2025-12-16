@@ -15,7 +15,5 @@ resources:
   - seafile-app.yaml
   - portfolio-app.yaml
   - givgroov-app.yaml
-  - kube-prometheus-app.yaml
-  - grafana-config-app.yaml
   - actual-app.yaml
   - paperless-app.yaml
