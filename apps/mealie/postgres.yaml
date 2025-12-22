@@ -4,7 +4,8 @@ metadata:
   name: mealie-postgres
   namespace: mealie
 spec:
-  instances: 2
+  instances: 1
+  enablePDB: false
 
   postgresql:
     parameters:
