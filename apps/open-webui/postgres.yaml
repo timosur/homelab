@@ -4,7 +4,8 @@ metadata:
   name: open-webui-postgres
   namespace: open-webui
 spec:
-  instances: 2
+  instances: 1
+  enablePDB: false
 
   postgresql:
     parameters:

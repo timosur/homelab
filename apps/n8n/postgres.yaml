@@ -4,7 +4,8 @@ metadata:
   name: n8n-postgres
   namespace: n8n
 spec:
-  instances: 2
+  instances: 1
+  enablePDB: false
 
   postgresql:
     parameters:

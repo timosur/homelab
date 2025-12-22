@@ -4,7 +4,8 @@ metadata:
   name: grafana-postgres
   namespace: monitoring
 spec:
-  instances: 2
+  instances: 1
+  enablePDB: false
 
   postgresql:
     parameters:

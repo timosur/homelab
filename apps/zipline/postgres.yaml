@@ -4,21 +4,22 @@ metadata:
   name: zipline-postgres
   namespace: zipline
 spec:
-  instances: 2
-  
+  instances: 1
+  enablePDB: false
+
   postgresql:
     parameters:
       max_connections: "200"
       shared_buffers: "256MB"
       effective_cache_size: "1GB"
-    
+
   bootstrap:
     initdb:
       database: zipline
       owner: zipline
       secret:
         name: zipline-postgres-credentials
-  
+
   storage:
     size: 10Gi
     storageClass: hcloud-volumes

@@ -4,7 +4,8 @@ metadata:
   name: pangolin-postgres
   namespace: pangolin
 spec:
-  instances: 2
+  instances: 1
+  enablePDB: false
 
   postgresql:
     parameters:
