@@ -85,7 +85,7 @@ module "kube-hetzner" {
       name        = "workers-v2"
       server_type = "cx33"
       location    = "fsn1"
-      count       = 2
+      count       = 1
       labels      = []
       taints      = []
     },
