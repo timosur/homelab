@@ -13,7 +13,7 @@
         --write-kubeconfig-mode=644 \
         --disable=traefik \
         --cluster-cidr=10.50.0.0/16 \
-        --service-cidr=10.51.0.0/16" \
+        --service-cidr=10.51.0.0/16 \
         --flannel-backend=none \
         --disable-network-policy \
         --disable-kube-proxy" \
