@@ -1,0 +1,108 @@
+---
+# tasks file for argocd-install
+
+- name: Create ArgoCD namespace
+  kubernetes.core.k8s:
+    name: "{{ argocd_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: Download ArgoCD installation manifest
+  ansible.builtin.get_url:
+    url: "{{ argocd_manifest_url }}"
+    dest: /tmp/argocd-install.yaml
+    mode: '0644'
+  delegate_to: localhost
+  become: false
+
+- name: Apply ArgoCD installation manifest
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('file', '/tmp/argocd-install.yaml') | from_yaml_all | list }}"
+    namespace: "{{ argocd_namespace }}"
+
+- name: Wait for ArgoCD server deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-server
+    namespace: "{{ argocd_namespace }}"
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: "{{ argocd_wait_timeout }}"
+
+- name: Wait for ArgoCD repo server deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-repo-server
+    namespace: "{{ argocd_namespace }}"
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: "{{ argocd_wait_timeout }}"
+
+- name: Wait for ArgoCD application controller deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-applicationset-controller
+    namespace: "{{ argocd_namespace }}"
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: "{{ argocd_wait_timeout }}"
+
+- name: Wait for ArgoCD server pods to be ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ argocd_namespace }}"
+    label_selectors:
+      - app.kubernetes.io/name=argocd-server
+    wait_condition:
+      type: Ready
+      status: "True"
+    wait_timeout: "{{ argocd_wait_timeout }}"
+
+- name: Wait for ArgoCD repo server pods to be ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ argocd_namespace }}"
+    label_selectors:
+      - app.kubernetes.io/name=argocd-repo-server
+    wait_condition:
+      type: Ready
+      status: "True"
+    wait_timeout: "{{ argocd_wait_timeout }}"
+
+- name: Get ArgoCD admin initial password
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: argocd-initial-admin-secret
+    namespace: "{{ argocd_namespace }}"
+  register: argocd_admin_secret
+
+- name: Display ArgoCD admin password instructions
+  ansible.builtin.debug:
+    msg: |
+      ArgoCD has been installed successfully!
+      
+      To get the admin password, run:
+      kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+      
+      To access ArgoCD UI:
+      kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 8080:443
+      
+      Then open https://localhost:8080 and login with username 'admin'
+
+- name: Clean up downloaded manifest
+  ansible.builtin.file:
+    path: /tmp/argocd-install.yaml
+    state: absent
+  delegate_to: localhost
+  become: false

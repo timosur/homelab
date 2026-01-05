@@ -1,0 +1,107 @@
+---
+# tasks file for gitops-setup
+
+- name: Wait for ArgoCD to be ready
+  block:
+    - name: Wait for ArgoCD server deployment to be available
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: argocd-server
+        namespace: "{{ argocd_namespace }}"
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: "{{ argocd_wait_timeout }}"
+
+    - name: Wait for ArgoCD server pods to be ready
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: "{{ argocd_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=argocd-server
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_timeout: "{{ argocd_wait_timeout }}"
+
+    - name: Wait for ArgoCD repo server pods to be ready
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: "{{ argocd_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=argocd-repo-server
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_timeout: "{{ argocd_wait_timeout }}"
+
+- name: Setup Azure Service Principal Secret
+  block:
+    - name: Create external-secrets-system namespace
+      kubernetes.core.k8s:
+        name: "{{ external_secrets_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Validate Azure credentials are provided
+      ansible.builtin.fail:
+        msg: "Azure client ID and client secret must be provided"
+      when: 
+        - azure_client_id == "" or azure_client_secret == ""
+        - not skip_azure_validation | default(false)
+
+    - name: Create Azure Service Principal secret
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', 'azure-secret.yaml.j2') | from_yaml }}"
+      when: azure_client_id != "" and azure_client_secret != ""
+
+    - name: Display Azure secret creation status
+      ansible.builtin.debug:
+        msg: "Azure Service Principal secret created successfully in {{ external_secrets_namespace }} namespace"
+      when: azure_client_id != "" and azure_client_secret != ""
+
+    - name: Display Azure secret skip notice
+      ansible.builtin.debug:
+        msg: "Skipping Azure secret creation - credentials will be handled by external process (e.g., GitHub Actions)"
+      when: azure_client_id == "" or azure_client_secret == "" or skip_azure_validation | default(false)
+
+- name: Configure ArgoCD Repository
+  block:
+    - name: Create repository configuration for GitOps repo
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', 'repo-secret.yaml.j2') | from_yaml }}"
+
+    - name: Display repository configuration status
+      ansible.builtin.debug:
+        msg: "Repository configuration completed for {{ git_repo_url }}"
+
+    - name: Wait for ArgoCD to process the repository
+      ansible.builtin.pause:
+        seconds: 30
+
+- name: Deploy Root ArgoCD Application
+  block:
+    - name: Apply root ArgoCD application
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ root_app_path }}"
+
+    - name: Display GitOps bootstrap completion status
+      ansible.builtin.debug:
+        msg: |
+          GitOps bootstrap completed successfully!
+          
+          ArgoCD is now connected to your repository: {{ git_repo_url }}
+          Root application "{{ root_app_name }}" has been deployed.
+          Azure Service Principal secret has been created (if credentials were provided).
+          
+          External Secrets Operator and related resources will be deployed by ArgoCD applications.
+          
+          Check ArgoCD UI for application status:
+          kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 8080:443

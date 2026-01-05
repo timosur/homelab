@@ -1,0 +1,64 @@
+---
+- name: Setup ArgoCD and GitOps for Home K3s Cluster
+  hosts: k3s_control_plane
+  become: false
+  gather_facts: false
+  
+  vars:
+    # ArgoCD configuration
+    argocd_version: "v3.2.3"
+    argocd_namespace: "argocd"
+    
+    # GitOps configuration
+    git_repo_url: "https://github.com/timosur/homelab.git"
+    root_app_path: "{{ playbook_dir }}/../apps/root-home.yaml"
+    
+    # Azure configuration, is getting overwritten from gh action created inventory
+    # azure_client_id: "{{ vault_azure_client_id | default('') }}"
+    # azure_client_secret: "{{ vault_azure_client_secret | default('') }}"
+    # azure_tenant_id: "{{ vault_azure_tenant_id | default('') }}"
+    # azure_subscription_id: "{{ vault_azure_subscription_id | default('') }}"
+    # azure_keyvault_name: "{{ vault_azure_keyvault_name | default('') }}"
+
+  pre_tasks:
+    - name: Ensure kubectl is available
+      ansible.builtin.command: kubectl version --client
+      register: kubectl_check
+      failed_when: kubectl_check.rc != 0
+      changed_when: false
+
+    - name: Check k3s cluster connectivity
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Node
+      register: cluster_nodes
+
+    - name: Display cluster information
+      ansible.builtin.debug:
+        msg: "Connected to k3s cluster with {{ cluster_nodes.resources | length }} node(s)"
+
+  roles:
+    - role: argocd-install
+      tags: ['argocd', 'install']
+
+    - role: gitops-setup
+      tags: ['gitops', 'setup']
+
+  post_tasks:
+    - name: Display setup completion information
+      ansible.builtin.debug:
+        msg: |
+          ================================================================
+          ArgoCD and GitOps setup completed!
+          
+          Next steps:
+          1. Access ArgoCD UI:
+             kubectl port-forward svc/argocd-server -n argocd 8080:443
+             
+          2. Get admin password:
+             kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+             
+          3. Open https://localhost:8080 and login with username 'admin'
+          
+          4. Monitor applications deployment in ArgoCD UI
+          ================================================================
