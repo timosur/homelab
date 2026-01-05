@@ -1,10 +1,11 @@
 # TODOs
 
+- Reduce number of servers
+- Move away from cnpg to one central postgresql instance to reduce storage cost? Or maybe just use one pod per cluster?
+
 ## Pangolin
 
-- How can I expose the gerbil TCP/UDP routes to the public on the same domain?
-  -> Currently cilium gateway API does not support UDPRoutes and the Hetzner LB also does not support UDP
-  -> Maybe I need to switch to MetalLB? How do I then get a public IP for my setup? Would I need to open a Port directly to my VM? This would mean gerbil could only run on one single node?
+- Setup on seperate hetzner server
 
 ## Apps to be installed locally
 

@@ -1,0 +1,24 @@
+---
+# Default variables for gitops-setup role
+
+# ArgoCD configuration
+argocd_namespace: "argocd"
+argocd_wait_timeout: 300
+
+# Repository configuration
+git_repo_url: "https://github.com/timosur/homelab.git"
+git_repo_name: "homelab-repo"
+
+# Root application configuration
+root_app_path: "apps/root-home.yaml"
+root_app_name: "root"
+
+# Azure Key Vault configuration
+azure_tenant_id: ""
+azure_subscription_id: ""
+azure_keyvault_name: ""
+azure_client_id: ""
+azure_client_secret: ""
+
+# External Secrets configuration
+external_secrets_namespace: "external-secrets-system"

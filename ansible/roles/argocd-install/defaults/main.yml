@@ -1,0 +1,17 @@
+---
+# Default variables for argocd-install role
+
+# ArgoCD version
+argocd_version: "v3.2.3"
+
+# Namespace for ArgoCD
+argocd_namespace: "argocd"
+
+# ArgoCD installation method: "manifest" or "helm"
+argocd_install_method: "manifest"
+
+# Manifest URL for ArgoCD
+argocd_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml"
+
+# Wait timeout for ArgoCD readiness (seconds)
+argocd_wait_timeout: 300
