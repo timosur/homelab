@@ -1,6 +1,6 @@
 ---
 - name: Setup ArgoCD and GitOps for Home K3s Cluster
-  hosts: k3s_control_plane
+  hosts: control_plane
   become: false
   gather_facts: false
   
