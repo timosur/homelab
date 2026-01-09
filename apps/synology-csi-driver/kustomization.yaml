@@ -8,6 +8,8 @@ resources:
   - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/controller.yml
   - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/node.yml
   - external-secret.yaml
+  - smb-credentials-secret.yaml
+  - storage-class-smb.yaml
 
 # Install in the synology-csi namespace
 namespace: synology-csi
@@ -18,3 +20,10 @@ patches:
       kind: Namespace
       name: synology-csi
     path: namespace-patch.yaml
+  - target:
+      kind: StorageClass
+      name: storage-box-smb
+    patch: |-
+      - op: replace
+        path: /parameters/dsm
+        value: "192.168.1.100"  # Replace with your actual Synology IP
