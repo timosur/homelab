@@ -7,3 +7,4 @@ resources:
   - external-secrets-app.yaml
   - garden-app.yaml
   - smb-csi-driver-app.yaml
+  - synology-csi-driver-app.yaml

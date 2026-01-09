@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/namespace.yml
+  - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/rbac.yml
+  - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/storage-class.yml
+  - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/controller.yml
+  - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/node.yml
+  - external-secret.yaml
+
+# Install in the synology-csi namespace
+namespace: synology-csi
+
+# Add pod security labels to the namespace
+patchesStrategicMerge:
+  - namespace-patch.yaml
