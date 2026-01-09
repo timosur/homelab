@@ -245,7 +245,19 @@ namespace: <app-name>
 
 ## 3. ArgoCD Integration
 
-### 3.1 Create ArgoCD Application (`apps/_argocd/<app-name>-app.yaml`)
+### 3.1 Environment-Specific Deployment
+
+The homelab supports three deployment patterns:
+
+1. **Shared Apps** (`apps/_argocd/`): Deploy to Hetzner environment only
+2. **Home Apps** (`apps/_argocd-home/`): Deploy to home environment only  
+3. **Shared Manifests** (`apps/<app-name>/`): Can be referenced by both environments
+
+Choose the appropriate directory based on where the app should be deployed:
+
+#### 3.1.1 Hetzner-Only Apps (`apps/_argocd/<app-name>-app.yaml`)
+
+For apps that should only run in the Hetzner cloud environment:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -269,9 +281,46 @@ spec:
       - CreateNamespace=true
 ```
 
-### 3.2 Update ArgoCD Kustomization (`apps/_argocd/kustomization.yaml`)
+#### 3.1.2 Home-Only Apps (`apps/_argocd-home/<app-name>-app.yaml`)
 
-Add the new app to the resources list:
+For apps that should only run in the home environment:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: <app-name>
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/timosur/homelab.git
+    targetRevision: HEAD
+    path: apps/<app-name>
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+#### 3.1.3 Environment-Specific Manifests
+
+When apps need different configurations per environment, create environment-specific manifests:
+
+- `apps/<app-name>-home/` - Home-specific manifests
+- `apps/<app-name>-hetzner/` - Hetzner-specific manifests
+
+Then reference the appropriate path in the ArgoCD application.
+
+### 3.2 Update ArgoCD Kustomization
+
+Add the new app to the appropriate kustomization file:
+
+#### For Hetzner Apps (`apps/_argocd/kustomization.yaml`):
 
 ```yaml
 resources:
@@ -283,6 +332,17 @@ resources:
   - open-webui-app.yaml
   - n8n-app.yaml
   - garden-app.yaml
+  - <app-name>-app.yaml # Add this line
+```
+
+#### For Home Apps (`apps/_argocd-home/kustomization.yaml`):
+
+```yaml
+resources:
+  - cloudnative-pg-app.yaml
+  - external-secrets-app.yaml
+  - garden-app.yaml
+  - smb-csi-driver-app.yaml
   - <app-name>-app.yaml # Add this line
 ```
 
@@ -388,7 +448,10 @@ Point `<app-name>.timosur.com` to your cluster's external IP address.
 ### Pre-deployment:
 
 - [ ] All manifests created in `apps/<app-name>/`
-- [ ] ArgoCD application created and added to kustomization
+- [ ] ArgoCD application created in appropriate directory:
+  - [ ] `apps/_argocd/` for Hetzner-only apps
+  - [ ] `apps/_argocd-home/` for home-only apps
+- [ ] ArgoCD application added to correct kustomization file
 - [ ] HTTP route created and added to kustomization
 - [ ] Gateway listeners added
 - [ ] Cluster issuer solver added
