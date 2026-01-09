@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
   - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/namespace.yml
-  - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/rbac.yml
+  - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/csi-driver.yml
   - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/storage-class.yml
   - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/controller.yml
   - https://raw.githubusercontent.com/SynologyOpenSource/synology-csi/v1.2.1/deploy/kubernetes/v1.20/node.yml
@@ -13,5 +13,8 @@ resources:
 namespace: synology-csi
 
 # Add pod security labels to the namespace
-patchesStrategicMerge:
-  - namespace-patch.yaml
+patches:
+  - target:
+      kind: Namespace
+      name: synology-csi
+    path: namespace-patch.yaml
