@@ -6,7 +6,7 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "false"
 parameters:
   dsm: "192.168.1.26"
-  location: "/k3s"
+  location: "/volume1"
   fsType: "btrfs"
   protocol: iSCSI
 provisioner: csi.san.synology.com
@@ -21,7 +21,7 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "false"
 parameters:
   dsm: "192.168.1.26"
-  location: "/k3s"
+  location: "/volume1"
   fsType: "btrfs"
   protocol: iSCSI
 provisioner: csi.san.synology.com
