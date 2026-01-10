@@ -76,7 +76,8 @@ spec:
               path: /health
               port: 8001
             initialDelaySeconds: 5
-            periodSeconds: 10
+            periodSeconds: 60
+
       volumes:
         - name: rmapi-config
           persistentVolumeClaim:
