@@ -1,0 +1,23 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy-home
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: envoy-gateway-home
+  namespace: envoy-gateway-system
+spec:
+  gatewayClassName: envoy-home
+  listeners:
+    # Central HTTP listener for all home services
+    - name: http
+      port: 80
+      protocol: HTTP
+      hostname: "*.home.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
