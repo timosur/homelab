@@ -30,46 +30,27 @@ spec:
             # Limit to home gateway
             - --gateway-namespace=envoy-gateway-system
             - --gateway-label-filter=app.kubernetes.io/name=envoy-gateway-home
-            # Azure DNS provider
-            - --provider=azure
-            - --azure-resource-group=$(AZURE_RESOURCE_GROUP)
-            - --azure-subscription-id=$(AZURE_SUBSCRIPTION_ID)
+            # Cloudflare provider configuration
+            - --provider=cloudflare
+            - --registry=txt
+            - --txt-owner-id=homelab-k8s
+            - --txt-prefix=external-dns-
+            # Cloudflare specific settings
+            - --cloudflare-record-comment="provisioned by external-dns"
             # Home domain filter
             - --domain-filter=home.timosur.com
-            - --txt-prefix=home-
-            - --txt-owner-id=home-cluster
-            # Kubernetes settings
-            - --log-format=text
-            - --log-level=info
-            - --policy=sync
-            - --registry=txt
-            - --interval=1m
+            # Log level for debugging
+            - --log-level=debug
+            # Sync policy - use upsert-only for safety
+            - --policy=upsert-only
+            # Increase sync interval to reduce log spam
+            - --interval=2m
           env:
-            - name: AZURE_CLIENT_ID
+            - name: CF_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: azure-dns-secret
-                  key: client-id
-            - name: AZURE_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: azure-dns-secret
-                  key: client-secret
-            - name: AZURE_TENANT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: azure-dns-secret
-                  key: tenant-id
-            - name: AZURE_SUBSCRIPTION_ID
-              valueFrom:
-                secretKeyRef:
-                  name: azure-dns-secret
-                  key: subscription-id
-            - name: AZURE_RESOURCE_GROUP
-              valueFrom:
-                secretKeyRef:
-                  name: azure-dns-secret
-                  key: resource-group
+                  name: cloudflare-api-token
+                  key: CF_API_TOKEN
           resources:
             requests:
               memory: "64Mi"
