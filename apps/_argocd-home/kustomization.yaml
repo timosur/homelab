@@ -9,3 +9,4 @@ resources:
   - networking-home-app.yaml
   - smb-csi-driver-app.yaml
   - synology-csi-driver-app.yaml
+  - vinyl-manager-app.yaml
