@@ -6,5 +6,6 @@ resources:
   - envoy-gateway-app.yaml
   - external-secrets-app.yaml
   - garden-app.yaml
+  - networking-home-app.yaml
   - smb-csi-driver-app.yaml
   - synology-csi-driver-app.yaml
