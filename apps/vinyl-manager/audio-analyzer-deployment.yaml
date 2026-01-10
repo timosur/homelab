@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vinyl-audio-analyzer
+  namespace: vinyl-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vinyl-audio-analyzer
+  template:
+    metadata:
+      labels:
+        app: vinyl-audio-analyzer
+    spec:
+      containers:
+        - name: vinyl-audio-analyzer
+          image: ghcr.io/timosur/vinyl-manager/audio-analyzer:sha-14b541a
+          ports:
+            - containerPort: 5000
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+            requests:
+              memory: "512Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10

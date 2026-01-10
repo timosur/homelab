@@ -1,0 +1,21 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: vinyl-manager-postgres
+  namespace: vinyl-manager
+spec:
+  instances: 1
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+  bootstrap:
+    initdb:
+      database: vinyl_manager
+      owner: vinyl_manager
+      secret:
+        name: vinyl-manager-postgres-credentials
+  storage:
+    size: 10Gi
+    storageClass: storage-box-smb

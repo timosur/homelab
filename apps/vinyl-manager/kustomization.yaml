@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - external-secret.yaml
+  - configmap.yaml
+  - secret.yaml
+  - frontend-deployment.yaml
+  - backend-deployment.yaml
+  - audio-analyzer-deployment.yaml
+  - frontend-service.yaml
+  - backend-service.yaml
+  - audio-analyzer-service.yaml
+
+namespace: vinyl-manager

@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vinyl-backend
+  namespace: vinyl-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vinyl-backend
+  template:
+    metadata:
+      labels:
+        app: vinyl-backend
+    spec:
+      containers:
+        - name: vinyl-backend
+          image: ghcr.io/timosur/vinyl-manager/backend:sha-14b541a
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: vinyl-manager-config
+            - secretRef:
+                name: vinyl-manager-backend-secret
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+            requests:
+              memory: "512Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10

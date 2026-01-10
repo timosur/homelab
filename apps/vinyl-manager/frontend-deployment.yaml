@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vinyl-frontend
+  namespace: vinyl-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vinyl-frontend
+  template:
+    metadata:
+      labels:
+        app: vinyl-frontend
+    spec:
+      containers:
+        - name: vinyl-frontend
+          image: ghcr.io/timosur/vinyl-manager/frontend:sha-14b541a
+          ports:
+            - containerPort: 3000
+          env:
+            - name: API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: vinyl-manager-config
+                  key: API_URL
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
