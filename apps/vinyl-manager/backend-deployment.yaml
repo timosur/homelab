@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: vinyl-backend
-          image: ghcr.io/timosur/vinyl-manager/backend:sha-4df9843
+          image: ghcr.io/timosur/vinyl-manager/backend:sha-c393f61
           ports:
             - containerPort: 8000
           envFrom:
