@@ -6,7 +6,6 @@ metadata:
 data:
   # Backend configuration
   ENV: "production"
-  DATABASE_URL: "postgresql://vinyl_manager:${POSTGRES_PASSWORD}@vinyl-manager-postgres-rw:5432/vinyl_manager"
   AUDIO_ANALYZER_URL: "http://vinyl-audio-analyzer:5000"
   # Frontend configuration
   API_URL: "http://vinyl-backend:8000"

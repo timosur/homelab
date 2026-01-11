@@ -1,0 +1,7 @@
+{
+  "chat.tools.terminal.autoApprove": {
+    "kubectl get": true,
+    "base64": true,
+    "kubectl exec": true
+  }
+}
