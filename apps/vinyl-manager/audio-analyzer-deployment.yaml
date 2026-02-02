@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: vinyl-audio-analyzer
-          image: ghcr.io/timosur/vinyl-manager/audio-analyzer:sha-c393f61
+          image: ghcr.io/timosur/vinyl-manager/audio-analyzer:sha-c393f61@sha256:90ab7adb4f573fc4a9376a5152343fbe15a4db3eb3d06ed1b46a0ed6c709a477
           ports:
             - containerPort: 5000
           resources:
