@@ -86,7 +86,7 @@ module "kube-hetzner" {
     {
       name        = "workers-arm"
       server_type = "cax21"
-      location    = "fsn1"
+      location    = "nbg1"
       count       = 1
       labels      = ["arch=arm64", "workload-type=arm"]
       taints      = []
