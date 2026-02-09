@@ -81,22 +81,22 @@ module "kube-hetzner" {
   ]
 
   agent_nodepools = [
-    {
-      name        = "workers-arm"
-      server_type = "cax21"
-      location    = "nbg1"
-      count       = 1
-      labels      = ["arch=arm64", "workload-type=arm"]
-      taints      = []
-    },
-    {
-      name        = "workers-amd"
-      server_type = "cx33"
-      location    = "nbg1"
-      count       = 1
-      labels      = ["arch=amd64", "workload-type=amd"]
-      taints      = []
-    }
+    # {
+    #   name        = "workers-arm"
+    #   server_type = "cax21"
+    #   location    = "nbg1"
+    #   count       = 1
+    #   labels      = ["arch=arm64", "workload-type=arm"]
+    #   taints      = []
+    # },
+    # {
+    #   name        = "workers-amd"
+    #   server_type = "cx33"
+    #   location    = "nbg1"
+    #   count       = 1
+    #   labels      = ["arch=amd64", "workload-type=amd"]
+    #   taints      = []
+    # }
   ]
 
   # ——— Networking / LB ———
