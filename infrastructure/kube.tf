@@ -68,8 +68,6 @@ module "kube-hetzner" {
   ssh_public_key  = file(var.ssh_public_key_file)
   ssh_private_key = null
 
-  allow_scheduling_on_control_plane = true
-
   # —— Node pools ——
   control_plane_nodepools = [
     {
@@ -89,6 +87,14 @@ module "kube-hetzner" {
       location    = "nbg1"
       count       = 1
       labels      = ["arch=arm64", "workload-type=arm"]
+      taints      = []
+    },
+    {
+      name        = "workers-amd"
+      server_type = "cx33"
+      location    = "nbg1"
+      count       = 1
+      labels      = ["arch=amd64", "workload-type=amd"]
       taints      = []
     }
   ]
