@@ -68,6 +68,8 @@ module "kube-hetzner" {
   ssh_public_key  = file(var.ssh_public_key_file)
   ssh_private_key = null
 
+  allow_scheduling_on_control_plane = true
+
   # —— Node pools ——
   control_plane_nodepools = [
     {
@@ -81,14 +83,6 @@ module "kube-hetzner" {
   ]
 
   agent_nodepools = [
-    {
-      name        = "workers-v2"
-      server_type = "cx33"
-      location    = "fsn1"
-      count       = 1
-      labels      = []
-      taints      = []
-    },
     {
       name        = "workers-arm"
       server_type = "cax21"
