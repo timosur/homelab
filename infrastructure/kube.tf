@@ -89,7 +89,7 @@ module "kube-hetzner" {
   cni_plugin         = "cilium"
   disable_kube_proxy = true
 
-  enable_klipper_metal_lb = false
+  enable_klipper_metal_lb = true
 
   cilium_version = "1.18.1"
   cilium_values  = <<EOT
@@ -162,8 +162,8 @@ operator:
       effect: NoSchedule
 EOT
 
-  load_balancer_type     = "lb11"
-  load_balancer_location = "fsn1"
+  # Disable Hetzner external LB (using Klipper instead)
+  load_balancer_disable = true
 
   # Disable ingress controller (using Envoy Gateway)
   ingress_controller = "none"
