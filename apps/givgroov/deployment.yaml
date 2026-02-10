@@ -17,7 +17,7 @@ spec:
         kubernetes.io/arch: arm64
       containers:
         - name: givgroov
-          image: ghcr.io/timosur/givgroov:sha-6b6f8f6@sha256:4e047fc17be242557a595693fb7eaf6f2f3b46525efc3d5453c69ab4f6d6a49b
+          image: ghcr.io/timosur/givgroov:sha-dd4b56b
           ports:
             - containerPort: 80
           resources:
