@@ -98,7 +98,7 @@ spec:
           volumes:
             - name: backup-storage
               hostPath:
-                path: /mnt/garden/backups
+                path: /var/lib/garden/backups
                 type: DirectoryOrCreate
 ---
 apiVersion: v1

@@ -84,11 +84,11 @@ spec:
       volumes:
         - name: backend-input
           hostPath:
-            path: /mnt/garden/input
+            path: /var/lib/garden/input
             type: DirectoryOrCreate
         - name: backend-output
           hostPath:
-            path: /mnt/garden/output
+            path: /var/lib/garden/output
             type: DirectoryOrCreate
         - name: backend-db
           persistentVolumeClaim:
