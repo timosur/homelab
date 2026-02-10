@@ -97,8 +97,9 @@ spec:
                   mountPath: /backups
           volumes:
             - name: backup-storage
-              persistentVolumeClaim:
-                claimName: garden-backup-storage
+              hostPath:
+                path: /mnt/garden/backups
+                type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: ServiceAccount
