@@ -68,6 +68,9 @@ module "kube-hetzner" {
   ssh_public_key  = file(var.ssh_public_key_file)
   ssh_private_key = null
 
+  # Allow scheduling on control plane, currently fsn1 region is disabled for new servers
+  allow_scheduling_on_control_plane = true
+
   # —— Node pools ——
   control_plane_nodepools = [
     {
@@ -75,29 +78,12 @@ module "kube-hetzner" {
       server_type = "cax21"
       location    = "fsn1"
       count       = 1
-      labels      = []
+      labels      = ["workload-type=arm"]
       taints      = []
     }
   ]
 
-  agent_nodepools = [
-    # {
-    #   name        = "workers-arm"
-    #   server_type = "cax21"
-    #   location    = "fsn1"
-    #   count       = 1
-    #   labels      = ["arch=arm64", "workload-type=arm"]
-    #   taints      = []
-    # },
-    # {
-    #   name        = "workers-amd"
-    #   server_type = "cx33"
-    #   location    = "fsn1"
-    #   count       = 1
-    #   labels      = ["arch=amd64", "workload-type=amd"]
-    #   taints      = []
-    # }
-  ]
+  agent_nodepools = []
 
   # ——— Networking / LB ———
   cni_plugin         = "cilium"
