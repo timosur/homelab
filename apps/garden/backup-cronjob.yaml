@@ -24,11 +24,11 @@ spec:
               command: ["sh", "-c"]
               args:
                 - |
-                  # Get the backend pod name
-                  POD_NAME=$(kubectl get pods -n garden -l app=garden-backend -o jsonpath='{.items[0].metadata.name}')
+                  # Get the backend pod name (only select Running pods)
+                  POD_NAME=$(kubectl get pods -n garden -l app=garden-backend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
 
                   if [ -z "$POD_NAME" ]; then
-                    echo "No backend pod found"
+                    echo "No running backend pod found"
                     exit 1
                   fi
 
