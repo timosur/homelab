@@ -8,7 +8,7 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyDeployment:
-        replicas: 2
+        replicas: 3
         pod:
           tolerations:
             # Allow scheduling on control-plane nodes
@@ -20,11 +20,9 @@ spec:
               effect: NoSchedule
           affinity:
             podAntiAffinity:
-              preferredDuringSchedulingIgnoredDuringExecution:
-                - weight: 100
-                  podAffinityTerm:
-                    labelSelector:
-                      matchLabels:
-                        app.kubernetes.io/name: envoy
-                        app.kubernetes.io/component: proxy
-                    topologyKey: kubernetes.io/hostname
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: envoy
+                      app.kubernetes.io/component: proxy
+                  topologyKey: kubernetes.io/hostname
