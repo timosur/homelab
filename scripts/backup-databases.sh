@@ -11,7 +11,7 @@
 set -euo pipefail
 
 # Configuration
-BACKUP_BASE_DIR="${BACKUP_BASE_DIR:-$HOME/homelab-backups}"
+BACKUP_BASE_DIR="${BACKUP_BASE_DIR:-/Volumes/home/Backup/homelab-backups}"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_DIR="${BACKUP_BASE_DIR}/${TIMESTAMP}"
 RETAIN_DAYS="${RETAIN_DAYS:-7}"  # Number of days to keep backups
