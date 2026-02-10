@@ -81,11 +81,11 @@ spec:
       volumes:
         - name: rmapi-config
           hostPath:
-            path: /mnt/garden/rmapi-config
+            path: /var/lib/garden/rmapi-config
             type: DirectoryOrCreate
         - name: rmapi-data
           hostPath:
-            path: /mnt/garden/rmapi-data
+            path: /var/lib/garden/rmapi-data
             type: DirectoryOrCreate
         - name: rmapi-uploads
           emptyDir: {}
