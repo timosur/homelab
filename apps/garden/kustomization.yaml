@@ -6,7 +6,6 @@ namespace: garden
 resources:
   - namespace.yaml
   - pvc.yaml
-  - backup-pvc.yaml
   - backend-configmap.yaml
   - backend-external-secret.yaml
   - rmapi-external-secret.yaml

@@ -80,10 +80,12 @@ spec:
 
       volumes:
         - name: rmapi-config
-          persistentVolumeClaim:
-            claimName: garden-rmapi-config
+          hostPath:
+            path: /mnt/garden/rmapi-config
+            type: DirectoryOrCreate
         - name: rmapi-data
-          persistentVolumeClaim:
-            claimName: garden-rmapi-data
+          hostPath:
+            path: /mnt/garden/rmapi-data
+            type: DirectoryOrCreate
         - name: rmapi-uploads
           emptyDir: {}

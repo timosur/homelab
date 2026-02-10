@@ -1,32 +1,6 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: garden-backend-input
-  namespace: garden
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  storageClassName: storage-box-smb
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: garden-backend-output
-  namespace: garden
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: storage-box-smb
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
   name: garden-backend-db
   namespace: garden
 spec:
@@ -36,29 +10,3 @@ spec:
     requests:
       storage: 5Gi
   storageClassName: hcloud-volumes
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: garden-rmapi-config
-  namespace: garden
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  storageClassName: storage-box-smb
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: garden-rmapi-data
-  namespace: garden
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  storageClassName: storage-box-smb
