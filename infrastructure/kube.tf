@@ -171,11 +171,11 @@ EOT
 crds:
   enabled: true
   keep: true
-replicaCount: 3
+replicaCount: 1
 webhook:
-  replicaCount: 3
+  replicaCount: 1
 cainjector:
-  replicaCount: 3
+  replicaCount: 1
 config:
   enableGatewayAPI: true
 EOT
