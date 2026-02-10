@@ -162,9 +162,6 @@ operator:
       effect: NoSchedule
 EOT
 
-  # Disable Hetzner external LB (using Klipper instead)
-  load_balancer_disable = true
-
   # Disable ingress controller (using Envoy Gateway)
   ingress_controller = "none"
 
