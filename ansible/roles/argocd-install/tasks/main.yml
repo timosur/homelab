@@ -22,6 +22,32 @@
     definition: "{{ lookup('file', '/tmp/argocd-install.yaml') | from_yaml_all | list }}"
     namespace: "{{ argocd_namespace }}"
 
+- name: Configure ArgoCD server to run in insecure mode (no TLS redirect)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cmd-params-cm
+        namespace: "{{ argocd_namespace }}"
+      data:
+        server.insecure: "true"
+
+- name: Restart ArgoCD server to pick up insecure mode config
+  kubernetes.core.k8s:
+    state: present
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-server
+    namespace: "{{ argocd_namespace }}"
+    definition:
+      spec:
+        template:
+          metadata:
+            annotations:
+              kubectl.kubernetes.io/restartedAt: "{{ ansible_date_time.iso8601 }}"
+
 - name: Wait for ArgoCD server deployment to be ready
   kubernetes.core.k8s_info:
     api_version: apps/v1
