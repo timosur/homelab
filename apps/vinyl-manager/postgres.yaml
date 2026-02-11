@@ -17,5 +17,5 @@ spec:
       secret:
         name: vinyl-manager-postgres-credentials
   storage:
-    size: 10Gi
+    size: 100Gi
     storageClass: storage-box-smb
