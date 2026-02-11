@@ -10,3 +10,4 @@ resources:
   - smb-csi-driver-app.yaml
   - synology-csi-driver-app.yaml
   - vinyl-manager-app.yaml
+  - home-assistant-app.yaml
