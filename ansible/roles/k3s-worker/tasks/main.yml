@@ -1,3 +1,16 @@
+- name: Install open-iscsi for Synology CSI iSCSI support
+  ansible.builtin.package:
+    name: open-iscsi
+    state: present
+  become: true
+
+- name: Enable and start iscsid service
+  ansible.builtin.systemd:
+    name: iscsid
+    state: started
+    enabled: true
+  become: true
+
 - name: Check if k3s is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/k3s
