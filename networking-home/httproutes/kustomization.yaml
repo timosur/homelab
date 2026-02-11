@@ -5,3 +5,4 @@ resources:
   - garden-httproute.yaml
   - argocd-httproute.yaml
   - vinyl-manager-httproute.yaml
+  - home-assistant-httproute.yaml
