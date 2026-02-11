@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pi-hole
+  namespace: pi-hole
+  labels:
+    app: pi-hole
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: pi-hole
+  template:
+    metadata:
+      labels:
+        app: pi-hole
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd
+      containers:
+        - name: pi-hole
+          image: pihole/pihole:latest
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: DNSMASQ_USER
+              value: root
+            - name: PIHOLE_UID
+              value: "0"
+            - name: WEBPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pi-hole-admin
+                  key: password
+          ports:
+            - name: dns-tcp
+              containerPort: 53
+              hostPort: 53
+              protocol: TCP
+            - name: dns-udp
+              containerPort: 53
+              hostPort: 53
+              protocol: UDP
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /admin
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 60
+            failureThreshold: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /admin
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /etc/pihole
+            - name: dnsmasq
+              mountPath: /etc/dnsmasq.d
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: pi-hole-data
+        - name: dnsmasq
+          persistentVolumeClaim:
+            claimName: pi-hole-dnsmasq

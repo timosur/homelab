@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pi-hole-data
+  namespace: pi-hole
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: local-path
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pi-hole-dnsmasq
+  namespace: pi-hole
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 512Mi
+  storageClassName: local-path

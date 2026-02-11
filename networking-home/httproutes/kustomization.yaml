@@ -6,3 +6,4 @@ resources:
   - argocd-httproute.yaml
   - vinyl-manager-httproute.yaml
   - home-assistant-httproute.yaml
+  - pi-hole-httproute.yaml

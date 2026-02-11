@@ -11,3 +11,4 @@ resources:
   - synology-csi-driver-app.yaml
   - vinyl-manager-app.yaml
   - home-assistant-app.yaml
+  - pi-hole-app.yaml
