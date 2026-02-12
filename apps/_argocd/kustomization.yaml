@@ -11,7 +11,6 @@ resources:
   - envoy-gateway-app.yaml
   - mealie-app.yaml
   - open-webui-app.yaml
-  - garden-app.yaml
   - portfolio-app.yaml
   - givgroov-app.yaml
   - actual-app.yaml
