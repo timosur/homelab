@@ -17,6 +17,8 @@ spec:
       labels:
         app: pi-hole
     spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/hostname: homelab-amd
       containers:
@@ -29,6 +31,10 @@ spec:
               value: root
             - name: PIHOLE_UID
               value: "0"
+            - name: FTLCONF_dns_listeningMode
+              value: "all"
+            - name: FTLCONF_webserver_port
+              value: "8080"
             - name: WEBPASSWORD
               valueFrom:
                 secretKeyRef:
@@ -37,19 +43,17 @@ spec:
           ports:
             - name: dns-tcp
               containerPort: 53
-              hostPort: 53
               protocol: TCP
             - name: dns-udp
               containerPort: 53
-              hostPort: 53
               protocol: UDP
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
           livenessProbe:
             httpGet:
               path: /admin
-              port: 80
+              port: 8080
               scheme: HTTP
             initialDelaySeconds: 60
             failureThreshold: 5
@@ -58,7 +62,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /admin
-              port: 80
+              port: 8080
               scheme: HTTP
             initialDelaySeconds: 30
             periodSeconds: 10

@@ -16,4 +16,4 @@ spec:
             value: /
       backendRefs:
         - name: pi-hole-web
-          port: 80
+          port: 8080
