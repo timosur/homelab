@@ -18,26 +18,26 @@ spec:
       nodeSelector:
         workload-type: arm
       containers:
-      - name: garden-frontend
-        image: ghcr.io/timosur/life-as-a-garden/frontend:sha-81e6faf@sha256:fa4b6263c0c6d08412924637dde933c44caa163c5772c0c3d0e6fe6680a1535f
-        ports:
-        - containerPort: 80
-        resources:
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 10
-          periodSeconds: 60
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 10
+        - name: garden-frontend
+          image: ghcr.io/timosur/life-as-a-garden/frontend:sha-6f3d356
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
