@@ -10,11 +10,10 @@ spec:
   hostnames:
     - "garden.home.timosur.com"
   rules:
-    # All routes go through nginx auth proxy
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: garden-nginx-auth
+        - name: garden-nginx
           port: 80
