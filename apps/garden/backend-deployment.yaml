@@ -19,7 +19,7 @@ spec:
         workload-type: arm
       containers:
         - name: garden-backend
-          image: ghcr.io/timosur/life-as-a-garden/backend:sha-cf6eb53
+          image: ghcr.io/timosur/life-as-a-garden/backend:sha-cf6eb53@sha256:de87797b5e43ddca5299b99aaa7d18c932139eca347aaac8e2e2690d1343679d
           command:
             [
               "fastapi",
