@@ -20,6 +20,18 @@ spec:
       containers:
         - name: garden-backend
           image: ghcr.io/timosur/life-as-a-garden/backend:sha-cf6eb53
+          command:
+            [
+              "fastapi",
+              "run",
+              "main.py",
+              "--host",
+              "0.0.0.0",
+              "--port",
+              "8000",
+              "--workers",
+              "2",
+            ]
           ports:
             - containerPort: 8000
           env:
