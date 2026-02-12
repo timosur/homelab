@@ -13,3 +13,8 @@ data:
   SMTP_PORT: "587"
   NOTIFICATION_EMAIL: lebensgarten@timosur.com
   EMAIL_NOTIFICATIONS_ENABLED: "true"
+  # Database configuration
+  DB_HOST: garden-postgres-rw
+  DB_PORT: "5432"
+  DB_NAME: garden
+  DB_USER: garden

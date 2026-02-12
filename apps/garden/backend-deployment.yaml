@@ -17,22 +17,6 @@ spec:
     spec:
       nodeSelector:
         workload-type: arm
-      initContainers:
-        - name: init-db
-          image: busybox:1.37
-          command: ["sh", "-c"]
-          args:
-            - |
-              # Check if database already exists
-              if [ ! -f /app/db/database.db ]; then
-                echo "Initializing database directory..."
-                mkdir -p /app/db
-              else
-                echo "Database already exists, skipping initialization"
-              fi
-          volumeMounts:
-            - name: backend-db
-              mountPath: /app/db
       containers:
         - name: garden-backend
           image: ghcr.io/timosur/life-as-a-garden/backend:sha-81e6faf@sha256:3564be0149fea92920f74dc78210ea5aa041d62bdcc4fa1a5c2970ab6ab94b07
@@ -52,13 +36,13 @@ spec:
                 name: garden-backend-config
             - secretRef:
                 name: garden-backend-secrets
+            - secretRef:
+                name: garden-postgres-password
           volumeMounts:
             - name: backend-input
               mountPath: /app/input
             - name: backend-output
               mountPath: /app/output
-            - name: backend-db
-              mountPath: /app/db
           resources:
             limits:
               memory: "1Gi"
@@ -90,6 +74,3 @@ spec:
           hostPath:
             path: /var/lib/garden/output
             type: DirectoryOrCreate
-        - name: backend-db
-          persistentVolumeClaim:
-            claimName: garden-backend-db
