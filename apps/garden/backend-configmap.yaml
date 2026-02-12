@@ -7,7 +7,7 @@ data:
   TZ: "Europe/Berlin"
   PYTHONPATH: /app
   PYTHONUNBUFFERED: "1"
-  FRONTEND_URL: http://garden-frontend:80
+  FRONTEND_URL: http://garden-nginx:80
   RMAPI_SERVICE_URL: http://garden-rmapi-wrapper:8001
   SMTP_HOST: smtp.gmail.com
   SMTP_PORT: "587"
