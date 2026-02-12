@@ -34,15 +34,6 @@ spec:
             ]
           ports:
             - containerPort: 8000
-          env:
-            - name: PYTHONPATH
-              value: "/app"
-            - name: PYTHONUNBUFFERED
-              value: "1"
-            - name: FRONTEND_URL
-              value: "http://garden-frontend:80"
-            - name: RMAPI_SERVICE_URL
-              value: "http://garden-rmapi-wrapper:8001"
           envFrom:
             - configMapRef:
                 name: garden-backend-config
