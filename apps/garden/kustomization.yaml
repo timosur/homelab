@@ -5,10 +5,12 @@ namespace: garden
 
 resources:
   - namespace.yaml
-  - pvc.yaml
   - backend-configmap.yaml
   - backend-external-secret.yaml
   - rmapi-external-secret.yaml
+  - postgres.yaml
+  - postgres-external-secret.yaml
+  - postgres-password-secret.yaml
   - nginx-auth-configmap.yaml
   - nginx-auth-external-secret.yaml
   - backend-deployment.yaml
