@@ -1,24 +1,238 @@
-# Homelab App Onboarding Guide
+# Creating a New App for the Homelab
 
-This guide documents the complete process for adding a new application to the homelab setup. Follow this checklist to ensure all components are properly configured.
+This guide covers everything needed to deploy a new application in the homelab infrastructure — from setting up the app repository to registering it in the homelab repo.
 
-## Prerequisites
+---
 
-- Application Docker image available
-- Understanding of the app's requirements (database, volumes, environment variables)
-- Domain name chosen (`<app>.timosur.com`)
+## Table of Contents
 
-## 1. Create App Directory Structure
+1. [Architecture Overview](#architecture-overview)
+2. [App Repository Setup](#app-repository-setup)
+3. [Homelab Manifests](#homelab-manifests)
+4. [Networking & Ingress](#networking--ingress)
+5. [Secrets Management](#secrets-management)
+6. [Database Setup](#database-setup)
+7. [Storage](#storage)
+8. [Image Updates & Renovate](#image-updates--renovate)
+9. [Registering the App in ArgoCD](#registering-the-app-in-argocd)
+10. [Common Patterns](#common-patterns)
+11. [Security Best Practices](#security-best-practices)
+12. [Checklist](#checklist)
 
-Create the main app directory:
+---
+
+## Architecture Overview
+
+```
+App Repo (GitHub)
+  └─ GitHub Actions builds Docker images → ghcr.io/timosur/<app>/<service>
+
+Homelab Repo (GitHub)
+  ├─ apps/<app-name>/          ← Kubernetes manifests (Kustomize)
+  ├─ apps/_argocd/             ← ArgoCD Application CRDs (Hetzner cluster)
+  ├─ apps/_argocd-home/        ← ArgoCD Application CRDs (Home cluster)
+  ├─ networking/httproutes/    ← HTTPRoute for Hetzner cluster
+  └─ networking-home/httproutes/ ← HTTPRoute for Home cluster
+
+ArgoCD (App of Apps)
+  └─ root.yaml → _argocd/ kustomization → <app>-app.yaml → apps/<app-name>/
+```
+
+**Deployment flow:**
+1. Push code to app repo → GitHub Actions builds & pushes multi-arch Docker images to GHCR
+2. Update image SHA in `apps/<app-name>/*-deployment.yaml` in homelab repo
+3. ArgoCD detects changes and syncs → Kubernetes deploys updated pods
+
+---
+
+## App Repository Setup
+
+### Repository Structure
+
+```
+<app-name>/
+├── .github/
+│   └── workflows/
+│       └── build-and-push-images.yml    # CI/CD pipeline
+├── backend/                              # Backend service (if applicable)
+│   ├── Dockerfile
+│   ├── main.py
+│   ├── requirements.txt
+│   └── ...
+├── frontend/                             # Frontend service (if applicable)
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── src/
+├── docker-compose.yml                    # Local development
+└── README.md
+```
+
+### Dockerfiles
+
+Every service that runs in K8s needs its own Dockerfile. Follow these conventions:
+
+**Backend (Python/FastAPI):**
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["fastapi", "run", "main.py", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+**Frontend (React/Vite → nginx):**
+```dockerfile
+# Build stage
+FROM node:18-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+### GitHub Actions CI/CD
+
+Create `.github/workflows/build-and-push-images.yml`:
+
+```yaml
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        service: [backend, frontend]  # Add all services here
+        include:
+          - service: backend
+            dockerfile: ./backend/Dockerfile
+            context: ./backend
+            image_name: backend
+          - service: frontend
+            dockerfile: ./frontend/Dockerfile
+            context: ./frontend
+            image_name: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.image_name }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64  # Multi-arch for ARM nodes
+```
+
+**Key points:**
+- Images are pushed to `ghcr.io/timosur/<repo-name>/<service>`
+- Always build **multi-platform** (`linux/amd64,linux/arm64`) — the Hetzner cluster runs on ARM (cax21)
+- Use `sha-<commit>` tags for pinned deployments in K8s
+
+### Local Development
+
+Provide a `docker-compose.yml` for local development with all services, matching the K8s architecture as closely as possible.
+
+### Health Checks
+
+Every service should expose a health endpoint:
+- Backend: `GET /health` returning `200 OK`
+- Frontend: nginx serves static files (health = responds on `/`)
+
+---
+
+## Homelab Manifests
+
+All manifests live under `apps/<app-name>/` using Kustomize.
+
+### Required Files
 
 ```
 apps/<app-name>/
+├── kustomization.yaml        # Lists all resources
+├── namespace.yaml             # Namespace definition
+├── deployment.yaml            # Deployment(s)
+└── service.yaml               # Service(s)
 ```
 
-## 2. Core Kubernetes Manifests
+### Optional Files (as needed)
 
-### 2.1 Namespace (`namespace.yaml`)
+```
+├── configmap.yaml             # Non-secret environment variables
+├── external-secret.yaml       # Secrets from Azure Key Vault
+├── secret.yaml                # Secrets derived from ExternalSecret data
+├── pvc.yaml                   # Persistent volume claims
+├── postgres.yaml              # CloudNative-PG database cluster
+├── storage-class.yaml         # Custom storage class (if needed)
+├── cronjob.yaml               # Scheduled tasks
+```
+
+### kustomization.yaml
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - external-secret.yaml
+  - secret.yaml
+  - pvc.yaml
+  - postgres.yaml
+  - deployment.yaml
+  - service.yaml
+```
+
+### namespace.yaml
 
 ```yaml
 apiVersion: v1
@@ -27,187 +241,66 @@ metadata:
   name: <app-name>
 ```
 
-### 2.2 Database (if needed) (`postgres.yaml`)
-
-Use CloudNative-PG for PostgreSQL databases:
-
-```yaml
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: <app-name>-postgres
-  namespace: <app-name>
-spec:
-  instances: 1
-  postgresql:
-    parameters:
-      max_connections: "200"
-      shared_buffers: "256MB"
-      effective_cache_size: "1GB"
-  bootstrap:
-    initdb:
-      database: <app-name>
-      owner: <app-name>
-      secret:
-        name: <app-name>-postgres-credentials
-  storage:
-    size: 10Gi # Adjust as needed
-    storageClass: hcloud-volumes
-```
-
-### 2.3 Persistent Volume Claim (`pvc.yaml`)
-
-For application data storage:
-
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: <app-name>-data
-  namespace: <app-name>
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 25Gi # Adjust size as needed
-  storageClassName: hcloud-volumes
-```
-
-### 2.4 External Secrets (`external-secret.yaml`, `secret.yaml`)
-
-**For PostgreSQL credentials** (`external-secret.yaml`):
-
-```yaml
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: <app-name>-postgres-credentials
-  namespace: <app-name>
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: azure-keyvault-store
-    kind: ClusterSecretStore
-  target:
-    name: <app-name>-postgres-credentials
-    creationPolicy: Owner
-    template:
-      type: kubernetes.io/basic-auth
-  data:
-    - secretKey: username
-      remoteRef:
-        key: <app-name>-postgres-username
-    - secretKey: password
-      remoteRef:
-        key: <app-name>-postgres-password
-```
-
-**For app-specific secrets** (`secret.yaml`):
-
-```yaml
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: <app-name>-postgres-password
-  namespace: <app-name>
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: azure-keyvault-store
-    kind: ClusterSecretStore
-  target:
-    name: <app-name>-postgres-password
-    creationPolicy: Owner
-  data:
-    - secretKey: POSTGRES_PASSWORD
-      remoteRef:
-        key: <app-name>-postgres-password
-```
-
-### 2.5 Configuration (`configmap.yaml`)
-
-Application environment variables:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: <app-name>-config
-  namespace: <app-name>
-data:
-  # App-specific configuration
-  DATABASE_URL: "postgres://<app-name>:${POSTGRES_PASSWORD}@<app-name>-postgres-rw:5432/<app-name>"
-  # Add other environment variables as needed
-```
-
-### 2.6 Deployment (`deployment.yaml`)
+### deployment.yaml
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: <app-name>
+  name: <app-name>-backend
   namespace: <app-name>
 spec:
   replicas: 1
+  strategy:
+    type: Recreate           # Use Recreate for single-replica with PVC
   selector:
     matchLabels:
-      app: <app-name>
+      app: <app-name>-backend
   template:
     metadata:
       labels:
-        app: <app-name>
+        app: <app-name>-backend
     spec:
-      # Use initContainers if directories need to be created
-      initContainers:
-        - name: init-directories
-          image: busybox:1.36
-          command: ["sh", "-c", "mkdir -p /app/data && chown -R 1000:1000 /app"]
-          volumeMounts:
-            - name: <app-name>-data
-              mountPath: /app
+      nodeSelector:
+        workload-type: arm   # Required for Hetzner ARM nodes
       containers:
-        - name: <app-name>
-          image: <docker-image>:<tag>
+        - name: backend
+          image: ghcr.io/timosur/<repo-name>/backend:sha-<commit>@sha256:<digest>
           ports:
-            - containerPort: <port>
+            - containerPort: 8000
           envFrom:
             - configMapRef:
                 name: <app-name>-config
             - secretRef:
-                name: <app-name>-postgres-password
-          volumeMounts:
-            - name: <app-name>-data
-              mountPath: /app/data
-              # Use subPath for multiple directories
-              # subPath: subdirectory
-          resources:
-            limits:
-              memory: "1000Mi"
-              cpu: "1000m"
-            requests:
-              memory: "512Mi"
-              cpu: "100m"
+                name: <app-name>-secrets
           livenessProbe:
             httpGet:
-              path: /health # Adjust path
-              port: <port>
+              path: /health
+              port: 8000
             initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /health # Adjust path
-              port: <port>
-            initialDelaySeconds: 5
-            periodSeconds: 5
-      volumes:
-        - name: <app-name>-data
-          persistentVolumeClaim:
-            claimName: <app-name>-data
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
 ```
 
-### 2.7 Service (`service.yaml`)
+**Important:**
+- Pin images with SHA digest: `image: ghcr.io/.../backend:sha-abc123@sha256:...`
+- Set `nodeSelector: workload-type: arm` for Hetzner cluster
+- Use `strategy.type: Recreate` for single-replica deployments with PVCs
+- Add `livenessProbe` and `readinessProbe`
+
+### service.yaml
 
 ```yaml
 apiVersion: v1
@@ -219,142 +312,88 @@ spec:
   selector:
     app: <app-name>
   ports:
-    - protocol: TCP
-      port: <port>
-      targetPort: <port>
+    - port: 80
+      targetPort: 8000
 ```
 
-### 2.8 Kustomization (`kustomization.yaml`)
+### configmap.yaml
+
+For non-secret environment variables:
 
 ```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - namespace.yaml
-  - postgres.yaml # If database needed
-  - external-secret.yaml
-  - configmap.yaml
-  - secret.yaml
-  - pvc.yaml
-  - deployment.yaml
-  - service.yaml
-
-namespace: <app-name>
-```
-
-## 3. ArgoCD Integration
-
-### 3.1 Environment-Specific Deployment
-
-The homelab supports three deployment patterns:
-
-1. **Shared Apps** (`apps/_argocd/`): Deploy to Hetzner environment only
-2. **Home Apps** (`apps/_argocd-home/`): Deploy to home environment only  
-3. **Shared Manifests** (`apps/<app-name>/`): Can be referenced by both environments
-
-Choose the appropriate directory based on where the app should be deployed:
-
-#### 3.1.1 Hetzner-Only Apps (`apps/_argocd/<app-name>-app.yaml`)
-
-For apps that should only run in the Hetzner cloud environment:
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: <app-name>
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/timosur/homelab.git
-    targetRevision: HEAD
-    path: apps/<app-name>
-  destination:
-    server: https://kubernetes.default.svc
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+  name: <app-name>-config
+  namespace: <app-name>
+data:
+  TZ: "Europe/Berlin"
+  BASE_URL: "https://<app-name>.timosur.com"
+  # Add more non-secret config here
 ```
 
-#### 3.1.2 Home-Only Apps (`apps/_argocd-home/<app-name>-app.yaml`)
+---
 
-For apps that should only run in the home environment:
+## Networking & Ingress
+
+The cluster uses **Envoy Gateway** (Gateway API) with **cert-manager** for TLS and **External DNS** (Cloudflare) for DNS records.
+
+### 1. Add Gateway Listener
+
+In `networking/gateways/envoy-gateway.yaml`, add two listeners for your domain (HTTP for ACME challenges + HTTPS for traffic):
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: <app-name>
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/timosur/homelab.git
-    targetRevision: HEAD
-    path: apps/<app-name>
-  destination:
-    server: https://kubernetes.default.svc
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+# HTTP listener (for cert-manager ACME challenge)
+- name: <app-name>-http
+  hostname: <app-name>.timosur.com
+  port: 80
+  protocol: HTTP
+  allowedRoutes:
+    namespaces:
+      from: All
+
+# HTTPS listener
+- name: <app-name>-https
+  hostname: <app-name>.timosur.com
+  port: 443
+  protocol: HTTPS
+  allowedRoutes:
+    namespaces:
+      from: All
+  tls:
+    mode: Terminate
+    certificateRefs:
+      - kind: Secret
+        name: <app-name>-tls
+        namespace: cert-manager
 ```
 
-#### 3.1.3 Environment-Specific Manifests
+### 2. Add cert-manager Solver
 
-When apps need different configurations per environment, create environment-specific manifests:
-
-- `apps/<app-name>-home/` - Home-specific manifests
-- `apps/<app-name>-hetzner/` - Hetzner-specific manifests
-
-Then reference the appropriate path in the ArgoCD application.
-
-### 3.2 Update ArgoCD Kustomization
-
-Add the new app to the appropriate kustomization file:
-
-#### For Hetzner Apps (`apps/_argocd/kustomization.yaml`):
+In `apps/cert-manager/cluster-issuer.yaml`, add an entry for the new domain:
 
 ```yaml
-resources:
-  - networking-app.yaml
-  - cert-manager-app.yaml
-  - external-secrets-app.yaml
-  - cloudnative-pg-app.yaml
-  - mealie-app.yaml
-  - open-webui-app.yaml
-  - n8n-app.yaml
-  - garden-app.yaml
-  - <app-name>-app.yaml # Add this line
+- selector:
+    dnsNames:
+      - <app-name>.timosur.com
+  http01:
+    gatewayHTTPRoute:
+      parentRefs:
+        - name: envoy-gateway
+          namespace: cert-manager
+          kind: Gateway
+          sectionName: <app-name>-http
 ```
 
-#### For Home Apps (`apps/_argocd-home/kustomization.yaml`):
+### 3. Create HTTPRoute
 
-```yaml
-resources:
-  - cloudnative-pg-app.yaml
-  - external-secrets-app.yaml
-  - garden-app.yaml
-  - smb-csi-driver-app.yaml
-  - <app-name>-app.yaml # Add this line
-```
-
-## 4. Networking Configuration
-
-### 4.1 HTTP Route (`networking/httproutes/<app-name>-route.yaml`)
+Create `networking/httproutes/<app-name>-route.yaml`:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: <app-name>
+  name: <app-name>-route
   namespace: <app-name>
 spec:
   parentRefs:
@@ -362,110 +401,249 @@ spec:
       namespace: cert-manager
       sectionName: <app-name>-https
   hostnames:
-    - "<app-name>.timosur.com"
+    - <app-name>.timosur.com
   rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
+    - backendRefs:
         - name: <app-name>
-          port: <port>
+          port: 80
 ```
 
-### 4.2 Update HTTP Routes Kustomization (`networking/httproutes/kustomization.yaml`)
+### 4. Register HTTPRoute in Kustomization
+
+Add the route to `networking/kustomization.yaml`:
 
 ```yaml
 resources:
-  - argo-route.yaml
-  - mealie-route.yaml
-  - ai-route.yaml
-  - n8n-route.yaml
-  - garden-route.yaml
-  - <app-name>-route.yaml # Add this line
+  - httproutes/<app-name>-route.yaml
 ```
 
-### 4.3 Update Gateway (`networking/gateways/envoy-gateway.yaml`)
+### Home Cluster Variant
 
-Add HTTP and HTTPS listeners:
+For the home cluster, the pattern is simpler (HTTP only, `*.home.timosur.com`):
+
+- Add listener in `networking-home/gateways/envoy-gateway.yaml` (port 80 only, no TLS)
+- Create `networking-home/httproutes/<app-name>-route.yaml`
+- Register in `networking-home/kustomization.yaml`
+
+---
+
+## Secrets Management
+
+All secrets are stored in **Azure Key Vault** and synced to Kubernetes via **External Secrets Operator**.
+
+### 1. Add Secrets to Azure Key Vault
+
+Store secrets in Azure Key Vault (`homelab-timosur`). Use a naming convention like `<app-name>-<secret-key>` (e.g., `myapp-database-password`).
+
+### 2. Create ExternalSecret
 
 ```yaml
-# Add these listeners to the existing gateway spec
-- name: <app-name>-acme-http
-  port: 80
-  protocol: HTTP
-  hostname: "<app-name>.timosur.com"
-  allowedRoutes:
-    namespaces:
-      from: All
-- name: <app-name>-https
-  port: 443
-  protocol: HTTPS
-  hostname: "<app-name>.timosur.com"
-  allowedRoutes:
-    namespaces:
-      from: All
-  tls:
-    mode: Terminate
-    certificateRefs:
-      - name: <app-name>-timosur-com
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: <app-name>-secrets
+  namespace: <app-name>
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: azure-keyvault-store
+    kind: ClusterSecretStore
+  target:
+    name: <app-name>-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: API_KEY
+      remoteRef:
+        key: <app-name>-api-key
+    - secretKey: DATABASE_PASSWORD
+      remoteRef:
+        key: <app-name>-database-password
 ```
 
-## 5. SSL Certificate Configuration
+### Templated Secrets
 
-### 5.1 Update Cluster Issuer (`apps/cert-manager/cluster-issuer.yaml`)
-
-Add a new solver for the domain:
+For secrets that need value interpolation (e.g., constructing a `DATABASE_URL`):
 
 ```yaml
-# Add this solver to the existing solvers list
-- selector:
-    dnsNames: ["<app-name>.timosur.com"]
-  http01:
-    gatewayHTTPRoute:
-      parentRefs:
-        - group: gateway.networking.k8s.io
-          kind: Gateway
-          name: envoy-gateway
-          namespace: cert-manager
-          sectionName: <app-name>-acme-http
+spec:
+  target:
+    name: <app-name>-secrets
+    template:
+      type: Opaque
+      data:
+        DATABASE_URL: "postgresql://app:{{ .password }}@<app-name>-postgres:5432/app"
+  data:
+    - secretKey: password
+      remoteRef:
+        key: <app-name>-database-password
 ```
 
-## 6. Azure Key Vault Secrets
+### Basic Auth Secrets (for postgres)
 
-Add the following secrets to Azure Key Vault:
+```yaml
+spec:
+  target:
+    name: <app-name>-postgres-credentials
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "app"
+        password: "{{ .password }}"
+  data:
+    - secretKey: password
+      remoteRef:
+        key: <app-name>-postgres-password
+```
 
-- `<app-name>-postgres-username` (value: `<app-name>`)
-- `<app-name>-postgres-password` (generate secure password)
-- Any other app-specific secrets
+---
 
-## 7. DNS Configuration
+## Database Setup
 
-Point `<app-name>.timosur.com` to your cluster's external IP address.
+Use **CloudNative-PG** for PostgreSQL databases.
 
-## 8. Deployment Checklist
+### postgres.yaml
 
-### Pre-deployment:
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: <app-name>-postgres
+  namespace: <app-name>
+spec:
+  instances: 1
+  imageName: postgres:17.2
+  bootstrap:
+    initdb:
+      database: app
+      owner: app
+      secret:
+        name: <app-name>-postgres-credentials
+  storage:
+    size: 10Gi
+    storageClassName: hcloud-volumes   # or storage-box-smb for larger data
+```
 
-- [ ] All manifests created in `apps/<app-name>/`
-- [ ] ArgoCD application created in appropriate directory:
-  - [ ] `apps/_argocd/` for Hetzner-only apps
-  - [ ] `apps/_argocd-home/` for home-only apps
-- [ ] ArgoCD application added to correct kustomization file
-- [ ] HTTP route created and added to kustomization
-- [ ] Gateway listeners added
-- [ ] Cluster issuer solver added
-- [ ] Secrets added to Azure Key Vault
-- [ ] DNS configured
+This requires:
+- An `ExternalSecret` creating `<app-name>-postgres-credentials` with `kubernetes.io/basic-auth` type
+- A `Secret` with `POSTGRES_PASSWORD` for the app to use (or construct `DATABASE_URL` via template)
 
-### Post-deployment:
+---
 
-- [ ] ArgoCD shows application as synced and healthy
-- [ ] Pods are running and ready
-- [ ] Service is accessible
-- [ ] SSL certificate is issued
-- [ ] Database connection working (if applicable)
-- [ ] Application functionality verified
+## Storage
+
+### Available Storage Classes
+
+| StorageClass | Provider | Use Case | Clusters |
+|---|---|---|---|
+| `hcloud-volumes` | Hetzner Cloud CSI | Default, general purpose (up to ~100Gi) | Hetzner |
+| `storage-box-smb` | SMB CSI Driver | Large storage via Hetzner Storage Box | Hetzner, Home |
+| Synology iSCSI | Synology CSI Driver | NAS storage (aliased as `hcloud-volumes`/`storage-box-smb`) | Home |
+
+### PVC Example
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: <app-name>-data
+  namespace: <app-name>
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: hcloud-volumes
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+### Custom Storage Class (if needed)
+
+For specific mount options (e.g., uid/gid for SMB):
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: <app-name>-storage-box-smb
+provisioner: smb.csi.k8s.io
+parameters:
+  source: //<storage-box-host>/<share>
+  csi.storage.k8s.io/node-stage-secret-name: storage-box-smb-credentials
+  csi.storage.k8s.io/node-stage-secret-namespace: storage-box-smb
+mountOptions:
+  - dir_mode=0777
+  - file_mode=0777
+  - uid=1000
+  - gid=1000
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+```
+
+---
+
+## Image Updates & Renovate
+
+The homelab uses **Renovate Bot** to track and update container images automatically.
+
+### How it works
+
+- Renovate scans `apps/**/*.yaml` for Docker image references
+- For GHCR images (`ghcr.io/timosur/*`), it pins digests and creates PRs on new pushes
+- Digest updates are auto-merged
+- Renovate runs weekly (Monday before 6 AM)
+
+### Image reference format
+
+Use this format in deployments for Renovate to track:
+
+```yaml
+image: ghcr.io/timosur/<repo-name>/<service>:sha-<commit>@sha256:<digest>
+```
+
+Renovate will automatically create PRs when new images are pushed to GHCR.
+
+---
+
+## Registering the App in ArgoCD
+
+### 1. Create ArgoCD Application
+
+Create `apps/_argocd/<app-name>-app.yaml`:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: <app-name>
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/timosur/homelab.git
+    targetRevision: HEAD
+    path: apps/<app-name>
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+### 2. Register in Kustomization
+
+Add the app to `apps/_argocd/kustomization.yaml`:
+
+```yaml
+resources:
+  - <app-name>-app.yaml
+```
+
+For the home cluster, use `apps/_argocd-home/` instead.
+
+---
 
 ## Common Patterns
 
@@ -495,33 +673,87 @@ initContainers:
         mountPath: /app
 ```
 
-### Environment Variable Pattern
+### Reverse Proxy with Basic Auth
 
-- Use ConfigMaps for non-sensitive configuration
-- Use External Secrets for sensitive data
-- Reference secrets as environment variables in the deployment
+For apps that need authentication via nginx in front of the actual services (see `apps/garden/` for a full example):
 
-### Database Connection Pattern
+- Deploy an `nginx:alpine` container alongside the app
+- Use an init container to generate `htpasswd` from secrets
+- Route traffic: `/` → frontend, `/api/` → backend
+- Expose the nginx service as the app's entry point
 
-- Use CloudNative-PG for PostgreSQL
-- Store credentials in Azure Key Vault
-- Use External Secrets to sync credentials
-- Reference connection details in ConfigMap with environment variable substitution
+### CronJobs
 
-## Storage Guidelines
+For scheduled tasks (e.g., daily API calls):
 
-- **Database storage**: Start with 10Gi, adjust based on needs
-- **Application data**: Start with 25Gi, adjust based on needs
-- **Always use**: `storageClassName: hcloud-volumes`
-- **Access mode**: `ReadWriteOnce` for single-pod applications
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: <app-name>-scheduler
+  namespace: <app-name>
+spec:
+  schedule: "0 1 * * *"        # Daily at 01:00
+  timeZone: "Europe/Berlin"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: scheduler
+              image: curlimages/curl
+              command: ["curl", "-X", "POST", "http://<app-name>-backend:8000/api/trigger"]
+          restartPolicy: OnFailure
+```
+
+---
 
 ## Security Best Practices
 
-- Never store passwords in plain text
-- Use External Secrets for all sensitive data
-- Set appropriate resource limits
-- Use health checks (liveness and readiness probes)
-- Run containers as non-root when possible
-- Use specific image tags, avoid `:latest`
+- Never store passwords or secrets in plain text — use External Secrets for all sensitive data
+- Use specific image tags with SHA digest, never `:latest` in production manifests
+- Set appropriate resource `requests` and `limits`
+- Add `livenessProbe` and `readinessProbe` to all containers
+- Run containers as non-root when possible (`securityContext.runAsNonRoot: true`)
+- Use `fsGroup` in `securityContext` when containers need to write to mounted volumes
 
-This guide provides a complete template for onboarding new applications to the homelab infrastructure while following established patterns and best practices.
+---
+
+## Checklist
+
+### App Repository
+
+- [ ] Each service has a `Dockerfile` with multi-arch support
+- [ ] GitHub Actions workflow builds & pushes to GHCR (`linux/amd64` + `linux/arm64`)
+- [ ] Images tagged with `sha-<commit>` and `latest`
+- [ ] Health check endpoint(s) implemented
+- [ ] `docker-compose.yml` for local development
+- [ ] Environment config via env vars (12-factor style)
+
+### Homelab Repository — Pre-deployment
+
+- [ ] `apps/<app-name>/` directory with Kustomize manifests
+  - [ ] `kustomization.yaml`
+  - [ ] `namespace.yaml`
+  - [ ] `deployment.yaml` (with `nodeSelector`, probes, SHA-pinned images)
+  - [ ] `service.yaml`
+  - [ ] `configmap.yaml` (if non-secret env vars needed)
+  - [ ] `external-secret.yaml` (if secrets needed)
+  - [ ] `postgres.yaml` (if database needed)
+  - [ ] `pvc.yaml` (if persistent storage needed)
+- [ ] ArgoCD Application registered in `apps/_argocd/<app-name>-app.yaml`
+- [ ] ArgoCD kustomization updated in `apps/_argocd/kustomization.yaml`
+- [ ] Secrets added to Azure Key Vault
+- [ ] Gateway listeners added (HTTP + HTTPS) in `networking/gateways/envoy-gateway.yaml`
+- [ ] cert-manager solver added in `apps/cert-manager/cluster-issuer.yaml`
+- [ ] HTTPRoute created in `networking/httproutes/<app-name>-route.yaml`
+- [ ] HTTPRoute registered in `networking/kustomization.yaml`
+
+### Post-deployment Verification
+
+- [ ] ArgoCD shows application as synced and healthy
+- [ ] Pods are running and ready
+- [ ] Service is accessible via URL
+- [ ] SSL certificate is issued
+- [ ] Database connection working (if applicable)
+- [ ] Renovate detects the new GHCR images
