@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: vinyl-frontend
-          image: ghcr.io/timosur/vinyl-manager/frontend:sha-c393f61
+          image: ghcr.io/timosur/vinyl-manager/frontend:sha-c393f61@sha256:3b0341f5341888b36999a80071f6633a2442e92345fca6b63175a9fc04ad5a19
           ports:
             - containerPort: 3000
           env:
