@@ -8,15 +8,15 @@ data:
     upstream backend {
         server garden-backend:8000;
     }
-
+    
     upstream frontend {
         server garden-frontend:80;
     }
-
+    
     upstream rmapi-wrapper {
         server garden-rmapi-wrapper:8001;
     }
-
+    
     server {
         listen 80;
         server_name _;
