@@ -137,25 +137,17 @@ encryption:
   type: wireguard
 
 debug:
-  enabled: true
+  enabled: false
 
 hubble:
   relay:
-    enabled: true
+    enabled: false
   ui:
-    enabled: true
-  metrics:
-    enabled:
-      - dns
-      - drop
-      - tcp
-      - flow
-      - port-distribution
-      - icmp
-      - http
+    enabled: false
 
-# Operator tolerations to ensure it can schedule during cluster initialization
+# Single-node: only 1 operator replica (hostPort conflict otherwise)
 operator:
+  replicas: 1
   tolerations:
     - key: node.cloudprovider.kubernetes.io/uninitialized
       operator: Exists
