@@ -14,6 +14,9 @@ spec:
         - path:
             type: PathPrefix
             value: /
+      timeouts:
+        request: 600s
+        backendRequest: 600s
       backendRefs:
         - name: garden-nginx
           port: 80
