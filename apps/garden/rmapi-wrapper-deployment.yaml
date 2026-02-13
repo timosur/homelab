@@ -48,7 +48,7 @@ spec:
               mountPath: /root/.config/rmapi
       containers:
         - name: garden-rmapi-wrapper
-          image: ghcr.io/timosur/life-as-a-garden/rmapi-wrapper:sha-cf6eb53
+          image: ghcr.io/timosur/life-as-a-garden/rmapi-wrapper:1.0.1
           ports:
             - containerPort: 8001
           volumeMounts:
