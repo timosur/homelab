@@ -2,10 +2,49 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/rbac-csi-smb.yaml
-- https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-driver.yaml
-- https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-controller.yaml
-- https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-node.yaml
-- https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-node-windows.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/rbac-csi-smb.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-driver.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-controller.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-node.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-node-windows.yaml
 
 namespace: kube-system
+
+patches:
+  # Reduce SMB CSI controller resource limits (upstream defaults are very high)
+  - target:
+      kind: Deployment
+      name: csi-smb-controller
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: csi-smb-controller
+      spec:
+        template:
+          spec:
+            containers:
+              - name: csi-provisioner
+                resources:
+                  limits:
+                    cpu: 200m
+                    memory: 200Mi
+                  requests:
+                    cpu: 10m
+                    memory: 20Mi
+              - name: liveness-probe
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 100Mi
+                  requests:
+                    cpu: 10m
+                    memory: 20Mi
+              - name: smb
+                resources:
+                  limits:
+                    cpu: 200m
+                    memory: 200Mi
+                  requests:
+                    cpu: 10m
+                    memory: 20Mi
