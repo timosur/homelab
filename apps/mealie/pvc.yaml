@@ -9,4 +9,4 @@ spec:
   resources:
     requests:
       storage: 25Gi
-  storageClassName: hcloud-volumes
+  storageClassName: storage-box-smb

@@ -1,14 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: givgroov
+  name: mealie
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/timosur/homelab.git
     targetRevision: HEAD
-    path: apps/givgroov
+    path: apps/mealie
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:

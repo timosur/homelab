@@ -5,9 +5,9 @@ metadata:
   namespace: mealie
 spec:
   parentRefs:
-    - name: envoy-gateway
-      namespace: cert-manager
-      sectionName: mealie-https
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: https
   hostnames:
     - "mealie.timosur.com"
   rules:

@@ -13,6 +13,9 @@ resources:
   - synology-csi-driver-app.yaml
   - vinyl-manager-app.yaml
   - actual-app.yaml
+  - givgroov-app.yaml
   - home-assistant-app.yaml
+  - mealie-app.yaml
   - paperless-app.yaml
   - pi-hole-app.yaml
+  - portfolio-app.yaml

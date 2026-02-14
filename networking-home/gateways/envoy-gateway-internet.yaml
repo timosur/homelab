@@ -36,3 +36,41 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: wildcard-timosur-com
+    # Portfolio (bare domain)
+    - name: portfolio-http
+      port: 80
+      protocol: HTTP
+      hostname: "timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: portfolio-https
+      port: 443
+      protocol: HTTPS
+      hostname: "timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: wildcard-timosur-com
+    # Givgroov
+    - name: givgroov-http
+      port: 80
+      protocol: HTTP
+      hostname: "givgroov.de"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: givgroov-https
+      port: 443
+      protocol: HTTPS
+      hostname: "givgroov.de"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: givgroov-de-cert

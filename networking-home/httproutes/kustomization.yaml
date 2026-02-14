@@ -10,3 +10,6 @@ resources:
   - open-webui-internet-httproute.yaml
   - paperless-httproute.yaml
   - actual-httproute.yaml
+  - givgroov-httproute.yaml
+  - portfolio-httproute.yaml
+  - mealie-httproute.yaml

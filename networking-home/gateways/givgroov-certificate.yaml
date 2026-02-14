@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: givgroov-de-cert
+  namespace: envoy-gateway-internet-system
+spec:
+  secretName: givgroov-de-cert
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "givgroov.de"
