@@ -110,39 +110,5 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: givgroov-de-cert
-    - name: actual-acme-http
-      port: 80
-      protocol: HTTP
-      hostname: "finance.timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
-    - name: actual-https
-      port: 443
-      protocol: HTTPS
-      hostname: "finance.timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: actual-timosur-com
-    - name: docs-acme-http
-      port: 80
-      protocol: HTTP
-      hostname: "docs.timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
-    - name: docs-https
-      port: 443
-      protocol: HTTPS
-      hostname: "docs.timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: docs-timosur-com
+
+

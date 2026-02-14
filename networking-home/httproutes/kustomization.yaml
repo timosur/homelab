@@ -8,3 +8,5 @@ resources:
   - home-assistant-httproute.yaml
   - pi-hole-httproute.yaml
   - open-webui-internet-httproute.yaml
+  - paperless-httproute.yaml
+  - actual-httproute.yaml
