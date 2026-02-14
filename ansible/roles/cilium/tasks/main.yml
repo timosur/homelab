@@ -83,6 +83,9 @@
       --set routingMode=tunnel
       --set bpf.masquerade=true
       --set envoy.enabled=false
+      --set l2announcements.enabled=true
+      --set externalIPs.enabled=true
+      --set devices=eth+ en+
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   register: cilium_result

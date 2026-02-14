@@ -10,6 +10,8 @@ kind: Gateway
 metadata:
   name: envoy-gateway-home
   namespace: envoy-gateway-system
+  annotations:
+    lbipam.cilium.io/ips: "192.168.2.100"
 spec:
   gatewayClassName: envoy-home
   listeners:

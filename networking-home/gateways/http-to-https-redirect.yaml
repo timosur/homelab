@@ -1,0 +1,19 @@
+# Redirect all HTTP traffic on the internet gateway to HTTPS
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: http-to-https-redirect
+  namespace: envoy-gateway-internet-system
+spec:
+  parentRefs:
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: http
+  hostnames:
+    - "*.timosur.com"
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301

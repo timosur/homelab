@@ -1,0 +1,34 @@
+# Prevent the internet gateway Envoy pods from reaching intranet subnets.
+# This ensures that even if a gateway pod is compromised, it cannot pivot
+# into the LAN. We allow cluster-internal traffic (pod/service CIDRs)
+# and DNS so that gateway pods can still reach backend Services.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: internet-gateway-deny-intranet-egress
+  namespace: envoy-gateway-internet-system
+spec:
+  endpointSelector: {}
+  egress:
+    # Allow DNS resolution (kube-dns)
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    # Allow traffic to pod CIDR (backend services)
+    - toCIDR:
+        - 10.50.0.0/16
+    # Allow traffic to service CIDR
+    - toCIDR:
+        - 10.51.0.0/16
+  egressDeny:
+    # Block all private LAN subnets
+    - toCIDR:
+        - 192.168.0.0/16
+        - 172.16.0.0/12

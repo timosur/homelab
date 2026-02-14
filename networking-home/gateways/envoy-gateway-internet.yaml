@@ -1,0 +1,38 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy-internet
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: envoy-gateway-internet
+  namespace: envoy-gateway-internet-system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    lbipam.cilium.io/ips: "192.168.2.254"
+spec:
+  gatewayClassName: envoy-internet
+  listeners:
+    # HTTP listener for ACME challenges and redirect
+    - name: http
+      port: 80
+      protocol: HTTP
+      hostname: "*.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    # HTTPS wildcard listener
+    - name: https
+      port: 443
+      protocol: HTTPS
+      hostname: "*.timosur.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: wildcard-timosur-com

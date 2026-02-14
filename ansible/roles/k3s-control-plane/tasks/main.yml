@@ -25,6 +25,7 @@
       INSTALL_K3S_EXEC="server \
         --write-kubeconfig-mode=644 \
         --disable=traefik \
+        --disable=servicelb \
         --cluster-cidr=10.50.0.0/16 \
         --service-cidr=10.51.0.0/16 \
         --flannel-backend=none \
@@ -35,6 +36,30 @@
   when: not k3s_binary.stat.exists
   args:
     creates: /usr/local/bin/k3s
+
+- name: Ensure k3s config directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Ensure servicelb is disabled in k3s config
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      disable:
+        - traefik
+        - servicelb
+      write-kubeconfig-mode: "0644"
+      cluster-cidr: "10.50.0.0/16"
+      service-cidr: "10.51.0.0/16"
+      flannel-backend: "none"
+      disable-network-policy: true
+      disable-kube-proxy: true
+    mode: "0600"
+  become: true
+  notify: Restart k3s
 
 - name: Wait for k3s to be ready
   ansible.builtin.wait_for:
