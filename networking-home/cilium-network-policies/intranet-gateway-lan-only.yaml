@@ -1,0 +1,20 @@
+# Restrict the intranet gateway to only accept traffic from LAN sources
+# and cluster-internal traffic. This prevents any internet-sourced traffic
+# from reaching the intranet gateway even if port forwarding is misconfigured.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: intranet-gateway-lan-only
+  namespace: envoy-gateway-system
+spec:
+  endpointSelector: {}
+  ingress:
+    # Allow from LAN subnets
+    - fromCIDR:
+        - 192.168.0.0/16
+    # Allow from pod CIDR (cluster-internal)
+    - fromCIDR:
+        - 10.50.0.0/16
+    # Allow from service CIDR
+    - fromCIDR:
+        - 10.51.0.0/16

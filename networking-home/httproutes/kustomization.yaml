@@ -7,3 +7,4 @@ resources:
   - vinyl-manager-httproute.yaml
   - home-assistant-httproute.yaml
   - pi-hole-httproute.yaml
+  - open-webui-internet-httproute.yaml

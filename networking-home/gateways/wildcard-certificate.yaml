@@ -1,0 +1,15 @@
+# Wildcard certificate for *.timosur.com
+# Issued via DNS-01 challenge (Cloudflare) so no port 80 needed
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-timosur-com
+  namespace: envoy-gateway-internet-system
+spec:
+  secretName: wildcard-timosur-com
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.timosur.com"
+    - "timosur.com"

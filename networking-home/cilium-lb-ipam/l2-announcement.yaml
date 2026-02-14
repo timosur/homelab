@@ -1,0 +1,14 @@
+# Cilium L2 Announcement Policy
+# Makes Cilium respond to ARP requests for LoadBalancer IPs on the LAN,
+# so the Unifi router (and any LAN client) can route to them.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: l2-announcement-policy
+spec:
+  # Announce on all interfaces
+  interfaces:
+    - ^eth[0-9]+
+    - ^en[a-z0-9]+
+  externalIPs: true
+  loadBalancerIPs: true

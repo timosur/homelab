@@ -1,0 +1,23 @@
+# Cilium LB IPAM pools for the home cluster
+# Assigns dedicated IPs to each gateway's LoadBalancer service
+#
+# NOTE: Ensure k3s ServiceLB is disabled (--disable=servicelb) for clean
+# Cilium LB IPAM operation. Update your k3s server flags and restart k3s.
+#
+# TODO: Adjust these IPs to match your home network subnet and available range
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: internet-gateway-pool
+spec:
+  blocks:
+    - cidr: 192.168.2.254/32
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: intranet-gateway-pool
+spec:
+  blocks:
+    - cidr: 192.168.2.100/32
