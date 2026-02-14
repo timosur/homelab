@@ -22,7 +22,7 @@ spec:
 
   storage:
     size: 20Gi
-    storageClass: hcloud-volumes
+    storageClass: storage-box-smb
 
   resources:
     requests:

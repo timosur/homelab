@@ -5,9 +5,9 @@ metadata:
   namespace: actual
 spec:
   parentRefs:
-    - name: envoy-gateway
-      namespace: cert-manager
-      sectionName: actual-https
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: https
   hostnames:
     - "finance.timosur.com"
   rules:

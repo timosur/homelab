@@ -7,5 +7,3 @@ resources:
   - ai-route.yaml
   - portfolio-route.yaml
   - givgroov-route.yaml
-  - actual-route.yaml
-  - docs-route.yaml

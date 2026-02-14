@@ -5,9 +5,9 @@ metadata:
   namespace: paperless
 spec:
   parentRefs:
-    - name: envoy-gateway
-      namespace: cert-manager
-      sectionName: docs-https
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: https
   hostnames:
     - "docs.timosur.com"
   rules:

@@ -12,5 +12,7 @@ resources:
   - smb-csi-driver-app.yaml
   - synology-csi-driver-app.yaml
   - vinyl-manager-app.yaml
+  - actual-app.yaml
   - home-assistant-app.yaml
+  - paperless-app.yaml
   - pi-hole-app.yaml
