@@ -38,24 +38,7 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: argo-timosur-com
-    - name: mealie-acme-http
-      port: 80
-      protocol: HTTP
-      hostname: "mealie.timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
-    - name: mealie-https
-      port: 443
-      protocol: HTTPS
-      hostname: "mealie.timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: mealie-timosur-com
+
     - name: ai-acme-http
       port: 80
       protocol: HTTP
@@ -74,41 +57,6 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: ai-timosur-com
-    - name: portfolio-acme-http
-      port: 80
-      protocol: HTTP
-      hostname: "timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
-    - name: portfolio-https
-      port: 443
-      protocol: HTTPS
-      hostname: "timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: portfolio-timosur-com
-    - name: givgroov-acme-http
-      port: 80
-      protocol: HTTP
-      hostname: "givgroov.de"
-      allowedRoutes:
-        namespaces:
-          from: All
-    - name: givgroov-https
-      port: 443
-      protocol: HTTPS
-      hostname: "givgroov.de"
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: givgroov-de-cert
+
 
 

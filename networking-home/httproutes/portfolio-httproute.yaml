@@ -5,8 +5,8 @@ metadata:
   namespace: portfolio
 spec:
   parentRefs:
-    - name: envoy-gateway
-      namespace: cert-manager
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
       sectionName: portfolio-https
   hostnames:
     - "timosur.com"

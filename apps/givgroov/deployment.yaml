@@ -13,8 +13,6 @@ spec:
       labels:
         app: givgroov
     spec:
-      nodeSelector:
-        kubernetes.io/arch: arm64
       containers:
         - name: givgroov
           image: ghcr.io/timosur/givgroov:sha-dd4b56b@sha256:a3fedb86b86d5febd278a57e463709f1723f9205ee770d04cd9b662865fa66e4

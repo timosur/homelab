@@ -3,7 +3,5 @@ kind: Kustomization
 
 resources:
   - argo-route.yaml
-  - mealie-route.yaml
   - ai-route.yaml
-  - portfolio-route.yaml
-  - givgroov-route.yaml
+

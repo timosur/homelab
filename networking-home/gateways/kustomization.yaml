@@ -6,4 +6,5 @@ resources:
   - envoy-gateway-internet-namespace.yaml
   - envoy-gateway-internet.yaml
   - wildcard-certificate.yaml
+  - givgroov-certificate.yaml
   - http-to-https-redirect.yaml
