@@ -47,11 +47,24 @@
   ansible.builtin.shell: |
     curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
       INSTALL_K3S_EXEC="server" \
+      INSTALL_K3S_SKIP_START=true \
       sh -
   become: true
   when: not k3s_binary.stat.exists
   args:
     creates: /usr/local/bin/k3s
+
+- name: Ensure k3s unit file has no stale flags (re-run installer if needed)
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
+      INSTALL_K3S_EXEC="server" \
+      INSTALL_K3S_SKIP_START=true \
+      sh -
+  become: true
+  when: k3s_binary.stat.exists
+  register: k3s_reinstall
+  changed_when: "'Creating service file' in k3s_reinstall.stdout"
+  notify: Restart k3s
 
 - name: Flush handlers (restart k3s if config changed)
   ansible.builtin.meta: flush_handlers
