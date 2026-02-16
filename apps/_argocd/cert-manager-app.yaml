@@ -5,15 +5,24 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://github.com/timosur/homelab.git
-    targetRevision: HEAD
-    path: apps/cert-manager
+  sources:
+    - repoURL: https://charts.jetstack.io
+      chart: cert-manager
+      targetRevision: v1.19.3
+      helm:
+        valuesObject:
+          crds:
+            enabled: true
+    - repoURL: https://github.com/timosur/homelab.git
+      targetRevision: HEAD
+      path: apps/cert-manager
   destination:
     server: https://kubernetes.default.svc
+    namespace: cert-manager
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
