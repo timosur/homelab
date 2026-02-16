@@ -2,19 +2,27 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: external-dns
-  namespace: external-dns-system
+  namespace: external-dns-home
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: external-dns
 rules:
-- apiGroups: [""]
-  resources: ["namespaces"]
-  verbs: ["get","watch","list"]
-- apiGroups: ["gateway.networking.k8s.io"]
-  resources: ["gateways","httproutes","grpcroutes","tlsroutes","tcproutes","udproutes"]
-  verbs: ["get","watch","list"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      [
+        "gateways",
+        "httproutes",
+        "grpcroutes",
+        "tlsroutes",
+        "tcproutes",
+        "udproutes",
+      ]
+    verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -25,6 +33,6 @@ roleRef:
   kind: ClusterRole
   name: external-dns
 subjects:
-- kind: ServiceAccount
-  name: external-dns
-  namespace: external-dns-system
+  - kind: ServiceAccount
+    name: external-dns
+    namespace: external-dns-home

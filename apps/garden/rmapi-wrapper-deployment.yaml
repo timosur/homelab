@@ -15,8 +15,6 @@ spec:
       labels:
         app: garden-rmapi-wrapper
     spec:
-      nodeSelector:
-        workload-type: arm
       initContainers:
         - name: setup-rmapi-config
           image: busybox:1.37

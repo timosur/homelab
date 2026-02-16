@@ -8,21 +8,15 @@ This repository is configured with Renovate Bot to automatically manage dependen
 
 - **Kubernetes Deployments**: All Docker images in `apps/*/deployment.yaml`
 - **Init Containers**: busybox, alpine, and other utility images
-- **Application Images**: n8n, mealie, seafile, zipline, portfolio, etc.
+- **Application Images**: mealie, actual, paperless, portfolio, etc.
 - **Custom Images**: Your GHCR images with SHA or tag-based versioning
-
-### 🏗️ Infrastructure as Code
-
-- **Terraform Modules**: kube-hetzner module versions
-- **Terraform Providers**: Hetzner Cloud provider versions
-- **Crossplane Providers**: Upbound provider packages
 
 ### ⚙️ Kubernetes Ecosystem
 
-- **Helm Charts**: External-secrets, Crossplane via ArgoCD
+- **Helm Charts**: External-secrets via ArgoCD
 - **ArgoCD Applications**: Chart versions and target revisions
 - **External DNS**: Container image versions
-- **Cilium**: Version management in Terraform configuration
+- **Cilium**: Version management
 
 ### 🔧 CI/CD Dependencies
 
@@ -52,7 +46,6 @@ This repository is configured with Renovate Bot to automatically manage dependen
 
 - **Major Updates**: All major version bumps
 - **Custom Images**: Your GHCR images tagged with `:latest` or `:main`
-- **Terraform Modules**: Infrastructure-critical updates
 - **Helm Charts**: Kubernetes ecosystem components
 
 ### 📅 Update Schedule
@@ -66,13 +59,11 @@ This repository is configured with Renovate Bot to automatically manage dependen
 ### Grouped Updates
 
 - **Kubernetes Ecosystem**: cert-manager, external-dns, argocd
-- **Terraform**: All Terraform-related dependencies
 - **GitHub Actions**: All CI/CD action updates
 
 ### Special Handling
 
 - **Pin Digests**: Custom images get digest pinning
-- **Version Comments**: Kube-hetzner version in comments
 - **SHA References**: Custom handling for SHA-based tags
 
 ## Security
@@ -86,7 +77,7 @@ This repository is configured with Renovate Bot to automatically manage dependen
 ### Safe Defaults
 
 - **Branch Protection**: All updates via pull requests
-- **Validation**: Kubernetes manifest and Terraform validation
+- **Validation**: Kubernetes manifest validation
 - **Approval Required**: Manual review for critical infrastructure
 
 ## Usage
@@ -137,7 +128,6 @@ Comment `@renovate rebase` on any PR to trigger Renovate actions.
 apps/**/*.yaml              # Kubernetes manifests
 apps/_argocd/*.yaml         # ArgoCD applications
 networking/**/*.yaml        # Networking configurations
-infrastructure/*.tf         # Terraform files
 .github/workflows/*.yaml    # GitHub Actions
 ```
 
@@ -145,9 +135,6 @@ infrastructure/*.tf         # Terraform files
 
 Renovate uses custom regex managers for:
 
-- Crossplane provider packages
-- Kube-hetzner version comments
-- Cilium version in Terraform
 - SHA-based container image references
 - PostgreSQL versions in CNPG manifests
 

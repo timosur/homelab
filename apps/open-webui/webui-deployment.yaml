@@ -16,15 +16,6 @@ spec:
         app: open-webui
     spec:
       terminationGracePeriodSeconds: 30
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: arch
-                    operator: NotIn
-                    values:
-                      - arm64
       initContainers:
         - name: wait-for-redis
           image: redis:8-alpine

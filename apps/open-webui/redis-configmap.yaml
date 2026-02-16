@@ -6,29 +6,29 @@ metadata:
 data:
   redis.conf: |
     # Redis configuration for Open WebUI sessions
-    
+
     # Persistence settings
     appendonly yes
     appendfsync everysec
     save 900 1
     save 300 10
     save 60 10000
-    
+
     # Memory management
     maxmemory 256mb
     maxmemory-policy allkeys-lru
-    
+
     # Network and connection settings
     tcp-keepalive 300
     timeout 0
-    
+
     # Disable dangerous commands in production
     rename-command FLUSHDB ""
     rename-command FLUSHALL ""
     rename-command DEBUG ""
-    
+
     # Logging
     loglevel notice
-    
+
     # Directory for data files
     dir /data
