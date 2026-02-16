@@ -14,29 +14,6 @@
     enabled: true
   become: true
 
-- name: Check if k3s is already installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/k3s
-  register: k3s_binary
-
-- name: Install k3s server
-  ansible.builtin.shell: |
-    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
-      INSTALL_K3S_EXEC="server \
-        --write-kubeconfig-mode=644 \
-        --disable=traefik \
-        --disable=servicelb \
-        --cluster-cidr=10.50.0.0/16 \
-        --service-cidr=10.51.0.0/16 \
-        --flannel-backend=none \
-        --disable-network-policy \
-        --disable-kube-proxy" \
-      sh -
-  become: true
-  when: not k3s_binary.stat.exists
-  args:
-    creates: /usr/local/bin/k3s
-
 - name: Ensure k3s config directory exists
   ansible.builtin.file:
     path: /etc/rancher/k3s
@@ -44,7 +21,7 @@
     mode: "0755"
   become: true
 
-- name: Ensure servicelb is disabled in k3s config
+- name: Write k3s config (before install so it is picked up on first start)
   ansible.builtin.copy:
     dest: /etc/rancher/k3s/config.yaml
     content: |
@@ -60,6 +37,24 @@
     mode: "0600"
   become: true
   notify: Restart k3s
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install k3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
+      INSTALL_K3S_EXEC="server" \
+      sh -
+  become: true
+  when: not k3s_binary.stat.exists
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Flush handlers (restart k3s if config changed)
+  ansible.builtin.meta: flush_handlers
 
 - name: Wait for k3s to be ready
   ansible.builtin.wait_for:
