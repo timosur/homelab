@@ -7,7 +7,9 @@ metadata:
   name: intranet-gateway-lan-only
   namespace: envoy-gateway-system
 spec:
-  endpointSelector: {}
+  endpointSelector:
+    matchLabels:
+      gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-home
   ingress:
     # Allow from LAN subnets
     - fromCIDR:
