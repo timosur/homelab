@@ -13,6 +13,9 @@ metadata:
 spec:
   blocks:
     - cidr: 192.168.2.254/32
+  serviceSelector:
+    matchLabels:
+      gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-internet
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumLoadBalancerIPPool
@@ -21,3 +24,6 @@ metadata:
 spec:
   blocks:
     - cidr: 192.168.2.100/32
+  serviceSelector:
+    matchLabels:
+      gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-home
