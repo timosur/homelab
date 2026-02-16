@@ -6,3 +6,5 @@
     name: k3s
     state: restarted
     daemon_reload: true
+  become: true
+  when: k3s_binary.stat.exists | default(false)
