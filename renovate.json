@@ -61,17 +61,6 @@
       ]
     },
     {
-      "description": "Group Terraform updates",
-      "matchDatasources": [
-        "terraform-provider",
-        "terraform-module"
-      ],
-      "groupName": "terraform",
-      "schedule": [
-        "before 6am on monday"
-      ]
-    },
-    {
       "description": "Group GitHub Actions updates",
       "matchManagers": [
         "github-actions"
@@ -105,8 +94,7 @@
   "kubernetes": {
     "managerFilePatterns": [
       "/apps/.+\\.ya?ml$/",
-      "/networking/.+\\.ya?ml$/",
-      "/infrastructure/extra-manifests/.+\\.ya?ml$/"
+      "/networking/.+\\.ya?ml$/"
     ]
   },
   "argocd": {
@@ -117,11 +105,6 @@
   "helm-values": {
     "managerFilePatterns": [
       "/apps/_argocd/.+\\.ya?ml$/"
-    ]
-  },
-  "terraform": {
-    "managerFilePatterns": [
-      "/infrastructure/.+\\.tf$/"
     ]
   },
   "hostRules": [

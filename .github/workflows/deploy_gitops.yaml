@@ -1,123 +1,79 @@
-name: Deploy GitOps
+name: Deploy GitOps Home
 
 on:
   workflow_dispatch:
-  
+
 jobs:
-  bootstrap_gitops:
-    runs-on: ubuntu-latest
+  deploy_gitops_home:
+    runs-on: self-hosted
 
     environment:
-      name: production
+      name: home-production
 
     steps:
       - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+      - name: Setup Python and Ansible
+        uses: actions/setup-python@v6
         with:
-          version: "latest"
+          python-version: "3.14"
 
-      - name: Get kubeconfig from Terraform Cloud
+      - name: Install Ansible and dependencies
         run: |
-          # Get kubeconfig from Terraform Cloud
-          cd infrastructure
-          export TF_TOKEN_app_terraform_io=$TCLOUD_TOKEN
-          terraform init
-          terraform output -raw kubeconfig > k3s_kubeconfig.yaml
+          pip install ansible kubernetes
+          ansible-galaxy collection install kubernetes.core
 
-          # Set kubeconfig for subsequent steps
-          echo "KUBECONFIG=$(pwd)/k3s_kubeconfig.yaml" >> $GITHUB_ENV
-        env:
-          TCLOUD_TOKEN: ${{ secrets.TCLOUD_TOKEN }}
-
-      - name: Wait for ArgoCD to be ready
+      - name: Setup kubeconfig for home cluster
         run: |
-          echo "Waiting for ArgoCD to be ready..."
-          kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd || echo "ArgoCD not ready yet"
-          kubectl wait --for=condition=ready --timeout=300s pod -l app.kubernetes.io/name=argocd-server -n argocd || echo "ArgoCD server pod not ready"
-          kubectl wait --for=condition=ready --timeout=300s pod -l app.kubernetes.io/name=argocd-repo-server -n argocd || echo "ArgoCD repo server pod not ready"
+          # Create kubeconfig directory
+          mkdir -p ~/.kube
 
-      - name: Setup Azure Key Vault and External Secrets
+          # Copy /etc/rancher/k3s/k3s.yaml to kubeconfig
+          cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+
+          # Set permissions
+          chmod 600 ~/.kube/config
+
+          # Test connectivity
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Create temporary inventory for localhost
         run: |
-          echo "Setting up Azure Key Vault and External Secrets integration..."
-          
-          # Create external-secrets-system namespace
-          kubectl create namespace external-secrets-system --dry-run=client -o yaml | kubectl apply -f -
-          
-          # Validate required Azure credentials are provided
-          if [ -z "${{ secrets.AZURE_SP_CLIENT_ID }}" ] || [ -z "${{ secrets.AZURE_SP_CLIENT_SECRET }}" ]; then
-            echo "Error: AZURE_SP_CLIENT_ID and AZURE_SP_CLIENT_SECRET must be set in GitHub secrets"
-            exit 1
-          fi
-          
-          echo "Creating Kubernetes secret with Azure Service Principal credentials..."
-          
-          # Create the Kubernetes secret for Azure authentication
-          kubectl create secret generic azure-secret \
-            --namespace=external-secrets-system \
-            --from-literal=ClientID="${{ secrets.AZURE_SP_CLIENT_ID }}" \
-            --from-literal=ClientSecret="${{ secrets.AZURE_SP_CLIENT_SECRET }}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          
-          echo "Azure Service Principal secret created successfully"
-
-      - name: Configure ArgoCD Repository
-        run: |
-          echo "Configuring ArgoCD repository connection..."
-
-          # Create repository configuration for public HTTPS repo
-          cat <<EOF | kubectl apply -f - || echo "Failed to create repository configuration"
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: homelab-repo
-            namespace: argocd
-            labels:
-              argocd.argoproj.io/secret-type: repository
-          type: Opaque
-          stringData:
-            type: git
-            url: https://github.com/timosur/homelab.git
+          cat <<EOF > /tmp/inventory.yml
+          all:
+            hosts:
+              localhost:
+                ansible_connection: local
+                ansible_python_interpreter: $(which python3)
+            vars:
+              argocd_version: "v3.2.3"
+              azure_client_id: "${{ secrets.AZURE_SP_CLIENT_ID }}"
+              azure_client_secret: "${{ secrets.AZURE_SP_CLIENT_SECRET }}"
+              azure_tenant_id: "${{ secrets.AZURE_TENANT_ID }}"
+              azure_subscription_id: "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+              azure_keyvault_name: "${{ secrets.AZURE_KEYVAULT_NAME }}"
           EOF
 
-          echo "Repository configuration completed."
-
-      - name: Deploy Root ArgoCD Application
+      - name: Run ArgoCD and GitOps setup with Ansible
         run: |
-          echo "Deploying root ArgoCD application..."
+          cd ansible
+          ansible-playbook -i /tmp/inventory.yml playbooks/argocd-gitops-setup.yml -v
 
-          # Wait a bit for ArgoCD to process the repository
-          sleep 30
-
-          # Deploy root app
-          kubectl apply -f apps/root.yaml || echo "Root app deployment failed"
-
-          echo "GitOps bootstrap completed. ArgoCD should now be connected to your repository."
-          echo "Check ArgoCD UI for status."
-
-      - name: Verify External Secrets setup
+      - name: Display Access Information
         run: |
-          echo "Verifying External Secrets configuration..."
-          
-          # Wait for External Secrets Operator to be ready
-          echo "Waiting for External Secrets Operator..."
-          kubectl wait --for=condition=available deployment/external-secrets \
-            --namespace=external-secrets-system \
-            --timeout=300s || echo "External Secrets Operator not ready yet"
-          
-          # Check ClusterSecretStore status
-          echo "Checking ClusterSecretStore status..."
-          kubectl get clustersecretstore azure-keyvault-store -o yaml || echo "ClusterSecretStore not found"
-          
-          # Check if External Secrets are created
-          echo "Checking ExternalSecrets in mealie namespace..."
-          kubectl get externalsecrets -n mealie || echo "No ExternalSecrets found yet"
-          
-          # Check if secrets are created
-          echo "Checking secrets in mealie namespace..."
-          kubectl get secrets -n mealie || echo "Mealie namespace not ready yet"
-          
-          echo "External Secrets verification completed"
+          echo "============================================="
+          echo "GitOps setup completed for home cluster!"
+          echo "============================================="
+          echo ""
+          echo "To access ArgoCD UI:"
+          echo "1. Port forward: kubectl port-forward svc/argocd-server -n argocd 8080:443"
+          echo "2. Get admin password:"
+          echo "   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d"
+          echo "3. Open https://localhost:8080 and login with username 'admin'"
+          echo ""
+          echo "Applications deployed:"
+          kubectl get applications -n argocd --no-headers 2>/dev/null | awk '{print "- " $1 " (" $3 ")"}' || echo "- Root application deployed, others will follow"
+          echo ""
+          echo "Monitor deployment status in ArgoCD UI"
+          echo "============================================="

@@ -10,8 +10,6 @@ spec:
     spec:
       template:
         spec:
-          nodeSelector:
-            workload-type: arm
           restartPolicy: OnFailure
           containers:
             - name: backup

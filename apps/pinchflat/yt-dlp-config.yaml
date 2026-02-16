@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pinchflat-yt-dlp-config
-  namespace: pinchflat
-data:
-  base-config.txt: |
-    --extractor-args "youtube:player-client=default,-tv_simply;youtube:getpot_bgutil_baseurl=http://bgutil-provider.pinchflat.svc.cluster.local:4416"

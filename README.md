@@ -1,78 +1,68 @@
 # homelab
 
-My HomeLab running on Hetzner using Kube Hetzner K8s cluster and GitOps workflow
+My HomeLab running on a local K3s cluster with GitOps workflow.
 
 ## Architecture
 
-- **Cluster**: K3s on Hetzner Cloud (1 control plane + 3 workers: 2x AMD64 + 1x ARM64)
-- **CNI**: Cilium v1.18.1 with Gateway API support and WireGuard encryption
+- **Cluster**: K3s on local hardware (provisioned via Ansible)
+- **CNI**: Cilium with Gateway API support
 - **GitOps**: ArgoCD with automated sync
-- **Ingress**: Cilium Gateway API
-- **TLS**: cert-manager with Let's Encrypt
-- **State Management**: Terraform Cloud for remote state
-- **Infrastructure**: Kube-Hetzner v2.18.1
+- **Ingress**: Envoy Gateway (Gateway API)
+- **TLS**: cert-manager with Let's Encrypt (DNS-01 via Cloudflare)
+- **DNS**: External DNS with Cloudflare
+- **Storage**: Synology CSI Driver + SMB CSI Driver
+- **Secrets**: External Secrets Operator with Azure Key Vault
 
 ## Repository Structure
 
 ```text
 homelab/
-├── infrastructure/              # Terraform for cluster provisioning
-│   ├── backend.tf              # Terraform Cloud backend configuration
-│   ├── kube.tf                 # Main Kube-Hetzner cluster definition
-│   └── hcloud-microos-snapshots.pkr.hcl # Packer configuration
+├── ansible/                    # Ansible playbooks for cluster provisioning
+│   ├── inventory.yml
+│   └── playbooks/
 ├── apps/                       # Application definitions and ArgoCD apps
 │   ├── _argocd/               # ArgoCD Application manifests
 │   ├── root.yaml              # Root ArgoCD Application (App of Apps)
-│   ├── cert-manager/          # Certificate management
+│   ├── actual/                # Budget management
+│   ├── cert-manager/          # Certificate management (DNS-01)
 │   ├── cloudnative-pg/        # PostgreSQL operator
-│   ├── crossplane/            # Cloud infrastructure management
 │   ├── external-secrets/      # External secrets operator
 │   ├── garden/                # Garden management app
+│   ├── givgroov/              # Music sharing app
+│   ├── home-assistant/        # Home automation
 │   ├── mealie/                # Recipe management
-│   ├── n8n/                   # Workflow automation
 │   ├── open-webui/            # LLM interface
+│   ├── paperless/             # Document management
+│   ├── pi-hole/               # DNS ad blocker
 │   ├── portfolio/             # Personal portfolio
-│   ├── seafile/               # File sync and sharing
-│   └── zipline/               # File upload service
+│   ├── smb-csi-driver/        # SMB storage driver
+│   ├── synology-csi-driver/   # Synology NAS storage driver
+│   └── vinyl-manager/         # Vinyl collection manager
 ├── networking/                 # Networking configurations
+│   ├── cilium-lb-ipam/        # Cilium LB IP address management
+│   ├── cilium-network-policies/ # Network policies
 │   ├── gateways/              # Gateway definitions
 │   ├── httproutes/            # HTTPRoute definitions
 │   ├── external-dns/          # External DNS configuration
 │   └── kustomization.yaml     # Networking kustomization
-└── keys/                      # SSH keys for cluster access
+├── keys/                       # SSH keys for cluster access
+└── scripts/                    # Utility scripts
 ```
 
 ## Deployment Flow
 
-### 1. Infrastructure Deployment
+### 1. Infrastructure Provisioning
 
-The cluster uses Terraform Cloud for state management and Kube-Hetzner for provisioning:
+The cluster is provisioned on local hardware using Ansible:
 
 ```bash
-cd infrastructure
-terraform init
-terraform plan
-terraform apply
+cd ansible
+ansible-playbook -i inventory.yml playbooks/argocd-gitops-setup.yml
 ```
-
-**Cluster Configuration:**
-
-- 1x Control Plane: `cax21` (ARM64, 4 vCPU, 8GB RAM)
-- 2x Workers: `cx32` (AMD64, 8 vCPU, 32GB RAM)
-- 1x ARM Worker: `cax21` (ARM64, 4 vCPU, 8GB RAM)
-- Load Balancer: `lb11` in fsn1
-- Cilium with WireGuard encryption and Gateway API
-- Cert-manager pre-installed
 
 ### 2. GitOps Bootstrap
 
-After infrastructure deployment, the cluster automatically bootstraps with:
-
 ```bash
-# Get kubeconfig from Terraform output
-terraform output -raw kubeconfig > ~/.kube/config-homelab
-export KUBECONFIG=~/.kube/config-homelab
-
 # Apply root ArgoCD application (App of Apps pattern)
 kubectl apply -f apps/root.yaml
 ```
@@ -109,46 +99,47 @@ The homelab runs several applications managed through ArgoCD:
 
 ### Infrastructure Applications
 
-- **cert-manager**: Automatic TLS certificate management with Let's Encrypt
+- **cert-manager**: Automatic TLS certificate management with Let's Encrypt (DNS-01 via Cloudflare)
 - **cloudnative-pg**: PostgreSQL operator for database management
-- **crossplane**: Cloud infrastructure management and provisioning
-- **external-secrets**: Secure secrets management from external sources
+- **external-secrets**: Secure secrets management from Azure Key Vault
+- **smb-csi-driver**: SMB storage driver for NAS/storage box access
+- **synology-csi-driver**: Synology NAS iSCSI storage driver
 
 ### User Applications
 
+- **actual**: Budget and financial management
 - **garden**: Garden management and planning application
+- **givgroov**: Music sharing platform
+- **home-assistant**: Home automation
 - **mealie**: Recipe management and meal planning
-- **n8n**: Workflow automation and integration platform
 - **open-webui**: Modern interface for Large Language Models
+- **paperless**: Document management system
+- **pi-hole**: DNS-level ad blocking
 - **portfolio**: Personal portfolio website
-- **seafile**: File synchronization and sharing platform
-- **zipline**: Fast and reliable file upload service
+- **vinyl-manager**: Vinyl record collection manager
 
-All applications are accessible via `https://<app>.timosur.com` with automatic TLS certificates.
+All applications are accessible via `https://<app>.home.timosur.com`.
 
 ## Networking
 
-- **Gateway**: Cilium Gateway API handles all ingress traffic
-- **Load Balancer**: Hetzner Cloud Load Balancer (lb11) in fsn1
-- **DNS**: External DNS automatically manages DNS records
-- **TLS**: Wildcard and individual certificates via cert-manager + Let's Encrypt
-- **CNI**: Cilium with WireGuard node-to-node encryption
-- **Routing**: Tunnel mode for compatibility with Hetzner Cloud
+- **Gateway**: Envoy Gateway (Gateway API) handles all ingress traffic
+- **Load Balancer**: Cilium LB IPAM with L2 announcements
+- **DNS**: External DNS automatically manages Cloudflare DNS records
+- **TLS**: Wildcard and individual certificates via cert-manager + Let's Encrypt (DNS-01)
+- **CNI**: Cilium
+- **Network Policies**: Cilium-based network policies for isolation
 
 ### Available Services
 
-- **ArgoCD**: `https://argocd.timosur.com`
-- **Applications**: `https://<app-name>.timosur.com`
+- **ArgoCD**: `https://argo.home.timosur.com`
+- **Applications**: `https://<app-name>.home.timosur.com`
 
 ## Key Features
 
 - **GitOps Workflow**: All changes deployed via Git commits
-- **Automated TLS**: Certificates automatically provisioned and renewed
-- **Multi-Architecture**: Supports both AMD64 and ARM64 workloads
-- **High Availability**: Load balancer with multiple worker nodes
-- **Security**: WireGuard encryption, network policies, and secret management
+- **Automated TLS**: Certificates automatically provisioned and renewed via DNS-01
+- **Security**: Network policies and secret management via Azure Key Vault
 - **Monitoring**: Hubble UI for network observability
-- **Scalability**: Easy horizontal scaling with additional worker nodes
 
 ## Useful Commands
 

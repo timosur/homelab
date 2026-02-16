@@ -13,8 +13,6 @@ spec:
       labels:
         app: garden-nginx
     spec:
-      nodeSelector:
-        workload-type: arm
       containers:
         - name: nginx
           image: nginx:alpine

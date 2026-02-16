@@ -1,14 +1,14 @@
-# Home Cluster Networking
+# Networking
 
-This folder contains the networking configuration for your home cluster, designed for HTTP-only access with the domain pattern `*.home.timosur.com`.
+This folder contains the networking configuration for the homelab cluster.
 
 ## Features
 
-- **HTTP-only**: No HTTPS/TLS complexity for home use
-- **Central Gateway**: Single envoy-gateway for all services
-- **K3s ServiceLB**: Uses built-in load balancer
-- **Control Plane Only**: Routes traffic only through control plane nodes
-- **External DNS**: Automatic DNS record management for `*.home.timosur.com`
+- **Two Gateways**: `envoy-gateway-home` (LAN, `*.home.timosur.com`) and `envoy-gateway-internet` (public, `*.timosur.com`)
+- **Cilium LB IPAM**: L2 announcements for load balancer IPs
+- **TLS**: cert-manager with Let's Encrypt DNS-01 via Cloudflare (internet gateway)
+- **External DNS**: Automatic Cloudflare DNS record management
+- **Network Policies**: Cilium-based network isolation
 
 ## Architecture
 
@@ -44,11 +44,11 @@ Ensure you have an Azure SecretStore configured in the `external-secrets` namesp
 
 ### 3. Deploy via ArgoCD
 
-The networking is automatically deployed via the `networking-home-app.yaml` in the `_argocd-home` folder.
+The networking is automatically deployed via the `networking-app.yaml` in the `_argocd` folder.
 
 ## Adding New Services
 
-To add a new service to the home cluster networking:
+To add a new service:
 
 1. Create an HTTPRoute in the `httproutes/` folder:
 

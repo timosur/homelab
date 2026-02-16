@@ -15,8 +15,6 @@ spec:
       labels:
         app: garden-backend
     spec:
-      nodeSelector:
-        workload-type: arm
       containers:
         - name: garden-backend
           image: ghcr.io/timosur/life-as-a-garden/backend:1.0.3

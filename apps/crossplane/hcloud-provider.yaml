@@ -1,6 +1,0 @@
-apiVersion: pkg.crossplane.io/v1
-kind: Provider
-metadata:
-  name: ibrahimwithi-provider-upjet-hcloud
-spec:
-  package: xpkg.upbound.io/ibrahimwithi/provider-upjet-hcloud:v0.1.3

@@ -29,10 +29,8 @@ App Repo (GitHub)
 
 Homelab Repo (GitHub)
   ├─ apps/<app-name>/          ← Kubernetes manifests (Kustomize)
-  ├─ apps/_argocd/             ← ArgoCD Application CRDs (Hetzner cluster)
-  ├─ apps/_argocd-home/        ← ArgoCD Application CRDs (Home cluster)
-  ├─ networking/httproutes/    ← HTTPRoute for Hetzner cluster
-  └─ networking-home/httproutes/ ← HTTPRoute for Home cluster
+  ├─ apps/_argocd/             ← ArgoCD Application CRDs
+  └─ networking/httproutes/    ← HTTPRoute definitions
 
 ArgoCD (App of Apps)
   └─ root.yaml → _argocd/ kustomization → <app>-app.yaml → apps/<app-name>/
@@ -175,7 +173,7 @@ jobs:
 
 **Key points:**
 - Images are pushed to `ghcr.io/timosur/<repo-name>/<service>`
-- Always build **multi-platform** (`linux/amd64,linux/arm64`) — the Hetzner cluster runs on ARM (cax21)
+- Always build **multi-platform** (`linux/amd64,linux/arm64`) for compatibility
 - Use `sha-<commit>` tags for pinned deployments in K8s
 
 ### Local Development
@@ -261,8 +259,6 @@ spec:
       labels:
         app: <app-name>-backend
     spec:
-      nodeSelector:
-        workload-type: arm   # Required for Hetzner ARM nodes
       containers:
         - name: backend
           image: ghcr.io/timosur/<repo-name>/backend:sha-<commit>@sha256:<digest>
@@ -296,7 +292,6 @@ spec:
 
 **Important:**
 - Pin images with SHA digest: `image: ghcr.io/.../backend:sha-abc123@sha256:...`
-- Set `nodeSelector: workload-type: arm` for Hetzner cluster
 - Use `strategy.type: Recreate` for single-replica deployments with PVCs
 - Add `livenessProbe` and `readinessProbe`
 
@@ -328,7 +323,7 @@ metadata:
   namespace: <app-name>
 data:
   TZ: "Europe/Berlin"
-  BASE_URL: "https://<app-name>.timosur.com"
+  BASE_URL: "https://<app-name>.home.timosur.com"
   # Add more non-secret config here
 ```
 
@@ -336,94 +331,73 @@ data:
 
 ## Networking & Ingress
 
-The cluster uses **Envoy Gateway** (Gateway API) with **cert-manager** for TLS and **External DNS** (Cloudflare) for DNS records.
+The cluster uses **Envoy Gateway** (Gateway API) with **cert-manager** for TLS (DNS-01 via Cloudflare) and **External DNS** (Cloudflare) for DNS records.
 
-### 1. Add Gateway Listener
+There are two gateways:
+- **envoy-gateway-home** (`*.home.timosur.com`, HTTP only, LAN access) — for internal/home services
+- **envoy-gateway-internet** (`*.timosur.com`, HTTP+HTTPS, internet-facing) — for publicly exposed services
 
-In `networking/gateways/envoy-gateway.yaml`, add two listeners for your domain (HTTP for ACME challenges + HTTPS for traffic):
+### Home Services (LAN only, `*.home.timosur.com`)
 
-```yaml
-# HTTP listener (for cert-manager ACME challenge)
-- name: <app-name>-http
-  hostname: <app-name>.timosur.com
-  port: 80
-  protocol: HTTP
-  allowedRoutes:
-    namespaces:
-      from: All
+Most apps use the home gateway. No per-app gateway listener is needed — the wildcard listener handles all `*.home.timosur.com` hostnames.
 
-# HTTPS listener
-- name: <app-name>-https
-  hostname: <app-name>.timosur.com
-  port: 443
-  protocol: HTTPS
-  allowedRoutes:
-    namespaces:
-      from: All
-  tls:
-    mode: Terminate
-    certificateRefs:
-      - kind: Secret
-        name: <app-name>-tls
-        namespace: cert-manager
-```
+#### Create HTTPRoute
 
-### 2. Add cert-manager Solver
-
-In `apps/cert-manager/cluster-issuer.yaml`, add an entry for the new domain:
-
-```yaml
-- selector:
-    dnsNames:
-      - <app-name>.timosur.com
-  http01:
-    gatewayHTTPRoute:
-      parentRefs:
-        - name: envoy-gateway
-          namespace: cert-manager
-          kind: Gateway
-          sectionName: <app-name>-http
-```
-
-### 3. Create HTTPRoute
-
-Create `networking/httproutes/<app-name>-route.yaml`:
+Create `networking/httproutes/<app-name>-httproute.yaml`:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: <app-name>-route
+  name: <app-name>-home
   namespace: <app-name>
 spec:
   parentRefs:
-    - name: envoy-gateway
-      namespace: cert-manager
-      sectionName: <app-name>-https
+    - name: envoy-gateway-home
+      namespace: envoy-gateway-system
   hostnames:
-    - <app-name>.timosur.com
+    - "<app-name>.home.timosur.com"
   rules:
     - backendRefs:
         - name: <app-name>
           port: 80
 ```
 
-### 4. Register HTTPRoute in Kustomization
+#### Register HTTPRoute in Kustomization
 
-Add the route to `networking/kustomization.yaml`:
+Add the route to `networking/httproutes/kustomization.yaml`:
 
 ```yaml
 resources:
-  - httproutes/<app-name>-route.yaml
+  - <app-name>-httproute.yaml
 ```
 
-### Home Cluster Variant
+### Internet-Facing Services (`*.timosur.com`)
 
-For the home cluster, the pattern is simpler (HTTP only, `*.home.timosur.com`):
+For apps that need public access, use the internet gateway. TLS is handled via a wildcard certificate and DNS-01 challenge via Cloudflare.
 
-- Add listener in `networking-home/gateways/envoy-gateway.yaml` (port 80 only, no TLS)
-- Create `networking-home/httproutes/<app-name>-route.yaml`
-- Register in `networking-home/kustomization.yaml`
+If the app uses a custom domain (not `*.timosur.com`), add dedicated listeners to `networking/gateways/envoy-gateway-internet.yaml` (HTTP + HTTPS with a separate certificate).
+
+#### Create HTTPRoute
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: <app-name>-internet
+  namespace: <app-name>
+spec:
+  parentRefs:
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: https
+  hostnames:
+    - "<app-name>.timosur.com"
+  rules:
+    - backendRefs:
+        - name: <app-name>
+          port: 80
+```
 
 ---
 
@@ -520,7 +494,7 @@ spec:
         name: <app-name>-postgres-credentials
   storage:
     size: 10Gi
-    storageClassName: hcloud-volumes   # or storage-box-smb for larger data
+    storageClassName: hcloud-volumes
 ```
 
 This requires:
@@ -533,11 +507,12 @@ This requires:
 
 ### Available Storage Classes
 
-| StorageClass | Provider | Use Case | Clusters |
-|---|---|---|---|
-| `hcloud-volumes` | Hetzner Cloud CSI | Default, general purpose (up to ~100Gi) | Hetzner |
-| `storage-box-smb` | SMB CSI Driver | Large storage via Hetzner Storage Box | Hetzner, Home |
-| Synology iSCSI | Synology CSI Driver | NAS storage (aliased as `hcloud-volumes`/`storage-box-smb`) | Home |
+| StorageClass | Provider | Use Case |
+|---|---|---|
+| `hcloud-volumes` | Synology CSI Driver (iSCSI) | Default, general purpose block storage |
+| `storage-box-smb` | SMB CSI Driver | Large shared storage via NAS/SMB |
+
+> Note: The storage class names `hcloud-volumes` and `storage-box-smb` are aliased from the Synology CSI driver for compatibility.
 
 ### PVC Example
 
@@ -641,8 +616,6 @@ resources:
   - <app-name>-app.yaml
 ```
 
-For the home cluster, use `apps/_argocd-home/` instead.
-
 ---
 
 ## Common Patterns
@@ -735,7 +708,7 @@ spec:
 - [ ] `apps/<app-name>/` directory with Kustomize manifests
   - [ ] `kustomization.yaml`
   - [ ] `namespace.yaml`
-  - [ ] `deployment.yaml` (with `nodeSelector`, probes, SHA-pinned images)
+  - [ ] `deployment.yaml` (with probes, SHA-pinned images)
   - [ ] `service.yaml`
   - [ ] `configmap.yaml` (if non-secret env vars needed)
   - [ ] `external-secret.yaml` (if secrets needed)
@@ -744,10 +717,8 @@ spec:
 - [ ] ArgoCD Application registered in `apps/_argocd/<app-name>-app.yaml`
 - [ ] ArgoCD kustomization updated in `apps/_argocd/kustomization.yaml`
 - [ ] Secrets added to Azure Key Vault
-- [ ] Gateway listeners added (HTTP + HTTPS) in `networking/gateways/envoy-gateway.yaml`
-- [ ] cert-manager solver added in `apps/cert-manager/cluster-issuer.yaml`
-- [ ] HTTPRoute created in `networking/httproutes/<app-name>-route.yaml`
-- [ ] HTTPRoute registered in `networking/kustomization.yaml`
+- [ ] HTTPRoute created in `networking/httproutes/<app-name>-httproute.yaml`
+- [ ] HTTPRoute registered in `networking/httproutes/kustomization.yaml`
 
 ### Post-deployment Verification
 

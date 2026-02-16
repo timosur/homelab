@@ -22,7 +22,7 @@ spec:
 
   storage:
     size: 20Gi
-    storageClass: hcloud-volumes
+    storageClass: local-path
 
   resources:
     requests:
