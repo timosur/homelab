@@ -5,11 +5,10 @@ metadata:
   namespace: actual
 spec:
   parentRefs:
-    - name: envoy-gateway-internet
-      namespace: envoy-gateway-internet-system
-      sectionName: https
+    - name: envoy-gateway-home
+      namespace: envoy-gateway-system
   hostnames:
-    - "finance.timosur.com"
+    - "finance.home.timosur.com"
   rules:
     - matches:
         - path:
