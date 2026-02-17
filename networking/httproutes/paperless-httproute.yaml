@@ -5,11 +5,10 @@ metadata:
   namespace: paperless
 spec:
   parentRefs:
-    - name: envoy-gateway-internet
-      namespace: envoy-gateway-internet-system
-      sectionName: https
+    - name: envoy-gateway-home
+      namespace: envoy-gateway-system
   hostnames:
-    - "docs.timosur.com"
+    - "docs.home.timosur.com"
   rules:
     - matches:
         - path:
