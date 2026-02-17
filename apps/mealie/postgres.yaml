@@ -21,8 +21,8 @@ spec:
         name: mealie-postgres-credentials
 
   storage:
-    size: 10Gi
-    storageClass: storage-box-smb
+    size: 50Gi
+    storageClass: local-path
 
   resources:
     requests:
