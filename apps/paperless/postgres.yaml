@@ -22,7 +22,7 @@ spec:
 
   storage:
     size: 20Gi
-    storageClass: storage-box-smb
+    storageClass: local-path
 
   resources:
     requests:
