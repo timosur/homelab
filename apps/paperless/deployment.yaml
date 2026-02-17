@@ -79,6 +79,7 @@ spec:
 
               # Set permissions (ownership will be handled by fsGroup)
               echo "Setting permissions..."
+              chown -R 1000:1000 /usr/src/paperless
               chmod -R 755 /usr/src/paperless
 
               # Verify directories exist and are accessible
