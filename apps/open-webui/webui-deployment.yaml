@@ -15,6 +15,8 @@ spec:
       labels:
         app: open-webui
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: wait-for-redis
