@@ -7,7 +7,7 @@ This folder contains the networking configuration for the homelab cluster.
 - **Two Gateways**: `envoy-gateway-home` (LAN, `*.home.timosur.com`) and `envoy-gateway-internet` (public, `*.timosur.com`)
 - **Cilium LB IPAM**: L2 announcements for load balancer IPs
 - **TLS**: cert-manager with Let's Encrypt DNS-01 via Cloudflare (internet gateway)
-- **External DNS**: Automatic Cloudflare DNS record management
+- **DNS**: Managed via Unifi router, updating `*.timosur.com` wildcard in Cloudflare
 - **Network Policies**: Cilium-based network isolation
 
 ## Architecture
@@ -33,16 +33,7 @@ Before deploying, you need to update the gateway configuration with your actual 
      metallb.universe.tf/loadBalancerIPs: "YOUR_CONTROL_PLANE_IP"
    ```
 
-### 2. External Secrets Setup
-
-Ensure you have an Azure SecretStore configured in the `external-secrets` namespace with the following secrets:
-- `dns-client-id`
-- `dns-client-secret`
-- `dns-tenant-id`
-- `dns-subscription-id`
-- `dns-resource-group`
-
-### 3. Deploy via ArgoCD
+### 2. Deploy via ArgoCD
 
 The networking is automatically deployed via the `networking-app.yaml` in the `_argocd` folder.
 
@@ -83,18 +74,13 @@ resources:
 
 ## DNS Configuration
 
-External-DNS will automatically create DNS records for all HTTPRoutes with hostnames matching `*.home.timosur.com`. The records will point to your control plane node IP.
+DNS is managed externally via the Unifi router, which updates the `*.timosur.com` wildcard record in Cloudflare to point to the correct public IP.
 
 ## Troubleshooting
 
 ### Check Gateway Status
 ```bash
 kubectl get gateway envoy-gateway-home -n envoy-gateway-system
-```
-
-### Check External-DNS Logs
-```bash
-kubectl logs -n external-dns-home deployment/external-dns-home
 ```
 
 ### Check HTTPRoute Status
