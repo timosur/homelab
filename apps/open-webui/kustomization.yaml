@@ -11,6 +11,8 @@ resources:
   - redis-service.yaml
   - postgres.yaml
   - external-secret.yaml
+  - ollama-statefulset.yaml
+  - ollama-service.yaml
   - webui-deployment.yaml
   - webui-pvc.yaml
   - webui-service.yaml
