@@ -58,7 +58,7 @@ This repository is configured with Renovate Bot to automatically manage dependen
 
 ### Grouped Updates
 
-- **Kubernetes Ecosystem**: cert-manager, external-dns, argocd
+- **Kubernetes Ecosystem**: cert-manager, argocd
 - **GitHub Actions**: All CI/CD action updates
 
 ### Special Handling

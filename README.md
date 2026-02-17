@@ -43,7 +43,6 @@ homelab/
 │   ├── cilium-network-policies/ # Network policies
 │   ├── gateways/              # Gateway definitions
 │   ├── httproutes/            # HTTPRoute definitions
-│   ├── external-dns/          # External DNS configuration
 │   └── kustomization.yaml     # Networking kustomization
 ├── keys/                       # SSH keys for cluster access
 └── scripts/                    # Utility scripts
