@@ -28,13 +28,15 @@ spec:
           livenessProbe:
             tcpSocket:
               port: 6379
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
           readinessProbe:
             tcpSocket:
               port: 6379
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -152,16 +154,21 @@ spec:
             requests:
               memory: "500m"
               cpu: "200m"
+          startupProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 10
           livenessProbe:
             tcpSocket:
               port: 8000
-            initialDelaySeconds: 60
             periodSeconds: 30
             timeoutSeconds: 10
           readinessProbe:
             tcpSocket:
               port: 8000
-            initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
       volumes:
