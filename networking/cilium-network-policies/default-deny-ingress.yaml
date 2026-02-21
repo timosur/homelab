@@ -21,7 +21,10 @@ spec:
           - cert-manager
           - envoy-gateway-system
           - envoy-gateway-internet-system
-  ingress: []
+  ingress:
+    # Allow kubelet health probes from node IPs (host network)
+    - fromEntities:
+        - host
   enableDefaultDeny:
     ingress: true
     egress: false
