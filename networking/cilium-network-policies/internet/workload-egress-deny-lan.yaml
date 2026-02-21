@@ -24,23 +24,13 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
-    # Allow cluster-internal pod traffic
-    - toCIDR:
-        - 10.50.0.0/16
-    # Allow cluster-internal service traffic
-    - toCIDR:
-        - 10.51.0.0/16
-    # Allow external internet (for APIs, etc.)
-    - toCIDR:
-        - 0.0.0.0/0
-      toCIDRSet:
+    # Allow traffic to all cluster endpoints (toCIDR alone won't match
+    # in-cluster endpoints because Cilium resolves them to pod identities)
+    - toEndpoints:
+        - {}
+    # Allow external internet but deny LAN
+    - toCIDRSet:
         - cidr: 0.0.0.0/0
           except:
             - 192.168.0.0/16
             - 172.16.0.0/12
-            - 10.0.0.0/8
-  egressDeny:
-    # Explicit deny to LAN — defense in depth
-    - toCIDR:
-        - 192.168.0.0/16
-        - 172.16.0.0/12

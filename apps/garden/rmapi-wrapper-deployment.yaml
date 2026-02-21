@@ -82,12 +82,8 @@ spec:
 
       volumes:
         - name: rmapi-config
-          hostPath:
-            path: /var/lib/garden/rmapi-config
-            type: DirectoryOrCreate
+          emptyDir: {}
         - name: rmapi-data
-          hostPath:
-            path: /var/lib/garden/rmapi-data
-            type: DirectoryOrCreate
+          emptyDir: {}
         - name: rmapi-uploads
           emptyDir: {}
