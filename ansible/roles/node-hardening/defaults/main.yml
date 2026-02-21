@@ -1,0 +1,112 @@
+---
+# ──────────────────────────────────────────────────────
+# Sysctl hardening parameters (applied on all nodes)
+# ──────────────────────────────────────────────────────
+hardening_sysctl_params:
+  # -- Network hardening --
+  # Ignore ICMP redirects (prevent MITM attacks)
+  net.ipv4.conf.all.accept_redirects: "0"
+  net.ipv4.conf.default.accept_redirects: "0"
+  net.ipv6.conf.all.accept_redirects: "0"
+  net.ipv6.conf.default.accept_redirects: "0"
+  # Don't send ICMP redirects (we are not a router for others)
+  net.ipv4.conf.all.send_redirects: "0"
+  net.ipv4.conf.default.send_redirects: "0"
+  # Reject source-routed packets
+  net.ipv4.conf.all.accept_source_route: "0"
+  net.ipv4.conf.default.accept_source_route: "0"
+  net.ipv6.conf.all.accept_source_route: "0"
+  net.ipv6.conf.default.accept_source_route: "0"
+  # Log martian packets (spoofed, source-routed, redirected)
+  net.ipv4.conf.all.log_martians: "1"
+  net.ipv4.conf.default.log_martians: "1"
+  # SYN flood protection
+  net.ipv4.tcp_syncookies: "1"
+  # Ignore ICMP broadcast requests
+  net.ipv4.icmp_echo_ignore_broadcasts: "1"
+  # Ignore bogus ICMP error responses
+  net.ipv4.icmp_ignore_bogus_error_responses: "1"
+  # Reverse path filtering (note: Cilium sets rp_filter=0 on its
+  # interfaces, so we only harden the default for new interfaces)
+  net.ipv4.conf.default.rp_filter: "1"
+
+  # -- Kernel hardening --
+  # Restrict access to kernel pointers in /proc
+  kernel.kptr_restrict: "2"
+  # Restrict dmesg to root
+  kernel.dmesg_restrict: "1"
+  # Restrict BPF to privileged users
+  kernel.unprivileged_bpf_disabled: "1"
+  # Harden BPF JIT compiler
+  net.core.bpf_jit_harden: "2"
+  # Restrict kernel SysRq to sync + reboot only (128+16 = 176 is
+  # already set, keep it)
+  kernel.sysrq: "176"
+  # Protect hard/symlinks
+  fs.protected_hardlinks: "1"
+  fs.protected_symlinks: "1"
+  fs.protected_fifos: "2"
+  fs.protected_regular: "2"
+
+# ──────────────────────────────────────────────────────
+# Services to disable on ALL nodes (headless k3s servers)
+# ──────────────────────────────────────────────────────
+common_disabled_services:
+  - avahi-daemon.service # mDNS — not needed on servers
+  - bluetooth.service # Bluetooth — no peripherals
+  - hciuart.service # Bluetooth UART
+  - ModemManager.service # Modem management — not needed
+  - wpa_supplicant.service # Wi-Fi — nodes are on ethernet
+  - triggerhappy.service # Hotkey daemon — headless
+  - udisks2.service # Disk automounting — not needed
+  - rpi-display-backlight.service # RPi display — headless
+  - gpu-manager.service # GPU manager — headless
+  - apport.service # Ubuntu crash reporting
+  - cloud-config.service # Cloud-init — bare metal
+  - cloud-final.service
+  - cloud-init-local.service
+  - cloud-init.service
+  - open-vm-tools.service # VMware tools — not a VM
+  - vgauth.service # VMware guest auth — not a VM
+  - multipathd.service # Multipath I/O — not SAN
+  - pollinate.service # Random seed — not needed
+
+# ──────────────────────────────────────────────────────
+# Extra services to disable (set per-host in inventory)
+# ──────────────────────────────────────────────────────
+extra_disabled_services: []
+
+# ──────────────────────────────────────────────────────
+# Kernel modules to blacklist on ALL nodes
+# ──────────────────────────────────────────────────────
+common_blacklisted_modules:
+  - firewire-core # FireWire — DMA attack vector
+  - firewire-ohci
+  - firewire-sbp2
+  - thunderbolt # Thunderbolt — DMA attack vector
+  - dccp # Uncommon/legacy network protocols
+  - sctp
+  - rds
+  - tipc
+  - cramfs # Uncommon/legacy filesystems
+  - freevxfs
+  - hfs
+  - hfsplus
+  - jffs2
+  - udf
+  - usb-storage # USB mass storage — server, no USB drives
+  - bluetooth # Bluetooth stack
+  - bnep
+  - btusb
+  - snd_bcm2835 # Sound — headless
+  - snd_hda_intel
+  - snd_hda_codec
+  - snd_pcm
+  - snd_timer
+  - snd # Core sound
+  - soundcore
+
+# ──────────────────────────────────────────────────────
+# Extra modules to blacklist (set per-host in inventory)
+# ──────────────────────────────────────────────────────
+extra_blacklisted_modules: []

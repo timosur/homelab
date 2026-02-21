@@ -1,0 +1,37 @@
+name: Nightly Cluster Backup
+
+on:
+  schedule:
+    # Every night at 02:00 CET (01:00 UTC)
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+env:
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+  ANSIBLE_FORCE_COLOR: "True"
+
+jobs:
+  backup:
+    runs-on: self-hosted
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Verify prerequisites
+        run: |
+          echo "=== Checking prerequisites ==="
+          ansible --version | head -1
+          kubectl cluster-info --request-timeout=10s 2>/dev/null && echo "kubectl: OK"
+          jq --version
+          echo "=== SSH connectivity ==="
+          ssh -o ConnectTimeout=10 homelab-arm-small 'echo "homelab-arm-small: OK"'
+          ssh -o ConnectTimeout=10 homelab-arm-large 'echo "homelab-arm-large: OK"'
+
+      - name: Run cluster backup
+        working-directory: ansible
+        run: |
+          ansible-playbook playbooks/cluster-backup.yml \
+            -i inventory.yml \
+            -v

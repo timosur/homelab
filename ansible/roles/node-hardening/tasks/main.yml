@@ -1,0 +1,98 @@
+---
+# Node hardening tasks for all k3s cluster nodes
+# Applies kernel sysctl hardening, disables unnecessary services,
+# and blacklists unused kernel modules based on node hardware.
+
+# ──────────────────────────────────────────────────────
+# 1. Kernel / network sysctl hardening (all nodes)
+# ──────────────────────────────────────────────────────
+- name: Apply kernel and network sysctl hardening
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/90-hardening.conf
+  become: true
+  loop: "{{ hardening_sysctl_params | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}={{ item.value }}"
+
+# ──────────────────────────────────────────────────────
+# 2. Disable unnecessary services (hardware-dependent)
+# ──────────────────────────────────────────────────────
+- name: Gather list of enabled services
+  ansible.builtin.command: systemctl list-unit-files --state=enabled --type=service --no-pager
+  register: enabled_services
+  changed_when: false
+
+- name: Disable unnecessary services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  become: true
+  when: item in enabled_services.stdout
+  loop: "{{ common_disabled_services + (extra_disabled_services | default([])) }}"
+  loop_control:
+    label: "{{ item }}"
+  ignore_errors: true
+
+# ──────────────────────────────────────────────────────
+# 3. Blacklist unused kernel modules (all nodes)
+# ──────────────────────────────────────────────────────
+- name: Blacklist unused and dangerous kernel modules
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/blacklist-hardening.conf
+    content: |
+      # Blacklist unused/dangerous modules for headless k3s nodes
+      {% for mod in common_blacklisted_modules + (extra_blacklisted_modules | default([])) %}
+      blacklist {{ mod }}
+      {% endfor %}
+    mode: "0644"
+  become: true
+  register: module_blacklist
+
+- name: Rebuild initramfs after module blacklist change (Debian/Ubuntu)
+  ansible.builtin.command: update-initramfs -u
+  become: true
+  when:
+    - module_blacklist.changed
+    - ansible_os_family == "Debian"
+
+# ──────────────────────────────────────────────────────
+# 4. SSH hardening
+# ──────────────────────────────────────────────────────
+- name: Harden SSH configuration
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/90-hardening.conf
+    content: |
+      # Hardening applied by Ansible
+      PermitRootLogin no
+      PasswordAuthentication no
+      X11Forwarding no
+      MaxAuthTries 3
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+    mode: "0644"
+  become: true
+  notify: Restart sshd
+
+# ──────────────────────────────────────────────────────
+# 5. File system hardening
+# ──────────────────────────────────────────────────────
+- name: Set secure permissions on cron directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: "0700"
+  become: true
+  loop:
+    - /etc/cron.d
+    - /etc/cron.daily
+    - /etc/cron.hourly
+    - /etc/cron.weekly
+    - /etc/cron.monthly
+  ignore_errors: true

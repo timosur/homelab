@@ -1,26 +1,40 @@
 ---
 - name: Setup k3s cluster with Cilium
   hosts: k3s_cluster
-  gather_facts: yes
-  become: yes
+  gather_facts: true
+  become: true
+
+- name: Harden all cluster nodes
+  hosts: k3s_cluster
+  gather_facts: true
+  become: true
+  roles:
+    - node-hardening
+
+- name: Blacklist i915 GPU driver on headless nodes
+  hosts: control_plane
+  gather_facts: true
+  become: true
+  roles:
+    - gpu-blacklist
 
 - name: Setup k3s control plane
   hosts: control_plane
-  gather_facts: yes
-  become: yes
+  gather_facts: true
+  become: true
   roles:
     - k3s-control-plane
 
 - name: Setup k3s worker nodes
   hosts: workers
-  gather_facts: yes
-  become: yes
+  gather_facts: true
+  become: true
   roles:
     - k3s-worker
 
 - name: Install and configure Cilium
   hosts: control_plane
-  gather_facts: yes
-  become: yes
+  gather_facts: true
+  become: true
   roles:
     - cilium
