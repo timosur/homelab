@@ -24,6 +24,10 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
+    # Allow traffic to the Kubernetes API server (runs on the host,
+    # not as a pod, so toEndpoints won't match it)
+    - toEntities:
+        - kube-apiserver
     # Allow traffic to all cluster endpoints (toCIDR alone won't match
     # in-cluster endpoints because Cilium resolves them to pod identities)
     - toEndpoints:
