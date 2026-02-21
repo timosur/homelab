@@ -1,0 +1,372 @@
+---
+# ──────────────────────────────────────────────────────
+# Mount Synology SMB share
+# ──────────────────────────────────────────────────────
+
+- name: Install cifs-utils
+  ansible.builtin.apt:
+    name: cifs-utils
+    state: present
+  become: true
+
+- name: Read Synology credentials from k8s secret
+  ansible.builtin.shell: |
+    kubectl get secret {{ backup_smb_k8s_secret }} -n {{ backup_smb_k8s_namespace }} -o json | \
+      jq -r '.data["client-info.yml"]' | base64 -d
+  register: synology_secret_raw
+  changed_when: false
+  no_log: true
+
+- name: Parse Synology credentials
+  ansible.builtin.set_fact:
+    synology_username: "{{ (synology_secret_raw.stdout | from_yaml).clients[0].username }}"
+    synology_password: "{{ (synology_secret_raw.stdout | from_yaml).clients[0].password }}"
+  no_log: true
+
+- name: Create mount point
+  ansible.builtin.file:
+    path: "{{ backup_smb_mount_point }}"
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Check if already mounted
+  ansible.builtin.command: mountpoint -q {{ backup_smb_mount_point }}
+  register: already_mounted
+  failed_when: false
+  changed_when: false
+
+- name: Mount Synology SMB share
+  ansible.builtin.shell: |
+    mount -t cifs {{ backup_smb_share }} {{ backup_smb_mount_point }} \
+      -o username={{ synology_username }},password={{ synology_password }},vers=3.0,uid=$(id -u),gid=$(id -g)
+  become: true
+  no_log: true
+  when: already_mounted.rc != 0
+  register: smb_mounted
+
+# ──────────────────────────────────────────────────────
+# Setup
+# ──────────────────────────────────────────────────────
+
+- name: Set backup timestamp
+  ansible.builtin.set_fact:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+
+- name: Set backup directory
+  ansible.builtin.set_fact:
+    backup_dir: "{{ backup_base_dir }}/{{ backup_timestamp }}"
+
+- name: Check backup base directory is accessible
+  ansible.builtin.stat:
+    path: "{{ backup_smb_mount_point }}"
+  register: backup_base_stat
+
+- name: Fail if backup base directory not accessible
+  ansible.builtin.fail:
+    msg: "SMB share not mounted at {{ backup_smb_mount_point }}"
+  when: not backup_base_stat.stat.isdir | default(false)
+
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check kubectl is available
+  ansible.builtin.command: kubectl cluster-info
+  changed_when: false
+
+# ──────────────────────────────────────────────────────
+# k3s cluster state
+# ──────────────────────────────────────────────────────
+
+- name: Create k3s state snapshot
+  ansible.builtin.shell: |
+    set -e
+    TMP_DIR=$(mktemp -d)
+    cp /var/lib/rancher/k3s/server/db/state.db "${TMP_DIR}/state.db"
+    cp /var/lib/rancher/k3s/server/token "${TMP_DIR}/token"
+    cp -r /var/lib/rancher/k3s/server/tls "${TMP_DIR}/tls"
+    cp -r /var/lib/rancher/k3s/server/manifests "${TMP_DIR}/manifests"
+    cp /etc/rancher/k3s/config.yaml "${TMP_DIR}/config.yaml" 2>/dev/null || true
+    tar -czf "{{ backup_dir }}/k3s-state-{{ backup_timestamp }}.tar.gz" -C "${TMP_DIR}" .
+    rm -rf "${TMP_DIR}"
+  become: true
+  register: k3s_backup
+
+- name: Record k3s backup result
+  ansible.builtin.set_fact:
+    manifest_k3s:
+      file: "k3s-state-{{ backup_timestamp }}.tar.gz"
+  when: k3s_backup is succeeded
+
+# ──────────────────────────────────────────────────────
+# Discover CNPG clusters
+# ──────────────────────────────────────────────────────
+
+- name: Discover CNPG clusters
+  ansible.builtin.shell: |
+    kubectl get clusters.postgresql.cnpg.io -A -o json 2>/dev/null | jq -c '
+      [.items[] | {
+        namespace: .metadata.namespace,
+        cluster: .metadata.name,
+        database: (.spec.bootstrap.initdb.database // "app")
+      }]'
+  register: cnpg_discovery
+  changed_when: false
+  failed_when: false
+
+- name: Parse CNPG clusters
+  ansible.builtin.set_fact:
+    cnpg_clusters: "{{ cnpg_discovery.stdout | default('[]') | from_json }}"
+
+- name: Show discovered CNPG clusters
+  ansible.builtin.debug:
+    msg: "Found {{ cnpg_clusters | length }} CNPG cluster(s): {{ cnpg_clusters | map(attribute='namespace') | join(', ') }}"
+
+# ──────────────────────────────────────────────────────
+# Backup CNPG databases
+# ──────────────────────────────────────────────────────
+
+- name: Backup CNPG databases
+  ansible.builtin.shell: |
+    set -eo pipefail
+    PRIMARY=$(kubectl get pods -n "{{ item.namespace }}" \
+      -l "cnpg.io/cluster={{ item.cluster }},cnpg.io/instanceRole=primary" \
+      -o jsonpath='{.items[0].metadata.name}')
+    if [ -z "$PRIMARY" ]; then
+      echo "ERROR: No primary pod for {{ item.cluster }}" >&2
+      exit 1
+    fi
+    kubectl exec -n "{{ item.namespace }}" "$PRIMARY" -- \
+      pg_dump -U postgres -d "{{ item.database }}" --format=plain --clean --if-exists 2>/dev/null | \
+      gzip > "{{ backup_dir }}/cnpg-{{ item.namespace }}-{{ backup_timestamp }}.sql.gz"
+  args:
+    executable: /bin/bash
+  loop: "{{ cnpg_clusters }}"
+  loop_control:
+    label: "{{ item.namespace }}/{{ item.cluster }}"
+  register: cnpg_backups
+
+- name: Initialize CNPG manifest entries
+  ansible.builtin.set_fact:
+    manifest_cnpg_entries: []
+
+- name: Collect successful CNPG backup entries
+  ansible.builtin.set_fact:
+    manifest_cnpg_entries: >-
+      {{ manifest_cnpg_entries + [{
+        'namespace': item.item.namespace,
+        'cluster': item.item.cluster,
+        'database': item.item.database,
+        'file': 'cnpg-' + item.item.namespace + '-' + backup_timestamp + '.sql.gz'
+      }] }}
+  loop: "{{ cnpg_backups.results }}"
+  loop_control:
+    label: "{{ item.item.namespace }}/{{ item.item.cluster }}"
+  when: item.rc == 0
+
+# ──────────────────────────────────────────────────────
+# Discover local-path PVCs
+# ──────────────────────────────────────────────────────
+
+- name: Discover local-path PVCs (excluding CNPG-managed)
+  ansible.builtin.shell: |
+    kubectl get pvc -A -o json 2>/dev/null | jq -c '
+      [.items[] |
+        select(.spec.storageClassName == "local-path") |
+        select((.metadata.labels // {})["cnpg.io/cluster"] == null) |
+        {namespace: .metadata.namespace, pvc: .metadata.name, pv: .spec.volumeName}
+      ]'
+  register: pvc_discovery
+  changed_when: false
+  failed_when: false
+
+- name: Parse discovered PVCs
+  ansible.builtin.set_fact:
+    local_pvcs_raw: "{{ pvc_discovery.stdout | default('[]') | from_json }}"
+
+- name: Filter out skipped PVCs
+  ansible.builtin.set_fact:
+    local_pvcs_filtered: "{{ local_pvcs_raw | rejectattr('namespace', 'undefined') | list }}"
+
+- name: Resolve PV node and path for each PVC
+  ansible.builtin.shell: |
+    kubectl get pv "{{ item.pv }}" -o json 2>/dev/null | jq -r '{
+      node: (.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0].values[0] // "unknown"),
+      path: (.spec.local.path // .spec.hostPath.path // "unknown")
+    }' | jq -c '.'
+  loop: "{{ local_pvcs_filtered }}"
+  loop_control:
+    label: "{{ item.namespace }}/{{ item.pvc }}"
+  register: pv_details
+  changed_when: false
+  failed_when: false
+
+- name: Build PVC list with node and path
+  ansible.builtin.set_fact:
+    local_pvcs: "{{ local_pvcs | default([]) + [item.0 | combine(item.1.stdout | from_json)] }}"
+  loop: "{{ local_pvcs_filtered | zip(pv_details.results) | list }}"
+  loop_control:
+    label: "{{ item.0.namespace }}/{{ item.0.pvc }}"
+  when:
+    - item.1.rc == 0
+    - (item.1.stdout | from_json).node != "unknown"
+    - (item.1.stdout | from_json).path != "unknown"
+    - (item.0.namespace + '/' + item.0.pvc) not in backup_pvc_skip_patterns
+
+- name: Set empty PVC list if none found
+  ansible.builtin.set_fact:
+    local_pvcs: []
+  when: local_pvcs is not defined
+
+- name: Show discovered PVCs
+  ansible.builtin.debug:
+    msg: "Found {{ local_pvcs | length }} eligible PVC(s): {{ local_pvcs | map(attribute='pvc') | join(', ') }}"
+
+# ──────────────────────────────────────────────────────
+# Backup PVC volumes
+# ──────────────────────────────────────────────────────
+
+- name: Backup PVC volumes (local node)
+  ansible.builtin.shell: |
+    set -eo pipefail
+    tar -czf "{{ backup_dir }}/pvc-{{ item.namespace }}-{{ item.pvc }}-{{ backup_timestamp }}.tar.gz" \
+      -C "{{ item.path }}" .
+  args:
+    executable: /bin/bash
+  become: true
+  loop: "{{ local_pvcs | selectattr('node', 'equalto', inventory_hostname) | list }}"
+  loop_control:
+    label: "{{ item.namespace }}/{{ item.pvc }}"
+  register: pvc_local_backups
+
+- name: Backup PVC volumes (remote nodes via SSH)
+  ansible.builtin.shell: |
+    set -eo pipefail
+    ssh "{{ item.node }}" "sudo tar -czf - -C '{{ item.path }}' ." \
+      > "{{ backup_dir }}/pvc-{{ item.namespace }}-{{ item.pvc }}-{{ backup_timestamp }}.tar.gz"
+  args:
+    executable: /bin/bash
+  loop: "{{ local_pvcs | rejectattr('node', 'equalto', inventory_hostname) | list }}"
+  loop_control:
+    label: "{{ item.namespace }}/{{ item.pvc }} ({{ item.node }})"
+  register: pvc_remote_backups
+
+- name: Initialize PVC manifest entries
+  ansible.builtin.set_fact:
+    manifest_pvc_entries: []
+
+- name: Collect successful local PVC backup entries
+  ansible.builtin.set_fact:
+    manifest_pvc_entries: >-
+      {{ manifest_pvc_entries + [{
+        'namespace': item.item.namespace,
+        'pvc': item.item.pvc,
+        'node': item.item.node,
+        'path': item.item.path,
+        'file': 'pvc-' + item.item.namespace + '-' + item.item.pvc + '-' + backup_timestamp + '.tar.gz'
+      }] }}
+  loop: "{{ pvc_local_backups.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.namespace }}/{{ item.item.pvc }}"
+  when: item.rc == 0
+
+- name: Collect successful remote PVC backup entries
+  ansible.builtin.set_fact:
+    manifest_pvc_entries: >-
+      {{ manifest_pvc_entries + [{
+        'namespace': item.item.namespace,
+        'pvc': item.item.pvc,
+        'node': item.item.node,
+        'path': item.item.path,
+        'file': 'pvc-' + item.item.namespace + '-' + item.item.pvc + '-' + backup_timestamp + '.tar.gz'
+      }] }}
+  loop: "{{ pvc_remote_backups.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.namespace }}/{{ item.item.pvc }}"
+  when: item.rc == 0
+
+# ──────────────────────────────────────────────────────
+# Write manifest
+# ──────────────────────────────────────────────────────
+
+- name: Write manifest.json
+  ansible.builtin.copy:
+    content: "{{ manifest | to_nice_json }}"
+    dest: "{{ backup_dir }}/manifest.json"
+    mode: "0644"
+  vars:
+    manifest:
+      version: 1
+      timestamp: "{{ backup_timestamp }}"
+      control_plane: "{{ inventory_hostname }}"
+      k3s_state: "{{ manifest_k3s | default(None) }}"
+      cnpg_databases: "{{ manifest_cnpg_entries | default([]) }}"
+      pvc_volumes: "{{ manifest_pvc_entries | default([]) }}"
+
+# ──────────────────────────────────────────────────────
+# Cleanup old backups
+# ──────────────────────────────────────────────────────
+
+- name: Find old backup directories
+  ansible.builtin.find:
+    paths: "{{ backup_base_dir }}"
+    file_type: directory
+    age: "{{ backup_retain_days }}d"
+    recurse: false
+  register: old_backups
+
+- name: Remove old backups
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ old_backups.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: old_backups.files | length > 0
+
+# ──────────────────────────────────────────────────────
+# Summary
+# ──────────────────────────────────────────────────────
+
+- name: Get backup sizes
+  ansible.builtin.shell: |
+    du -sh "{{ backup_dir }}" | cut -f1
+  register: backup_total_size
+  changed_when: false
+
+- name: List backup files
+  ansible.builtin.find:
+    paths: "{{ backup_dir }}"
+    file_type: file
+  register: backup_files
+
+- name: Print backup summary
+  ansible.builtin.debug:
+    msg: |
+      ==========================================
+                 BACKUP SUMMARY
+      ==========================================
+
+      Backup location: {{ backup_dir }}
+      Timestamp:       {{ backup_timestamp }}
+
+      k3s state:       {{ 'OK' if manifest_k3s is defined else 'FAILED' }}
+      CNPG databases:  {{ manifest_cnpg_entries | default([]) | length }}/{{ cnpg_clusters | length }}
+      PVC volumes:     {{ manifest_pvc_entries | default([]) | length }}/{{ local_pvcs | length }}
+
+      Files: {{ backup_files.files | length }}
+      Total size: {{ backup_total_size.stdout }}
+
+      ==========================================
+
+# ──────────────────────────────────────────────────────
+# Unmount SMB share
+# ──────────────────────────────────────────────────────
+
+- name: Unmount Synology SMB share
+  ansible.builtin.command: umount {{ backup_smb_mount_point }}
+  become: true
+  when: smb_mounted is changed

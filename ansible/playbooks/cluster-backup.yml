@@ -1,0 +1,7 @@
+---
+- name: Backup k3s cluster state and application data
+  hosts: homelab-amd
+  gather_facts: false
+
+  roles:
+    - cluster-backup

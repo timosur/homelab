@@ -1,0 +1,14 @@
+---
+# Backup configuration
+backup_base_dir: /mnt/synology-home/Backup/homelab-backups
+backup_retain_days: 7
+
+# SMB mount — credentials are read from the k8s ExternalSecret
+backup_smb_share: "//192.168.1.26/home"
+backup_smb_mount_point: /mnt/synology-home
+backup_smb_k8s_secret: client-info-secret
+backup_smb_k8s_namespace: synology-csi
+
+# PVCs to skip — matched as "namespace/pvc-name"
+backup_pvc_skip_patterns:
+  - "open-webui/ollama-volume-ollama-0" # Large model weights, re-downloadable

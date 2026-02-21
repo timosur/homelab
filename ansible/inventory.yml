@@ -4,7 +4,7 @@ all:
     ansible_user: timosur
     k3s_version: v1.34.2+k3s1
     cilium_cli_version: v0.18.9
-    
+
   children:
     k3s_cluster:
       children:
@@ -14,13 +14,19 @@ all:
               ansible_connection: local
               ansible_host: localhost
               node_ip: "{{ lookup('pipe', 'hostname -I | awk \"{print \\$1}\"') }}"
-              
+
         workers:
           hosts:
             homelab-arm-small:
               ansible_host: homelab-arm-small
               node_ip: "{{ lookup('pipe', 'ssh homelab-arm-small hostname -I | awk \"{print \\$1}\"') }}"
-              
+              extra_disabled_services:
+                - docker.service
+                - dphys-swapfile.service
+
             homelab-arm-large:
               ansible_host: homelab-arm-large
               node_ip: "{{ lookup('pipe', 'ssh homelab-arm-large hostname -I | awk \"{print \\$1}\"') }}"
+              extra_disabled_services:
+                - docker.service
+                - dphys-swapfile.service
