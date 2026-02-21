@@ -331,11 +331,13 @@ data:
 
 ## Networking & Ingress
 
-The cluster uses **Envoy Gateway** (Gateway API) with **cert-manager** for TLS (DNS-01 via Cloudflare) and **External DNS** (Cloudflare) for DNS records.
+The cluster uses **Envoy Gateway** (Gateway API) with **cert-manager** for TLS (DNS-01 via Cloudflare). DNS is managed externally — the Unifi Dream Router (UDR) runs a DynDNS client that keeps Cloudflare A records for `*.timosur.com`, `timosur.com`, and `givgroov.de` up to date. Home services use `*.home.timosur.com` resolved via local DNS (e.g. Pi-hole).
 
 There are two gateways:
 - **envoy-gateway-home** (`*.home.timosur.com`, HTTP only, LAN access) — for internal/home services
-- **envoy-gateway-internet** (`*.timosur.com`, HTTP+HTTPS, internet-facing) — for publicly exposed services
+- **envoy-gateway-internet** (`*.timosur.com`, `timosur.com`, `givgroov.de`, HTTPS, internet-facing) — for publicly exposed services
+
+> **Important:** A cluster-wide `default-deny-ingress` Cilium policy blocks all ingress to non-system namespaces by default. New apps receive traffic from the envoy gateway namespaces automatically (allowed in the policy), but be aware that inter-namespace communication requires explicit `CiliumNetworkPolicy` rules.
 
 ### Home Services (LAN only, `*.home.timosur.com`)
 
@@ -343,7 +345,7 @@ Most apps use the home gateway. No per-app gateway listener is needed — the wi
 
 #### Create HTTPRoute
 
-Create `networking/httproutes/<app-name>-httproute.yaml`:
+Create `networking/httproutes/home/<app-name>.yaml`:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -358,33 +360,39 @@ spec:
   hostnames:
     - "<app-name>.home.timosur.com"
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
         - name: <app-name>
           port: 80
 ```
 
 #### Register HTTPRoute in Kustomization
 
-Add the route to `networking/httproutes/kustomization.yaml`:
+Add the route to `networking/httproutes/home/kustomization.yaml`:
 
 ```yaml
 resources:
-  - <app-name>-httproute.yaml
+  - <app-name>.yaml
 ```
 
 ### Internet-Facing Services (`*.timosur.com`)
 
 For apps that need public access, use the internet gateway. TLS is handled via a wildcard certificate and DNS-01 challenge via Cloudflare.
 
-If the app uses a custom domain (not `*.timosur.com`), add dedicated listeners to `networking/gateways/envoy-gateway-internet.yaml` (HTTP + HTTPS with a separate certificate).
+If the app uses a custom domain (not `*.timosur.com`), add dedicated HTTP + HTTPS listeners to `networking/gateways/internet/gateway.yaml` with a separate certificate.
 
 #### Create HTTPRoute
+
+Create `networking/httproutes/internet/<app-name>.yaml`:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: <app-name>-internet
+  name: <app-name>
   namespace: <app-name>
 spec:
   parentRefs:
@@ -394,9 +402,30 @@ spec:
   hostnames:
     - "<app-name>.timosur.com"
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
         - name: <app-name>
           port: 80
+```
+
+#### Register HTTPRoute in Kustomization
+
+Add the route to `networking/httproutes/internet/kustomization.yaml`:
+
+```yaml
+resources:
+  - <app-name>.yaml
+```
+
+#### Label Namespace for Network Policy
+
+Internet-facing namespaces must be labeled so the Cilium egress policy restricts LAN access:
+
+```bash
+kubectl label ns <app-name> exposure=internet
 ```
 
 ---
@@ -604,7 +633,7 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+    - CreateNamespace=true
 ```
 
 ### 2. Register in Kustomization
@@ -717,14 +746,15 @@ spec:
 - [ ] ArgoCD Application registered in `apps/_argocd/<app-name>-app.yaml`
 - [ ] ArgoCD kustomization updated in `apps/_argocd/kustomization.yaml`
 - [ ] Secrets added to Azure Key Vault
-- [ ] HTTPRoute created in `networking/httproutes/<app-name>-httproute.yaml`
-- [ ] HTTPRoute registered in `networking/httproutes/kustomization.yaml`
+- [ ] HTTPRoute created in `networking/httproutes/home/<app-name>.yaml` or `networking/httproutes/internet/<app-name>.yaml`
+- [ ] HTTPRoute registered in the corresponding `kustomization.yaml`
+- [ ] Namespace labeled `exposure=internet` (if internet-facing)
 
 ### Post-deployment Verification
 
 - [ ] ArgoCD shows application as synced and healthy
 - [ ] Pods are running and ready
 - [ ] Service is accessible via URL
-- [ ] SSL certificate is issued
+- [ ] TLS certificate is issued (internet-facing apps only)
 - [ ] Database connection working (if applicable)
 - [ ] Renovate detects the new GHCR images
