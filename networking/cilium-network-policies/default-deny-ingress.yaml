@@ -21,6 +21,7 @@ spec:
           - cert-manager
           - envoy-gateway-system
           - envoy-gateway-internet-system
+  ingress: []
   enableDefaultDeny:
     ingress: true
     egress: false
