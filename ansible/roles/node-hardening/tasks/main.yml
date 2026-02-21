@@ -5,6 +5,16 @@
 # and runtime security.
 
 # ──────────────────────────────────────────────────────
+# 0. Refresh apt cache (Debian/Ubuntu)
+# ──────────────────────────────────────────────────────
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+  when: ansible_os_family == "Debian"
+
+# ──────────────────────────────────────────────────────
 # 1. Kernel / network sysctl hardening (all nodes)
 # ──────────────────────────────────────────────────────
 - name: Apply kernel and network sysctl hardening
@@ -106,7 +116,7 @@
     group: root
     mode: "0700"
   become: true
-  ignore_errors: true
+  when: "'control_plane' in group_names"
 
 # ──────────────────────────────────────────────────────
 # 6. Core dump hardening
