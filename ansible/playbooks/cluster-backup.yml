@@ -2,6 +2,8 @@
 - name: Backup k3s cluster state and application data
   hosts: homelab-amd
   gather_facts: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
   roles:
     - cluster-backup
