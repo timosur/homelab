@@ -179,7 +179,28 @@
   become: true
 
 # ──────────────────────────────────────────────────────
-# 10. Automatic security updates
+# 10. Custom MOTD banner
+# ──────────────────────────────────────────────────────
+- name: Deploy custom MOTD script
+  ansible.builtin.copy:
+    dest: /etc/update-motd.d/99-custom
+    content: |
+      #!/bin/bash
+      echo ""
+      echo "******************************************************************"
+      echo "* WARNING: Unauthorized access to this system is prohibited.     *"
+      echo "* All connections are monitored and recorded.                     *"
+      echo "* Disconnect IMMEDIATELY if you are not an authorized user.      *"
+      echo "******************************************************************"
+      echo ""
+      echo "  Hostname : $(hostname)"
+      echo "  Role     : k3s cluster node (managed by Ansible)"
+      echo ""
+    mode: "0755"
+  become: true
+
+# ──────────────────────────────────────────────────────
+# 11. Automatic security updates
 # ──────────────────────────────────────────────────────
 - name: Install unattended-upgrades
   ansible.builtin.package:
@@ -216,7 +237,7 @@
   when: ansible_os_family == "Debian"
 
 # ──────────────────────────────────────────────────────
-# 11. Fail2ban for SSH
+# 12. Fail2ban for SSH
 # ──────────────────────────────────────────────────────
 - name: Install fail2ban
   ansible.builtin.package:
@@ -247,7 +268,7 @@
   become: true
 
 # ──────────────────────────────────────────────────────
-# 12. Audit logging (auditd)
+# 13. Audit logging (auditd)
 # ──────────────────────────────────────────────────────
 - name: Install auditd
   ansible.builtin.package:
@@ -293,45 +314,6 @@
     name: auditd
     state: started
     enabled: true
-  become: true
-
-# ──────────────────────────────────────────────────────
-# 13. File integrity monitoring (AIDE)
-# ──────────────────────────────────────────────────────
-- name: Install AIDE
-  ansible.builtin.package:
-    name: aide
-    state: present
-  become: true
-
-- name: Check if AIDE database exists
-  ansible.builtin.stat:
-    path: /var/lib/aide/aide.db
-  register: aide_db
-
-- name: Initialize AIDE database
-  ansible.builtin.command: aideinit
-  become: true
-  when: not aide_db.stat.exists
-  register: aide_init
-  changed_when: aide_init.rc == 0
-
-- name: Copy new AIDE database into place
-  ansible.builtin.copy:
-    src: /var/lib/aide/aide.db.new
-    dest: /var/lib/aide/aide.db
-    remote_src: true
-    mode: "0600"
-  become: true
-  when: not aide_db.stat.exists
-
-- name: Schedule daily AIDE check via cron
-  ansible.builtin.cron:
-    name: "AIDE integrity check"
-    job: "/usr/bin/aide --check --config /etc/aide/aide.conf | /usr/bin/logger -t aide"
-    hour: "3"
-    minute: "30"
-    user: root
   become: true
 
 # ──────────────────────────────────────────────────────
