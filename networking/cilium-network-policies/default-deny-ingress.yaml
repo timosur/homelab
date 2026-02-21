@@ -18,13 +18,27 @@ spec:
         values:
           - kube-system
           - cilium-system
+          - cilium-secrets
           - cert-manager
+          - cnpg-system
+          - argocd
+          - external-secrets-system
           - envoy-gateway-system
           - envoy-gateway-internet-system
   ingress:
     # Allow kubelet health probes from node IPs (host network)
     - fromEntities:
         - host
+    # Allow intra-namespace traffic (pods in the same namespace)
+    - fromEndpoints:
+        - {}
+    # Allow traffic from envoy gateway (ingress)
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: envoy-gateway-system
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: envoy-gateway-internet-system
   enableDefaultDeny:
     ingress: true
     egress: false

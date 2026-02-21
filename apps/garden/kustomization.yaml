@@ -7,6 +7,7 @@ resources:
   - namespace.yaml
   - backend-configmap.yaml
   - backend-external-secret.yaml
+  - backend-pvc.yaml
   - rmapi-external-secret.yaml
   - postgres.yaml
   - postgres-external-secret.yaml
