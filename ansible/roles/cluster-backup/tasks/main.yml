@@ -371,6 +371,86 @@
       ==========================================
 
 # ──────────────────────────────────────────────────────
+# Email notification
+# ──────────────────────────────────────────────────────
+
+- name: Read SMTP credentials from k8s secret
+  ansible.builtin.shell: |
+    kubectl get secret {{ backup_smtp_k8s_secret }} -n {{ backup_smtp_k8s_namespace }} -o json | \
+      jq -r '.data.SMTP_USERNAME' | base64 -d
+    echo "---"
+    kubectl get secret {{ backup_smtp_k8s_secret }} -n {{ backup_smtp_k8s_namespace }} -o json | \
+      jq -r '.data.SMTP_PASSWORD' | base64 -d
+  register: smtp_creds_raw
+  changed_when: false
+  no_log: true
+  failed_when: false
+
+- name: Parse SMTP credentials
+  ansible.builtin.set_fact:
+    smtp_username: "{{ smtp_creds_raw.stdout_lines[0] }}"
+    smtp_password: "{{ smtp_creds_raw.stdout_lines[2] }}"
+  no_log: true
+  when: smtp_creds_raw.rc == 0
+
+- name: Build backup result summary
+  ansible.builtin.set_fact:
+    backup_email_body: |
+      Cluster Backup Report — {{ backup_timestamp }}
+      ══════════════════════════════════════════
+
+      Backup location: {{ backup_dir }}
+      Host:            {{ inventory_hostname }}
+
+      ── Results ──────────────────────────────
+      k3s state:       {{ 'OK' if manifest_k3s is defined else 'FAILED' }}
+      CNPG databases:  {{ manifest_cnpg_entries | default([]) | length }}/{{ cnpg_clusters | length }} succeeded
+      PVC volumes:     {{ manifest_pvc_entries | default([]) | length }}/{{ local_pvcs | length }} succeeded
+
+      Files:           {{ backup_files.files | length }}
+      Total size:      {{ backup_total_size.stdout }}
+      Old backups removed: {{ old_backups.files | length }}
+
+      {% if manifest_cnpg_entries | default([]) | length < cnpg_clusters | length %}
+      ⚠ Some CNPG backups failed!
+      {% endif %}
+      {% if manifest_pvc_entries | default([]) | length < local_pvcs | length %}
+      ⚠ Some PVC backups failed!
+      {% endif %}
+      {% if manifest_k3s is not defined %}
+      ⚠ k3s state backup failed!
+      {% endif %}
+
+- name: Determine email subject
+  ansible.builtin.set_fact:
+    backup_email_subject: >-
+      {% if (manifest_k3s is defined) and
+            (manifest_cnpg_entries | default([]) | length == cnpg_clusters | length) and
+            (manifest_pvc_entries | default([]) | length == local_pvcs | length) %}
+      [OK] Cluster Backup {{ backup_timestamp }}
+      {% else %}
+      [WARN] Cluster Backup {{ backup_timestamp }} — some items failed
+      {% endif %}
+
+- name: Send backup report email
+  community.general.mail:
+    host: "{{ backup_smtp_host }}"
+    port: "{{ backup_smtp_port }}"
+    secure: starttls
+    username: "{{ smtp_username }}"
+    password: "{{ smtp_password }}"
+    from: "{{ backup_email_from }}"
+    to: "{{ backup_email_to }}"
+    subject: "{{ backup_email_subject | trim }}"
+    body: "{{ backup_email_body }}"
+  when: smtp_creds_raw.rc == 0
+
+- name: Warn if email could not be sent
+  ansible.builtin.debug:
+    msg: "WARNING: Could not read SMTP credentials — backup email not sent."
+  when: smtp_creds_raw.rc != 0
+
+# ──────────────────────────────────────────────────────
 # Unmount SMB share
 # ──────────────────────────────────────────────────────
 

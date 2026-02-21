@@ -12,3 +12,11 @@ backup_smb_k8s_namespace: synology-csi
 # PVCs to skip — matched as "namespace/pvc-name"
 backup_pvc_skip_patterns:
   - "open-webui/ollama-volume-ollama-0" # Large model weights, re-downloadable
+
+# Email notification
+backup_email_to: homelab@timosur.com
+backup_email_from: homelab@timosur.com
+backup_smtp_host: smtp.gmail.com
+backup_smtp_port: 587
+backup_smtp_k8s_secret: garden-backend-secrets
+backup_smtp_k8s_namespace: garden
