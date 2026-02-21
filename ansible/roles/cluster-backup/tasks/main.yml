@@ -12,15 +12,10 @@
 - name: Read Synology credentials from k8s secret
   ansible.builtin.shell: |
     kubectl get secret {{ backup_smb_k8s_secret }} -n {{ backup_smb_k8s_namespace }} -o json | \
-      jq -r '.data["client-info.yml"]' | base64 -d
-  register: synology_secret_raw
+      jq -r '.data["client-info.yml"]' | base64 -d | \
+      python3 -c "import sys,yaml; d=yaml.safe_load(sys.stdin)['clients'][0]; print('username=' + d['username']); print('password=' + d['password'])"
+  register: synology_creds_lines
   changed_when: false
-  no_log: true
-
-- name: Parse Synology credentials
-  ansible.builtin.set_fact:
-    synology_username: "{{ (synology_secret_raw.stdout | from_yaml).clients[0].username }}"
-    synology_password: "{{ (synology_secret_raw.stdout | from_yaml).clients[0].password }}"
   no_log: true
 
 - name: Create mount point
@@ -36,14 +31,27 @@
   failed_when: false
   changed_when: false
 
+- name: Write SMB credentials file
+  ansible.builtin.copy:
+    content: "{{ synology_creds_lines.stdout }}\n"
+    dest: /tmp/.smb-backup-credentials
+    mode: "0600"
+  become: true
+  no_log: true
+
 - name: Mount Synology SMB share
   ansible.builtin.shell: |
     mount -t cifs {{ backup_smb_share }} {{ backup_smb_mount_point }} \
-      -o username={{ synology_username }},password={{ synology_password }},vers=3.0,uid=$(id -u),gid=$(id -g)
+      -o credentials=/tmp/.smb-backup-credentials,vers=3.0,uid=$(id -u),gid=$(id -g)
   become: true
-  no_log: true
   when: already_mounted.rc != 0
   register: smb_mounted
+
+- name: Remove SMB credentials file
+  ansible.builtin.file:
+    path: /tmp/.smb-backup-credentials
+    state: absent
+  become: true
 
 # ──────────────────────────────────────────────────────
 # Setup
@@ -245,7 +253,7 @@
 - name: Backup PVC volumes (remote nodes via SSH)
   ansible.builtin.shell: |
     set -eo pipefail
-    ssh "{{ item.node }}" "sudo tar -czf - -C '{{ item.path }}' ." \
+    ssh -o StrictHostKeyChecking=no -i /home/{{ ansible_user }}/.ssh/id_rsa {{ ansible_user }}@"{{ item.node }}" "sudo tar -czf - -C '{{ item.path }}' ." \
       > "{{ backup_dir }}/pvc-{{ item.namespace }}-{{ item.pvc }}-{{ backup_timestamp }}.tar.gz"
   args:
     executable: /bin/bash
