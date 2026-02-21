@@ -1,7 +1,8 @@
 ---
 # Node hardening tasks for all k3s cluster nodes
 # Applies kernel sysctl hardening, disables unnecessary services,
-# and blacklists unused kernel modules based on node hardware.
+# blacklists unused kernel modules, and hardens SSH, filesystem,
+# and runtime security.
 
 # ──────────────────────────────────────────────────────
 # 1. Kernel / network sysctl hardening (all nodes)
@@ -75,6 +76,7 @@
       MaxAuthTries 3
       ClientAliveInterval 300
       ClientAliveCountMax 2
+      Banner /etc/issue.net
     mode: "0644"
   become: true
   notify: Restart sshd
@@ -96,3 +98,244 @@
     - /etc/cron.weekly
     - /etc/cron.monthly
   ignore_errors: true
+
+- name: Set secure permissions on k3s datastore
+  ansible.builtin.file:
+    path: /var/lib/rancher/k3s/server/db
+    owner: root
+    group: root
+    mode: "0700"
+  become: true
+  ignore_errors: true
+
+# ──────────────────────────────────────────────────────
+# 6. Core dump hardening
+# ──────────────────────────────────────────────────────
+- name: Disable core dumps via limits.conf
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/99-no-core-dumps.conf
+    content: |
+      # Disable core dumps — prevents leaking sensitive memory
+      * hard core 0
+    mode: "0644"
+  become: true
+
+- name: Disable core dumps via sysctl
+  ansible.builtin.sysctl:
+    name: fs.suid_dumpable
+    value: "0"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/90-hardening.conf
+  become: true
+
+# ──────────────────────────────────────────────────────
+# 7. /tmp mount hardening
+# ──────────────────────────────────────────────────────
+- name: Ensure /tmp is mounted with noexec,nosuid,nodev
+  ansible.posix.mount:
+    path: /tmp
+    src: tmpfs
+    fstype: tmpfs
+    opts: defaults,noexec,nosuid,nodev,size=512M
+    state: mounted
+  become: true
+
+# ──────────────────────────────────────────────────────
+# 8. Restrict su to sudo group
+# ──────────────────────────────────────────────────────
+- name: Restrict su to sudo group via PAM
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/su
+    regexp: '^#?\s*auth\s+required\s+pam_wheel\.so'
+    line: "auth       required   pam_wheel.so use_uid group=sudo"
+    state: present
+  become: true
+
+# ──────────────────────────────────────────────────────
+# 9. Login banner
+# ──────────────────────────────────────────────────────
+- name: Set login warning banner
+  ansible.builtin.copy:
+    dest: /etc/issue.net
+    content: |
+      ******************************************************************
+      * WARNING: Unauthorized access to this system is prohibited.     *
+      * All connections are monitored and recorded.                     *
+      * Disconnect IMMEDIATELY if you are not an authorized user.      *
+      ******************************************************************
+    mode: "0644"
+  become: true
+
+# ──────────────────────────────────────────────────────
+# 10. Automatic security updates
+# ──────────────────────────────────────────────────────
+- name: Install unattended-upgrades
+  ansible.builtin.package:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+  become: true
+  when: ansible_os_family == "Debian"
+
+- name: Configure unattended-upgrades for security only
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+          "${distro_id}:${distro_codename}-security";
+      };
+      Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+      Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+      Unattended-Upgrade::Remove-Unused-Dependencies "true";
+      Unattended-Upgrade::Automatic-Reboot "false";
+    mode: "0644"
+  become: true
+  when: ansible_os_family == "Debian"
+
+- name: Enable automatic updates
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: "0644"
+  become: true
+  when: ansible_os_family == "Debian"
+
+# ──────────────────────────────────────────────────────
+# 11. Fail2ban for SSH
+# ──────────────────────────────────────────────────────
+- name: Install fail2ban
+  ansible.builtin.package:
+    name: fail2ban
+    state: present
+  become: true
+
+- name: Configure fail2ban SSH jail
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.d/sshd.conf
+    content: |
+      [sshd]
+      enabled = true
+      port = ssh
+      filter = sshd
+      maxretry = 3
+      bantime = 3600
+      findtime = 600
+    mode: "0644"
+  become: true
+  notify: Restart fail2ban
+
+- name: Enable and start fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+    enabled: true
+  become: true
+
+# ──────────────────────────────────────────────────────
+# 12. Audit logging (auditd)
+# ──────────────────────────────────────────────────────
+- name: Install auditd
+  ansible.builtin.package:
+    name: auditd
+    state: present
+  become: true
+
+- name: Deploy audit rules for k3s nodes
+  ansible.builtin.copy:
+    dest: /etc/audit/rules.d/99-hardening.rules
+    content: |
+      # Monitor authentication files
+      -w /etc/shadow -p wa -k shadow-change
+      -w /etc/passwd -p wa -k passwd-change
+      -w /etc/group -p wa -k group-change
+      -w /etc/gshadow -p wa -k gshadow-change
+
+      # Monitor SSH config
+      -w /etc/ssh/sshd_config -p wa -k sshd-config
+      -w /etc/ssh/sshd_config.d -p wa -k sshd-config
+
+      # Monitor k3s directories
+      -w /etc/rancher/k3s/ -p wa -k k3s-config
+      -w /var/lib/rancher/k3s/ -p wa -k k3s-data
+
+      # Monitor sudoers
+      -w /etc/sudoers -p wa -k sudoers
+      -w /etc/sudoers.d/ -p wa -k sudoers
+
+      # Monitor kernel module loading
+      -w /sbin/insmod -p x -k kernel-modules
+      -w /sbin/rmmod -p x -k kernel-modules
+      -w /sbin/modprobe -p x -k kernel-modules
+
+      # Log all commands run as root
+      -a always,exit -F arch=b64 -F euid=0 -S execve -k root-commands
+    mode: "0640"
+  become: true
+  notify: Restart auditd
+
+- name: Enable and start auditd
+  ansible.builtin.systemd:
+    name: auditd
+    state: started
+    enabled: true
+  become: true
+
+# ──────────────────────────────────────────────────────
+# 13. File integrity monitoring (AIDE)
+# ──────────────────────────────────────────────────────
+- name: Install AIDE
+  ansible.builtin.package:
+    name: aide
+    state: present
+  become: true
+
+- name: Check if AIDE database exists
+  ansible.builtin.stat:
+    path: /var/lib/aide/aide.db
+  register: aide_db
+
+- name: Initialize AIDE database
+  ansible.builtin.command: aideinit
+  become: true
+  when: not aide_db.stat.exists
+  register: aide_init
+  changed_when: aide_init.rc == 0
+
+- name: Copy new AIDE database into place
+  ansible.builtin.copy:
+    src: /var/lib/aide/aide.db.new
+    dest: /var/lib/aide/aide.db
+    remote_src: true
+    mode: "0600"
+  become: true
+  when: not aide_db.stat.exists
+
+- name: Schedule daily AIDE check via cron
+  ansible.builtin.cron:
+    name: "AIDE integrity check"
+    job: "/usr/bin/aide --check --config /etc/aide/aide.conf | /usr/bin/logger -t aide"
+    hour: "3"
+    minute: "30"
+    user: root
+  become: true
+
+# ──────────────────────────────────────────────────────
+# 14. NTP time synchronization
+# ──────────────────────────────────────────────────────
+- name: Ensure chrony is installed
+  ansible.builtin.package:
+    name: chrony
+    state: present
+  become: true
+
+- name: Enable and start chrony
+  ansible.builtin.systemd:
+    name: chronyd
+    state: started
+    enabled: true
+  become: true

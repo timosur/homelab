@@ -34,6 +34,61 @@
       flannel-backend: "none"
       disable-network-policy: true
       disable-kube-proxy: true
+      secrets-encryption: true
+      kube-apiserver-arg:
+        - "anonymous-auth=false"
+        - "audit-policy-file=/etc/rancher/k3s/audit-policy.yaml"
+        - "audit-log-path=/var/log/k3s-audit.log"
+        - "audit-log-maxage=30"
+        - "audit-log-maxbackup=10"
+        - "audit-log-maxsize=100"
+        - "enable-admission-plugins=NodeRestriction"
+        - "service-account-lookup=true"
+      kubelet-arg:
+        - "protect-kernel-defaults=true"
+        - "read-only-port=0"
+    mode: "0600"
+  become: true
+  notify: Restart k3s
+
+- name: Deploy Kubernetes audit policy
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/audit-policy.yaml
+    content: |
+      apiVersion: audit.k8s.io/v1
+      kind: Policy
+      rules:
+        # Don't log read-only requests to certain resources
+        - level: None
+          resources:
+            - group: ""
+              resources: ["events"]
+        # Don't log health checks
+        - level: None
+          users: ["system:kube-proxy"]
+          verbs: ["watch"]
+        # Don't log kubelet and node status reads
+        - level: None
+          userGroups: ["system:nodes"]
+          verbs: ["get"]
+          resources:
+            - group: ""
+              resources: ["nodes", "nodes/status"]
+        # Log secret access at metadata level
+        - level: Metadata
+          resources:
+            - group: ""
+              resources: ["secrets", "configmaps"]
+        # Log authentication/authorization events
+        - level: Metadata
+          resources:
+            - group: "rbac.authorization.k8s.io"
+              resources: ["clusterrolebindings", "rolebindings", "clusterroles", "roles"]
+        # Log all write operations at request level
+        - level: RequestResponse
+          verbs: ["create", "update", "patch", "delete", "deletecollection"]
+        # Everything else at metadata level
+        - level: Metadata
     mode: "0600"
   become: true
   notify: Restart k3s
