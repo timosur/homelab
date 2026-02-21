@@ -4,3 +4,13 @@
     name: sshd
     state: reloaded
   become: true
+
+- name: Restart fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted
+  become: true
+
+- name: Restart auditd
+  ansible.builtin.command: service auditd restart
+  become: true
