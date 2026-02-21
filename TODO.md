@@ -6,6 +6,6 @@
 
 ## Things to be setup
 
-1. Backup strategy for cluster state and application data to NAS
-2. Monitoring and alerting with Prometheus and Alertmanager
-3. How to upgrade k3s cluster safely with minimal downtime?
+1. Monitoring with signoz
+2. How to upgrade k3s cluster safely with minimal downtime?
+3. Enable cilium hubble again
