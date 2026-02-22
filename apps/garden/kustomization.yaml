@@ -22,4 +22,3 @@ resources:
   - nginx-deployment.yaml
   - nginx-service.yaml
   - scheduler-cronjob.yaml
-  - backup-cronjob.yaml
