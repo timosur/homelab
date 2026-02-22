@@ -22,3 +22,4 @@ resources:
   - paperless-app.yaml
   - pi-hole-app.yaml
   - portfolio-app.yaml
+  - trivy-operator-app.yaml

@@ -1,0 +1,110 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vuln-report-email
+  namespace: trivy-system
+spec:
+  schedule: "0 8 * * 1" # Every Monday at 8:00 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: vuln-reporter
+          containers:
+            - name: reporter
+              image: bitnami/kubectl:1.31
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  REPORT=$(kubectl get vulnerabilityreports -A -o json | \
+                    python3 -c "
+                  import json, sys
+                  data = json.load(sys.stdin)
+                  items = data.get('items', [])
+                  if not items:
+                      print('No vulnerability reports found.')
+                      sys.exit(0)
+
+                  critical_items = []
+                  high_items = []
+                  for item in items:
+                      ns = item['metadata']['namespace']
+                      name = item['metadata']['labels'].get('trivy-operator.resource.name', 'unknown')
+                      summary = item.get('report', {}).get('summary', {})
+                      c = summary.get('criticalCount', 0)
+                      h = summary.get('highCount', 0)
+                      if c > 0:
+                          critical_items.append(f'  {ns}/{name}: {c} critical, {h} high')
+                      elif h > 0:
+                          high_items.append(f'  {ns}/{name}: {h} high')
+
+                  if not critical_items and not high_items:
+                      print('NO_VULNS')
+                      sys.exit(0)
+
+                  total_critical = len(critical_items)
+                  total_high = len(high_items)
+                  print(f'Summary: {total_critical} workloads with critical, {total_high} with high vulnerabilities')
+                  print()
+                  if critical_items:
+                      print('=== CRITICAL ===')
+                      for line in sorted(critical_items):
+                          print(line)
+                      print()
+                  if high_items:
+                      print('=== HIGH ===')
+                      for line in sorted(high_items):
+                          print(line)
+                  ")
+
+                  if [ "$REPORT" = "NO_VULNS" ]; then
+                    echo "No critical/high vulnerabilities found. Skipping email."
+                    exit 0
+                  fi
+
+                  DATE=$(date +%Y-%m-%d)
+
+                  # Install curl for sending email
+                  apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
+
+                  curl --silent --show-error \
+                    --url "smtp://${SMTP_HOST}:${SMTP_PORT}" \
+                    --ssl-reqd \
+                    --mail-from "${EMAIL_FROM}" \
+                    --mail-rcpt "${EMAIL_TO}" \
+                    --user "${SMTP_USERNAME}:${SMTP_PASSWORD}" \
+                    -T - <<EOF
+                  From: ${EMAIL_FROM}
+                  To: ${EMAIL_TO}
+                  Subject: [Homelab] Vulnerability Report - ${DATE}
+                  Content-Type: text/plain; charset=UTF-8
+
+                  Kubernetes Cluster Vulnerability Report
+                  Date: ${DATE}
+
+                  ${REPORT}
+
+                  --
+                  Trivy Operator Vulnerability Scanner
+                  EOF
+
+                  echo "Vulnerability report email sent to ${EMAIL_TO}"
+              envFrom:
+                - configMapRef:
+                    name: vuln-reporter-config
+                - secretRef:
+                    name: trivy-smtp-secrets
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+          restartPolicy: OnFailure

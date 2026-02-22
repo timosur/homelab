@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vuln-reporter
+rules:
+  - apiGroups: ["aquasecurity.github.io"]
+    resources: ["vulnerabilityreports"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vuln-reporter
+subjects:
+  - kind: ServiceAccount
+    name: vuln-reporter
+    namespace: trivy-system
+roleRef:
+  kind: ClusterRole
+  name: vuln-reporter
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vuln-reporter-config
+  namespace: trivy-system
+data:
+  SMTP_HOST: smtp.gmail.com
+  SMTP_PORT: "587"
+  EMAIL_FROM: timo.surmann@googlemail.com
+  EMAIL_TO: homelab@timosur.com
