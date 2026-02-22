@@ -46,6 +46,9 @@
   become: true
   when: already_mounted.rc != 0
   register: smb_mounted
+  retries: 5
+  delay: 15
+  until: smb_mounted.rc == 0
 
 - name: Remove SMB credentials file
   ansible.builtin.file:
@@ -376,11 +379,9 @@
 
 - name: Read SMTP credentials from k8s secret
   ansible.builtin.shell: |
-    kubectl get secret {{ backup_smtp_k8s_secret }} -n {{ backup_smtp_k8s_namespace }} -o json | \
-      jq -r '.data.SMTP_USERNAME' | base64 -d
+    printf '%s\n' "$(kubectl get secret {{ backup_smtp_k8s_secret }} -n {{ backup_smtp_k8s_namespace }} -o json | jq -r '.data.SMTP_USERNAME' | base64 -d)"
     echo "---"
-    kubectl get secret {{ backup_smtp_k8s_secret }} -n {{ backup_smtp_k8s_namespace }} -o json | \
-      jq -r '.data.SMTP_PASSWORD' | base64 -d
+    printf '%s\n' "$(kubectl get secret {{ backup_smtp_k8s_secret }} -n {{ backup_smtp_k8s_namespace }} -o json | jq -r '.data.SMTP_PASSWORD' | base64 -d)"
   register: smtp_creds_raw
   changed_when: false
   no_log: true
