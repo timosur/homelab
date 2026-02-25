@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bike-weather-auth-config
+  namespace: bike-weather-auth
+data:
+  TZ: "Europe/Berlin"
+  AUTHENTIK_REDIS__HOST: "bike-weather-auth-redis"
+  AUTHENTIK_POSTGRESQL__HOST: "bike-weather-auth-postgres-rw"
+  AUTHENTIK_POSTGRESQL__PORT: "5432"
+  AUTHENTIK_POSTGRESQL__NAME: "authentik"
+  AUTHENTIK_POSTGRESQL__USER: "authentik"

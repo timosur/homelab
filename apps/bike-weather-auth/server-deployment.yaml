@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bike-weather-auth-server
+  namespace: bike-weather-auth
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bike-weather-auth-server
+  template:
+    metadata:
+      labels:
+        app: bike-weather-auth-server
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/goauthentik/server:2025.12.3
+          command: ["ak", "server"]
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: bike-weather-auth-config
+            - secretRef:
+                name: bike-weather-auth-secrets
+          volumeMounts:
+            - name: media
+              mountPath: /media
+          livenessProbe:
+            httpGet:
+              path: /-/health/live/
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /-/health/ready/
+              port: 9000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: bike-weather-auth-media

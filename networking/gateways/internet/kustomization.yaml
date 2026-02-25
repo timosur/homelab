@@ -6,4 +6,5 @@ resources:
   - gateway.yaml
   - wildcard-certificate.yaml
   - givgroov-certificate.yaml
+  - bike-weather-certificate.yaml
   - http-to-https-redirect.yaml

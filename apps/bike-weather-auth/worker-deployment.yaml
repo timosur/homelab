@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bike-weather-auth-worker
+  namespace: bike-weather-auth
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bike-weather-auth-worker
+  template:
+    metadata:
+      labels:
+        app: bike-weather-auth-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/goauthentik/server:2025.12.3
+          command: ["ak", "worker"]
+          envFrom:
+            - configMapRef:
+                name: bike-weather-auth-config
+            - secretRef:
+                name: bike-weather-auth-secrets
+          volumeMounts:
+            - name: media
+              mountPath: /media
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: bike-weather-auth-media

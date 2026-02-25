@@ -2,6 +2,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  - bike-weather-app.yaml
+  - bike-weather-auth-app.yaml
+  - bike-weather-preview-app.yaml
   - cert-manager-app.yaml
   - cloudnative-pg-app.yaml
   - envoy-gateway-app.yaml

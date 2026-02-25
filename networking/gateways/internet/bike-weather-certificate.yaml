@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: bike-weather-com-cert
+  namespace: envoy-gateway-internet-system
+spec:
+  secretName: bike-weather-com-cert
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "bike-weather.com"
+    - "*.bike-weather.com"

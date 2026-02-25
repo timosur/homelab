@@ -1,0 +1,32 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: bike-weather-auth-postgres
+  namespace: bike-weather-auth
+spec:
+  instances: 1
+  enablePDB: false
+
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: "128MB"
+
+  bootstrap:
+    initdb:
+      database: authentik
+      owner: authentik
+      secret:
+        name: bike-weather-auth-postgres-credentials
+
+  storage:
+    size: 5Gi
+    storageClass: hcloud-volumes
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"

@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bike-weather-auth
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/timosur/homelab.git
+    targetRevision: HEAD
+    path: apps/bike-weather-auth
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

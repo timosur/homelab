@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bike-weather-preview-nginx
+  namespace: bike-weather-preview
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bike-weather-preview-nginx
+  template:
+    metadata:
+      labels:
+        app: bike-weather-preview-nginx
+    spec:
+      initContainers:
+        - name: htpasswd-gen
+          image: httpd:alpine
+          command:
+            - sh
+            - -c
+            - htpasswd -cb /auth/.htpasswd "$HTPASSWD_USER" "$HTPASSWD_PASS"
+          env:
+            - name: HTPASSWD_USER
+              valueFrom:
+                secretKeyRef:
+                  name: bike-weather-preview-htpasswd
+                  key: username
+            - name: HTPASSWD_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: bike-weather-preview-htpasswd
+                  key: password
+          volumeMounts:
+            - name: htpasswd
+              mountPath: /auth
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: htpasswd
+              mountPath: /etc/nginx/auth
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /nginx-health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /nginx-health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: bike-weather-preview-nginx-config
+        - name: htpasswd
+          emptyDir: {}

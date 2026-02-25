@@ -74,3 +74,59 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: givgroov-de-cert
+    # bike-weather.com
+    - name: bike-weather-http
+      port: 80
+      protocol: HTTP
+      hostname: "bike-weather.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: bike-weather-https
+      port: 443
+      protocol: HTTPS
+      hostname: "bike-weather.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: bike-weather-com-cert
+    # preview.bike-weather.com
+    - name: bike-weather-preview-http
+      port: 80
+      protocol: HTTP
+      hostname: "preview.bike-weather.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: bike-weather-preview-https
+      port: 443
+      protocol: HTTPS
+      hostname: "preview.bike-weather.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: bike-weather-com-cert    # auth.bike-weather.com
+    - name: bike-weather-auth-http
+      port: 80
+      protocol: HTTP
+      hostname: "auth.bike-weather.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: bike-weather-auth-https
+      port: 443
+      protocol: HTTPS
+      hostname: "auth.bike-weather.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: bike-weather-com-cert

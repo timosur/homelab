@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: bike-weather-preview
+  namespace: bike-weather-preview
+spec:
+  parentRefs:
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: bike-weather-preview-https
+  hostnames:
+    - "preview.bike-weather.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: bike-weather-preview-nginx
+          port: 80

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bike-weather-config
+  namespace: bike-weather
+data:
+  TZ: "Europe/Berlin"
+  PYTHONUNBUFFERED: "1"
+  FRONTEND_URL: "https://bike-weather.com"
+  CORS_ORIGINS: '["https://bike-weather.com"]'
+  # Authentik
+  AUTHENTIK_BASE_URL: "https://auth.bike-weather.com"
+  AUTHENTIK_ISSUER_URL: "https://auth.bike-weather.com/application/o/bike-weather/"
+  AUTHENTIK_AUDIENCE: "bike-weather"
+  AUTHENTIK_CLIENT_ID: "bike-weather"
+  AUTHENTIK_AUTH_FLOW_SLUG: "default-authentication-flow"
+  # Database
+  DB_HOST: "bike-weather-postgres-rw"
+  DB_PORT: "5432"
+  DB_NAME: "app"
+  DB_USER: "app"

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bike-weather-auth-server
+  namespace: bike-weather-auth
+spec:
+  selector:
+    app: bike-weather-auth-server
+  ports:
+    - name: http
+      port: 9000
+      targetPort: 9000
+  type: ClusterIP
