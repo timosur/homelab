@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """Bootstrap Authentik on Kubernetes with bike-weather OAuth2 applications.
 
 Run after Authentik is deployed and healthy in the bike-weather-auth namespace.

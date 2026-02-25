@@ -22,12 +22,12 @@ spec:
             - sh
             - -c
             - |
-              echo "Waiting for database at bike-weather-postgres-rw..."
-              until nslookup bike-weather-postgres-rw.bike-weather.svc.cluster.local; do
-                echo "Database service not found, retrying in 3s..."
+              echo "Waiting for database at bike-weather-postgres-rw:5432..."
+              until nc -z bike-weather-postgres-rw 5432; do
+                echo "Database not ready, retrying in 3s..."
                 sleep 3
               done
-              echo "Database service is resolvable!"
+              echo "Database is accepting connections!"
       containers:
         - name: backend
           image: ghcr.io/timosur/bike-weather/backend:latest

@@ -29,6 +29,18 @@ data:
             add_header Content-Type text/plain;
         }
 
+        # Backend API auth routes (no basic auth — needed for OAuth flow)
+        location /api/auth/ {
+            auth_basic off;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Port $server_port;
+        }
+
         # Backend API routes
         location /api/ {
             proxy_pass http://backend;
