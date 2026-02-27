@@ -14,6 +14,7 @@ data:
   AUTHENTIK_AUDIENCE: "bike-weather-preview"
   AUTHENTIK_CLIENT_ID: "bike-weather-preview"
   AUTHENTIK_AUTH_FLOW_SLUG: "default-authentication-flow"
+  AUTHENTIK_RECOVERY_FLOW_SLUG: "bike-weather-preview-recovery"
   # Database
   DB_HOST: "bike-weather-preview-postgres-rw"
   DB_PORT: "5432"

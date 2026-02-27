@@ -27,6 +27,8 @@ spec:
           volumeMounts:
             - name: media
               mountPath: /media
+            - name: email-templates
+              mountPath: /templates/email
           resources:
             requests:
               memory: "256Mi"
@@ -38,3 +40,6 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: bike-weather-auth-media
+        - name: email-templates
+          configMap:
+            name: bike-weather-auth-email-templates

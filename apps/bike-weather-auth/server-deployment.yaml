@@ -29,6 +29,8 @@ spec:
           volumeMounts:
             - name: media
               mountPath: /media
+            - name: email-templates
+              mountPath: /templates/email
           livenessProbe:
             httpGet:
               path: /-/health/live/
@@ -52,3 +54,6 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: bike-weather-auth-media
+        - name: email-templates
+          configMap:
+            name: bike-weather-auth-email-templates

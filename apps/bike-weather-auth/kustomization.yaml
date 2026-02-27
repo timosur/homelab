@@ -15,3 +15,4 @@ resources:
   - server-service.yaml
   - worker-deployment.yaml
   - media-pvc.yaml
+  - email-templates-configmap.yaml

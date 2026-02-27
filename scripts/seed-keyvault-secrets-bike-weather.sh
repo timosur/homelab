@@ -49,6 +49,8 @@ AUTH_SECRET_KEY=$(generate_secret_key)
 
 set_secret "bike-weather-auth-postgres-password" "$AUTH_PG_PASS"
 set_secret "bike-weather-auth-secret-key"        "$AUTH_SECRET_KEY"
+set_secret "bike-weather-auth-smtp-username"     "PLACEHOLDER-gmail-address"
+set_secret "bike-weather-auth-smtp-password"     "PLACEHOLDER-gmail-app-password"
 
 echo ""
 
