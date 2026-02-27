@@ -21,4 +21,4 @@ data:
   DB_NAME: "app"
   DB_USER: "app"
   # Turnstile (disabled until real key provisioned)
-  TURNSTILE_ENABLED: "false"
+  TURNSTILE_ENABLED: "true"

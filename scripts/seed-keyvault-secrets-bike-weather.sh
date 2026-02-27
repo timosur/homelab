@@ -64,6 +64,7 @@ set_secret "bike-weather-postgres-password"     "$PROD_PG_PASS"
 # Authentik API token — must be created manually in Authentik after first boot,
 # then updated here. Placeholder for now.
 set_secret "bike-weather-authentik-api-token"    "PLACEHOLDER-create-in-authentik-admin"
+set_secret "bike-weather-turnstile-secret-key"   "PLACEHOLDER-create-in-cloudflare-dashboard"
 
 echo ""
 
@@ -76,6 +77,7 @@ set_secret "bike-weather-preview-postgres-password"     "$PREVIEW_PG_PASS"
 
 # Authentik API token for preview — same Authentik instance, separate app
 set_secret "bike-weather-preview-authentik-api-token"    "PLACEHOLDER-create-in-authentik-admin"
+set_secret "bike-weather-preview-turnstile-secret-key"   "PLACEHOLDER-create-in-cloudflare-dashboard"
 
 # htpasswd basic-auth credentials for preview
 set_secret "bike-weather-preview-htpasswd-username"      "preview"
