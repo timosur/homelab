@@ -19,3 +19,5 @@ data:
   DB_PORT: "5432"
   DB_NAME: "app"
   DB_USER: "app"
+  # Turnstile (disabled until real key provisioned)
+  TURNSTILE_ENABLED: "false"
