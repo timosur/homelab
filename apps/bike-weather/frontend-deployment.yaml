@@ -17,9 +17,16 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/timosur/bike-weather/frontend:0.0.1-preview.1
+          image: ghcr.io/timosur/bike-weather/frontend:0.0.1
           ports:
             - containerPort: 80
+          env:
+            - name: VITE_AUTHENTIK_URL
+              value: "https://auth.bike-weather.com/application/o/bike-weather/"
+            - name: VITE_AUTHENTIK_CLIENT_ID
+              value: "bike-weather"
+            - name: VITE_TURNSTILE_SITE_KEY
+              value: "0x4AAAAAACiLCGBX77uzEqk9"
           livenessProbe:
             httpGet:
               path: /health

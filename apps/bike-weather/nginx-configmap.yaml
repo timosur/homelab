@@ -5,6 +5,14 @@ metadata:
   namespace: bike-weather
 data:
   default.conf: |
+    upstream backend {
+        server bike-weather-backend:8000;
+    }
+
+    upstream frontend {
+        server bike-weather-frontend:80;
+    }
+
     server {
         listen 80;
         server_name _;
@@ -16,65 +24,42 @@ data:
             add_header Content-Type text/plain;
         }
 
-        # Placeholder page
+        # Backend API auth routes
+        location /api/auth/ {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Port $server_port;
+        }
+
+        # Backend API routes
+        location /api/ {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Port $server_port;
+        }
+
+        # Health endpoint (backend)
+        location = /health {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+        }
+
+        # Frontend routes (catch-all)
         location / {
-            root /usr/share/nginx/html;
-            index index.html;
-            try_files $uri $uri/ /index.html;
+            proxy_pass http://frontend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Port $server_port;
         }
     }
-  index.html: |
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Bike Weather</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                background: linear-gradient(135deg, #065f46 0%, #064e3b 50%, #1c1917 100%);
-                color: #fafaf9;
-            }
-            .container {
-                text-align: center;
-                padding: 2rem;
-                max-width: 480px;
-            }
-            .icon { font-size: 3.5rem; margin-bottom: 1.5rem; }
-            h1 {
-                font-size: 2rem;
-                font-weight: 700;
-                margin-bottom: 0.75rem;
-                letter-spacing: -0.025em;
-            }
-            p {
-                font-size: 1.1rem;
-                color: #d6d3d1;
-                line-height: 1.6;
-            }
-            .badge {
-                display: inline-block;
-                margin-top: 2rem;
-                padding: 0.4rem 1rem;
-                border: 1px solid rgba(250,250,249,0.2);
-                border-radius: 9999px;
-                font-size: 0.85rem;
-                color: #a8a29e;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="icon">&#x1F6B4;</div>
-            <h1>Bike Weather</h1>
-            <p>Personalized cycling gear recommendations based on real-time weather. We are building something great.</p>
-            <span class="badge">Coming Soon</span>
-        </div>
-    </body>
-    </html>
