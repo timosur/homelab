@@ -38,6 +38,8 @@ APPS = [
         "redirect_uri": "https://bike-weather.com/auth/callback",
         "launch_url": "https://bike-weather.com",
         "keyvault_token_key": "bike-weather-authentik-api-token",
+        "recovery_flow_slug": "bike-weather-recovery",
+        "email_template": "email/password_reset_production.html",
     },
     {
         "name": "Bike Weather Preview",
@@ -46,6 +48,8 @@ APPS = [
         "redirect_uri": "https://preview.bike-weather.com/auth/callback",
         "launch_url": "https://preview.bike-weather.com",
         "keyvault_token_key": "bike-weather-preview-authentik-api-token",
+        "recovery_flow_slug": "bike-weather-preview-recovery",
+        "email_template": "email/password_reset_preview.html",
     },
 ]
 
@@ -161,6 +165,223 @@ def set_keyvault_secret(key: str, value: str):
         print(f"  WARNING: Failed to set Key Vault secret {key}: {result.stderr}")
         return False
     return True
+
+
+def setup_recovery_flow(base: str, app_config: dict):
+    """Create or configure a recovery flow for the given app.
+
+    Each app gets its own recovery flow with a dedicated email stage
+    that uses the app-specific email template (mounted via ConfigMap).
+    """
+    flow_slug = app_config["recovery_flow_slug"]
+    email_template = app_config["email_template"]
+    app_name = app_config["name"]
+
+    print(f"\n   Setting up recovery flow: {flow_slug}")
+
+    # 1. Create or find the recovery flow
+    flows = api(base, "GET", f"/api/v3/flows/instances/?slug={flow_slug}")
+    if flows.get("results"):
+        flow_pk = flows["results"][0]["pk"]
+        print(f"     Flow exists (pk={flow_pk})")
+    else:
+        flow = api(
+            base,
+            "POST",
+            "/api/v3/flows/instances/",
+            {
+                "name": f"{app_name} Recovery",
+                "slug": flow_slug,
+                "title": "Reset your password",
+                "designation": "recovery",
+                "denied_action": "message_continue",
+                "policy_engine_mode": "any",
+                "compatibility_mode": True,
+            },
+        )
+        flow_pk = flow.get("pk")
+        if not flow_pk:
+            print(f"     FAILED to create recovery flow: {flow}")
+            return
+        print(f"     Flow created (pk={flow_pk})")
+
+    # 2. Get existing bindings
+    existing_bindings = api(
+        base, "GET", f"/api/v3/flows/bindings/?target={flow_pk}&ordering=order"
+    )
+    bound_stages = {b["stage"]: b for b in existing_bindings.get("results", [])}
+
+    # 3. Identification stage
+    ident_name = f"{flow_slug}-identification"
+    existing = api(base, "GET", f"/api/v3/stages/identification/?search={ident_name}")
+    if existing.get("results"):
+        ident_pk = existing["results"][0]["pk"]
+        print(f"     Identification stage exists (pk={ident_pk})")
+    else:
+        stage = api(
+            base,
+            "POST",
+            "/api/v3/stages/identification/",
+            {
+                "name": ident_name,
+                "user_fields": ["email"],
+                "case_insensitive_matching": True,
+                "show_matched_user": False,
+                "pretend_user_exists": True,
+            },
+        )
+        ident_pk = stage.get("pk")
+        if ident_pk:
+            print(f"     Identification stage created (pk={ident_pk})")
+        else:
+            print(f"     FAILED: {stage}")
+
+    # 4. Email stage
+    email_name = f"{flow_slug}-email"
+    existing = api(base, "GET", f"/api/v3/stages/email/?search={email_name}")
+    if existing.get("results"):
+        email_pk = existing["results"][0]["pk"]
+        print(f"     Email stage exists (pk={email_pk})")
+    else:
+        stage = api(
+            base,
+            "POST",
+            "/api/v3/stages/email/",
+            {
+                "name": email_name,
+                "template": email_template,
+                "subject": "Fahrrad Wetter \u2014 Password Reset",
+                "activate_user_on_success": True,
+                "use_global_settings": True,
+                "token_expiry": "minutes=30",
+            },
+        )
+        email_pk = stage.get("pk")
+        if email_pk:
+            print(f"     Email stage created (pk={email_pk})")
+        else:
+            print(f"     FAILED: {stage}")
+
+    # Always patch email stage to ensure template is correct
+    if email_pk:
+        api(
+            base,
+            "PATCH",
+            f"/api/v3/stages/email/{email_pk}/",
+            {
+                "template": email_template,
+                "subject": "Fahrrad Wetter \u2014 Password Reset",
+                "activate_user_on_success": True,
+            },
+        )
+        print(f"     \u2713 Email template: {email_template}")
+
+    # 5. Password prompt stage
+    pw_name = f"{flow_slug}-password"
+    existing = api(base, "GET", f"/api/v3/stages/prompt/stages/?search={pw_name}")
+    if existing.get("results"):
+        pw_pk = existing["results"][0]["pk"]
+        print(f"     Password stage exists (pk={pw_pk})")
+    else:
+        # Find or create prompt fields
+        prompts = api(base, "GET", "/api/v3/stages/prompt/prompts/")
+        pw_prompt_pk = pw_repeat_pk = None
+        for p in prompts.get("results", []):
+            if p.get("field_key") == "password":
+                pw_prompt_pk = p["pk"]
+            elif p.get("field_key") == "password_repeat":
+                pw_repeat_pk = p["pk"]
+
+        if not pw_prompt_pk:
+            r = api(
+                base,
+                "POST",
+                "/api/v3/stages/prompt/prompts/",
+                {
+                    "name": f"{flow_slug}-password-field",
+                    "field_key": "password",
+                    "label": "New Password",
+                    "type": "password",
+                    "required": True,
+                    "placeholder": "New Password",
+                    "order": 0,
+                },
+            )
+            pw_prompt_pk = r.get("pk")
+
+        if not pw_repeat_pk:
+            r = api(
+                base,
+                "POST",
+                "/api/v3/stages/prompt/prompts/",
+                {
+                    "name": f"{flow_slug}-password-repeat-field",
+                    "field_key": "password_repeat",
+                    "label": "Repeat Password",
+                    "type": "password",
+                    "required": True,
+                    "placeholder": "Repeat Password",
+                    "order": 1,
+                },
+            )
+            pw_repeat_pk = r.get("pk")
+
+        fields = [pk for pk in [pw_prompt_pk, pw_repeat_pk] if pk]
+        stage = api(
+            base,
+            "POST",
+            "/api/v3/stages/prompt/stages/",
+            {"name": pw_name, "fields": fields},
+        )
+        pw_pk = stage.get("pk")
+        if pw_pk:
+            print(f"     Password stage created (pk={pw_pk})")
+        else:
+            print(f"     FAILED: {stage}")
+
+    # 6. User-write stage
+    write_name = f"{flow_slug}-user-write"
+    existing = api(base, "GET", f"/api/v3/stages/user_write/?search={write_name}")
+    if existing.get("results"):
+        write_pk = existing["results"][0]["pk"]
+        print(f"     User-write stage exists (pk={write_pk})")
+    else:
+        stage = api(
+            base,
+            "POST",
+            "/api/v3/stages/user_write/",
+            {"name": write_name, "create_users_as_inactive": False},
+        )
+        write_pk = stage.get("pk")
+        if write_pk:
+            print(f"     User-write stage created (pk={write_pk})")
+        else:
+            print(f"     FAILED: {stage}")
+
+    # 7. Bind stages in order
+    stage_order = [
+        (ident_pk, 0),
+        (email_pk, 10),
+        (pw_pk, 20),
+        (write_pk, 30),
+    ]
+    for stage_pk, order in stage_order:
+        if not stage_pk:
+            continue
+        if stage_pk in bound_stages:
+            continue
+        binding = api(
+            base,
+            "POST",
+            "/api/v3/flows/bindings/",
+            {"target": flow_pk, "stage": stage_pk, "order": order},
+        )
+        if binding.get("pk"):
+            print(f"     Bound stage (order={order})")
+        else:
+            print(f"     FAILED to bind at order {order}: {binding}")
+
+    print(f"     \u2713 Recovery flow {flow_slug} ready")
 
 
 def provision_app(
@@ -312,8 +533,13 @@ def main():
         if provider_pk is None:
             print(f"\n   WARNING: Skipping {app_config['slug']} due to errors")
 
-    # 6. Verify OIDC discovery endpoints
-    print("\n6. Verifying OIDC discovery endpoints...")
+    # 6. Setup recovery flows for each app
+    print("\n6. Setting up recovery flows...")
+    for app_config in APPS:
+        setup_recovery_flow(base, app_config)
+
+    # 7. Verify OIDC discovery endpoints
+    print("\n7. Verifying OIDC discovery endpoints...")
     for app_config in APPS:
         slug = app_config["slug"]
         try:
@@ -328,9 +554,9 @@ def main():
         except urllib.error.HTTPError as e:
             print(f"   {slug}: FAILED ({e.code})")
 
-    # 7. Store API token in Azure Key Vault
+    # 8. Store API token in Azure Key Vault
     if not args.skip_keyvault:
-        print("\n7. Storing API token in Azure Key Vault...")
+        print("\n8. Storing API token in Azure Key Vault...")
         for app_config in APPS:
             key = app_config["keyvault_token_key"]
             if set_keyvault_secret(key, token):
@@ -338,7 +564,7 @@ def main():
             else:
                 print(f"   FAIL {key}")
     else:
-        print("\n7. Skipping Key Vault update (--skip-keyvault)")
+        print("\n8. Skipping Key Vault update (--skip-keyvault)")
 
     # Done
     print("\n=== Done! ===")
