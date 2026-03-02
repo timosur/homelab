@@ -26,10 +26,6 @@ spec:
               kubeProxy: true
               kubePrometheusGeneral: true
               kubePrometheusNodeRecording: true
-              kubernetesApps: true
-              kubernetesResources: true
-              kubernetesStorage: true
-              kubernetesSystem: true
               nodeExporterAlerting: true
               nodeExporterRecording: true
               prometheus: true
