@@ -10,6 +10,7 @@ resources:
   - postgres-external-secret.yaml
   - postgres-password-secret.yaml
   - postgres.yaml
+  - ghcr-pull-secret-external.yaml
   - nginx-configmap.yaml
   - backend-deployment.yaml
   - backend-service.yaml

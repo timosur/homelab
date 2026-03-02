@@ -5,6 +5,7 @@ namespace: bike-weather-preview
 
 resources:
   - namespace.yaml
+  - ghcr-pull-secret-external.yaml
   - configmap.yaml
   - external-secret.yaml
   - htpasswd-external-secret.yaml
