@@ -5,6 +5,7 @@ resources:
   - actual.yaml
   - argocd.yaml
   - garden.yaml
+  - grafana.yaml
   - home-assistant.yaml
   - paperless.yaml
   - pi-hole.yaml

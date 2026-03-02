@@ -10,6 +10,7 @@ resources:
   - envoy-gateway-app.yaml
   - external-secrets-app.yaml
   - garden-app.yaml
+  - monitoring-app.yaml
   - networking-app.yaml
   - open-webui-app.yaml
   - smb-csi-driver-app.yaml
