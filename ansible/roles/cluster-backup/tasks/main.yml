@@ -244,7 +244,9 @@
   ansible.builtin.shell: |
     set -eo pipefail
     tar -czf "{{ backup_dir }}/pvc-{{ item.namespace }}-{{ item.pvc }}-{{ backup_timestamp }}.tar.gz" \
-      -C "{{ item.path }}" .
+      -C "{{ item.path }}" . || rc=$?
+    # tar exit 1 = "file changed as we read it" — expected for live volumes
+    if [ "${rc:-0}" -gt 1 ]; then exit "$rc"; fi
   args:
     executable: /bin/bash
   become: true
@@ -256,7 +258,8 @@
 - name: Backup PVC volumes (remote nodes via SSH)
   ansible.builtin.shell: |
     set -eo pipefail
-    ssh -o StrictHostKeyChecking=no -i /home/{{ ansible_user }}/.ssh/id_rsa {{ ansible_user }}@"{{ item.node }}" "sudo tar -czf - -C '{{ item.path }}' ." \
+    ssh -o StrictHostKeyChecking=no -i /home/{{ ansible_user }}/.ssh/id_rsa {{ ansible_user }}@"{{ item.node }}" \
+      "sudo tar -czf - -C '{{ item.path }}' . || [ \$? -eq 1 ]" \
       > "{{ backup_dir }}/pvc-{{ item.namespace }}-{{ item.pvc }}-{{ backup_timestamp }}.tar.gz"
   args:
     executable: /bin/bash
