@@ -148,9 +148,11 @@ spec:
               max_query_series: 500
             compactor:
               retention_enabled: true
-              delete_request_store: filesystem
               compaction_interval: 12h
               retention_delete_delay: 2h
+            structuredConfig:
+              compactor:
+                delete_request_store: filesystem
             schemaConfig:
               configs:
                 - from: "2024-01-01"
