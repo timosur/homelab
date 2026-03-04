@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: ghcr.io/goauthentik/server:2025.12.4
+          image: ghcr.io/goauthentik/server:2026.2.1
           command: ["ak", "worker"]
           envFrom:
             - configMapRef:
