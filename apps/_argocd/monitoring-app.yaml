@@ -47,12 +47,12 @@ spec:
             additionalDataSources:
               - name: Loki
                 type: loki
-                url: http://loki.monitoring.svc.cluster.local:3100
+                url: http://monitoring-loki.monitoring.svc.cluster.local:3100
                 access: proxy
                 isDefault: false
               - name: Tempo
                 type: tempo
-                url: http://tempo.monitoring.svc.cluster.local:3200
+                url: http://monitoring-tempo.monitoring.svc.cluster.local:3200
                 access: proxy
                 isDefault: false
                 jsonData:
@@ -290,7 +290,7 @@ spec:
                 // Export traces to Tempo
                 otelcol.exporter.otlp "tempo" {
                   client {
-                    endpoint = "tempo.monitoring.svc.cluster.local:4317"
+                    endpoint = "monitoring-tempo.monitoring.svc.cluster.local:4317"
                     tls {
                       insecure = true
                     }
@@ -300,7 +300,7 @@ spec:
                 // Write logs to Loki
                 loki.write "default" {
                   endpoint {
-                    url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+                    url = "http://monitoring-loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
                   }
                 }
             extraPorts:
