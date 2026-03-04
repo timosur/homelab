@@ -31,6 +31,8 @@ spec:
               prometheus: true
           grafana:
             enabled: true
+            initChownData:
+              enabled: false
             adminPassword: ""
             admin:
               existingSecret: grafana-admin-secret
@@ -50,7 +52,7 @@ spec:
                 isDefault: false
               - name: Tempo
                 type: tempo
-                url: http://tempo.monitoring.svc.cluster.local:3100
+                url: http://tempo.monitoring.svc.cluster.local:3200
                 access: proxy
                 isDefault: false
                 jsonData:
