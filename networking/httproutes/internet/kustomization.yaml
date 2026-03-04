@@ -6,6 +6,8 @@ resources:
   - bike-weather-auth.yaml
   - bike-weather-preview.yaml
   - bike-weather-http-redirect.yaml
+  - fahrrad-wetter.yaml
+  - fahrrad-wetter-http-redirect.yaml
   - givgroov.yaml
   - mealie.yaml
   - open-webui.yaml

@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: fahrrad-wetter-com-cert
+  namespace: envoy-gateway-internet-system
+spec:
+  secretName: fahrrad-wetter-com-cert
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "fahrrad-wetter.com"

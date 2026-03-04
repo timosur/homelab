@@ -130,3 +130,22 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: bike-weather-com-cert
+    # fahrrad-wetter.com
+    - name: fahrrad-wetter-http
+      port: 80
+      protocol: HTTP
+      hostname: "fahrrad-wetter.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: fahrrad-wetter-https
+      port: 443
+      protocol: HTTPS
+      hostname: "fahrrad-wetter.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: fahrrad-wetter-com-cert

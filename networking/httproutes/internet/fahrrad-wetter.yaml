@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: fahrrad-wetter
+  namespace: bike-weather
+spec:
+  parentRefs:
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: fahrrad-wetter-https
+  hostnames:
+    - "fahrrad-wetter.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: bike-weather-nginx
+          port: 80

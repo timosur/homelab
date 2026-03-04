@@ -7,4 +7,5 @@ resources:
   - wildcard-certificate.yaml
   - givgroov-certificate.yaml
   - bike-weather-certificate.yaml
+  - fahrrad-wetter-certificate.yaml
   - http-to-https-redirect.yaml
