@@ -42,6 +42,25 @@ spec:
               size: 5Gi
             ingress:
               enabled: false
+            additionalDataSources:
+              - name: Loki
+                type: loki
+                url: http://loki.monitoring.svc.cluster.local:3100
+                access: proxy
+                isDefault: false
+              - name: Tempo
+                type: tempo
+                url: http://tempo.monitoring.svc.cluster.local:3100
+                access: proxy
+                isDefault: false
+                jsonData:
+                  tracesToLogsV2:
+                    datasourceUid: loki
+                    filterByTraceID: true
+                  nodeGraph:
+                    enabled: true
+                  serviceMap:
+                    datasourceUid: monitoring-prometheus
             grafana.ini:
               server:
                 protocol: http
@@ -102,26 +121,6 @@ spec:
                         storage: 2Gi
               secrets:
                 - monitoring-smtp-secret
-          grafana:
-            additionalDataSources:
-              - name: Loki
-                type: loki
-                url: http://loki.monitoring.svc.cluster.local:3100
-                access: proxy
-                isDefault: false
-              - name: Tempo
-                type: tempo
-                url: http://tempo.monitoring.svc.cluster.local:3100
-                access: proxy
-                isDefault: false
-                jsonData:
-                  tracesToLogsV2:
-                    datasourceUid: loki
-                    filterByTraceID: true
-                  nodeGraph:
-                    enabled: true
-                  serviceMap:
-                    datasourceUid: monitoring-prometheus
           nodeExporter:
             enabled: true
           kubeStateMetrics:
@@ -139,6 +138,16 @@ spec:
             auth_enabled: false
             commonConfig:
               replication_factor: 1
+            limits_config:
+              retention_period: 72h
+              ingestion_rate_mb: 4
+              ingestion_burst_size_mb: 6
+              max_entries_limit_per_query: 5000
+              max_query_series: 500
+            compactor:
+              retention_enabled: true
+              compaction_interval: 12h
+              retention_delete_delay: 2h
             schemaConfig:
               configs:
                 - from: "2024-01-01"
@@ -152,10 +161,17 @@ spec:
               type: filesystem
           singleBinary:
             replicas: 1
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
             persistence:
               enabled: true
               storageClass: local-path
-              size: 10Gi
+              size: 5Gi
           backend:
             replicas: 0
           read:
@@ -179,20 +195,32 @@ spec:
       helm:
         valuesObject:
           tempo:
+            retention: 72h
             storage:
               trace:
                 backend: local
                 local:
                   path: /var/tempo/traces
+                wal:
+                  path: /var/tempo/wal
             receivers:
               otlp:
                 protocols:
                   grpc:
                     endpoint: "0.0.0.0:4317"
+            global_overrides:
+              max_bytes_per_trace: 500000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
           persistence:
             enabled: true
             storageClassName: local-path
-            size: 10Gi
+            size: 5Gi
     # Alloy — telemetry collector (Faro receiver + OTLP relay)
     - repoURL: https://grafana.github.io/helm-charts
       chart: alloy
@@ -211,7 +239,7 @@ spec:
                   }
                   output {
                     logs   = [loki.write.default.receiver]
-                    traces = [otelcol.exporter.otlp.tempo.input]
+                    traces = [otelcol.processor.tail_sampling.default.input]
                   }
                 }
 
@@ -219,6 +247,35 @@ spec:
                 otelcol.receiver.otlp "default" {
                   grpc {
                     endpoint = "0.0.0.0:4317"
+                  }
+                  output {
+                    traces = [otelcol.processor.tail_sampling.default.input]
+                  }
+                }
+
+                // Tail sampling — keep errors and slow traces, sample 10% of normal
+                otelcol.processor.tail_sampling "default" {
+                  decision_wait = "10s"
+                  policy {
+                    name = "errors"
+                    type = "status_code"
+                    status_code {
+                      status_codes = ["ERROR"]
+                    }
+                  }
+                  policy {
+                    name = "slow"
+                    type = "latency"
+                    latency {
+                      threshold_ms = 1000
+                    }
+                  }
+                  policy {
+                    name = "sample-rest"
+                    type = "probabilistic"
+                    probabilistic {
+                      sampling_percentage = 10
+                    }
                   }
                   output {
                     traces = [otelcol.exporter.otlp.tempo.input]
@@ -250,6 +307,14 @@ spec:
                 port: 4317
                 targetPort: 4317
                 protocol: TCP
+          controller:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi
     - repoURL: https://github.com/timosur/homelab.git
       targetRevision: HEAD
       path: apps/monitoring
