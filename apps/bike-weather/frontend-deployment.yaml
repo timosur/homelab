@@ -32,6 +32,8 @@ spec:
               value: "bike-weather"
             - name: VITE_TURNSTILE_SITE_KEY
               value: "0x4AAAAAACiLCGBX77uzEqk9"
+            - name: VITE_FARO_COLLECTOR_URL
+              value: "https://bike-weather.com/collect"
           livenessProbe:
             httpGet:
               path: /health

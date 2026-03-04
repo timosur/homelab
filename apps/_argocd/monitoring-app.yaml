@@ -102,12 +102,154 @@ spec:
                         storage: 2Gi
               secrets:
                 - monitoring-smtp-secret
+          grafana:
+            additionalDataSources:
+              - name: Loki
+                type: loki
+                url: http://loki.monitoring.svc.cluster.local:3100
+                access: proxy
+                isDefault: false
+              - name: Tempo
+                type: tempo
+                url: http://tempo.monitoring.svc.cluster.local:3100
+                access: proxy
+                isDefault: false
+                jsonData:
+                  tracesToLogsV2:
+                    datasourceUid: loki
+                    filterByTraceID: true
+                  nodeGraph:
+                    enabled: true
+                  serviceMap:
+                    datasourceUid: monitoring-prometheus
           nodeExporter:
             enabled: true
           kubeStateMetrics:
             enabled: true
           prometheusOperator:
             enabled: true
+    # Loki — log aggregation (monolithic mode)
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: loki
+      targetRevision: 6.53.0
+      helm:
+        valuesObject:
+          deploymentMode: SingleBinary
+          loki:
+            auth_enabled: false
+            commonConfig:
+              replication_factor: 1
+            schemaConfig:
+              configs:
+                - from: "2024-01-01"
+                  store: tsdb
+                  object_store: filesystem
+                  schema: v13
+                  index:
+                    prefix: loki_index_
+                    period: 24h
+            storage:
+              type: filesystem
+          singleBinary:
+            replicas: 1
+            persistence:
+              enabled: true
+              storageClass: local-path
+              size: 10Gi
+          backend:
+            replicas: 0
+          read:
+            replicas: 0
+          write:
+            replicas: 0
+          gateway:
+            enabled: false
+          chunksCache:
+            enabled: false
+          resultsCache:
+            enabled: false
+          lokiCanary:
+            enabled: false
+          test:
+            enabled: false
+    # Tempo — distributed tracing (monolithic mode)
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: tempo
+      targetRevision: 1.24.4
+      helm:
+        valuesObject:
+          tempo:
+            storage:
+              trace:
+                backend: local
+                local:
+                  path: /var/tempo/traces
+            receivers:
+              otlp:
+                protocols:
+                  grpc:
+                    endpoint: "0.0.0.0:4317"
+          persistence:
+            enabled: true
+            storageClassName: local-path
+            size: 10Gi
+    # Alloy — telemetry collector (Faro receiver + OTLP relay)
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: 1.6.1
+      helm:
+        valuesObject:
+          alloy:
+            configMap:
+              content: |
+                // Faro receiver — browser telemetry from Grafana Faro SDK
+                faro.receiver "default" {
+                  server {
+                    listen_address = "0.0.0.0"
+                    listen_port    = 12347
+                    cors_allowed_origins = ["https://bike-weather.com", "https://fahrrad-wetter.com"]
+                  }
+                  output {
+                    logs   = [loki.write.default.receiver]
+                    traces = [otelcol.exporter.otlp.tempo.input]
+                  }
+                }
+
+                // OTLP gRPC receiver — backend traces
+                otelcol.receiver.otlp "default" {
+                  grpc {
+                    endpoint = "0.0.0.0:4317"
+                  }
+                  output {
+                    traces = [otelcol.exporter.otlp.tempo.input]
+                  }
+                }
+
+                // Export traces to Tempo
+                otelcol.exporter.otlp "tempo" {
+                  client {
+                    endpoint = "tempo.monitoring.svc.cluster.local:4317"
+                    tls {
+                      insecure = true
+                    }
+                  }
+                }
+
+                // Write logs to Loki
+                loki.write "default" {
+                  endpoint {
+                    url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+                  }
+                }
+            extraPorts:
+              - name: faro
+                port: 12347
+                targetPort: 12347
+                protocol: TCP
+              - name: otlp-grpc
+                port: 4317
+                targetPort: 4317
+                protocol: TCP
     - repoURL: https://github.com/timosur/homelab.git
       targetRevision: HEAD
       path: apps/monitoring

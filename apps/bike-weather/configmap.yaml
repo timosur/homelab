@@ -22,3 +22,6 @@ data:
   DB_USER: "app"
   # Turnstile (disabled until real key provisioned)
   TURNSTILE_ENABLED: "true"
+  # OpenTelemetry
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy.monitoring.svc.cluster.local:4317"
+  OTEL_SERVICE_NAME: "bike-weather-backend"
