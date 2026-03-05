@@ -11,6 +11,7 @@ spec:
     parameters:
       max_connections: "100"
       shared_buffers: "128MB"
+      jit: "off"
 
   bootstrap:
     initdb:
