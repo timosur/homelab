@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: garden-backend
-          image: ghcr.io/timosur/life-as-a-garden/backend:1.0.5@sha256:fbcdc1ac6903a402466e57ec22f287871c47782fd871b234d2db4d028d7e22a1
+          image: ghcr.io/timosur/life-as-a-garden/backend:1.0.6
           command:
             [
               "fastapi",
