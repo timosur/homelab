@@ -9,7 +9,7 @@ data:
   FRONTEND_URL: "https://bike-weather.com"
   CORS_ORIGINS: '["https://bike-weather.com"]'
   # Authentik
-  AUTHENTIK_BASE_URL: "http://bike-weather-auth-server.bike-weather-auth.svc.cluster.local:9000"
+  AUTHENTIK_BASE_URL: "https://auth.bike-weather.com"
   AUTHENTIK_ISSUER_URL: "https://auth.bike-weather.com/application/o/bike-weather/"
   AUTHENTIK_AUDIENCE: "bike-weather"
   AUTHENTIK_CLIENT_ID: "bike-weather"
