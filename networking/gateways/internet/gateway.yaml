@@ -111,7 +111,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: bike-weather-com-cert    # auth.bike-weather.com
+          - name: bike-weather-com-cert # auth.bike-weather.com
     - name: bike-weather-auth-http
       port: 80
       protocol: HTTP
