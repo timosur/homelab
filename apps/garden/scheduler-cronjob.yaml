@@ -4,6 +4,7 @@ metadata:
   name: garden-scheduler
   namespace: garden
 spec:
+  suspend: true
   schedule: "0 1 * * *" # Run daily at 1 AM
   timeZone: "Europe/Berlin"
   jobTemplate:

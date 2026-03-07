@@ -4,7 +4,7 @@ metadata:
   name: garden-nginx
   namespace: garden
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: garden-nginx
@@ -14,33 +14,33 @@ spec:
         app: garden-nginx
     spec:
       containers:
-      - name: nginx
-        image: nginx:alpine
-        ports:
-        - containerPort: 80
-        volumeMounts:
-        - name: nginx-config
-          mountPath: /etc/nginx/conf.d
-        resources:
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-        livenessProbe:
-          httpGet:
-            path: /nginx-health
-            port: 80
-          initialDelaySeconds: 10
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /nginx-health
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 10
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /nginx-health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /nginx-health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
       volumes:
-      - name: nginx-config
-        configMap:
-          name: garden-nginx-config
+        - name: nginx-config
+          configMap:
+            name: garden-nginx-config
