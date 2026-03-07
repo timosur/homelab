@@ -88,8 +88,8 @@ spec:
             config:
               global:
                 resolve_timeout: 5m
-                smtp_smarthost: 'smtp.gmail.com:587'
-                smtp_from: 'timo.surmann@googlemail.com'
+                smtp_smarthost: "smtp.gmail.com:587"
+                smtp_from: "timo.surmann@googlemail.com"
                 smtp_auth_username_file: /etc/alertmanager/secrets/monitoring-smtp-secret/SMTP_USERNAME
                 smtp_auth_password_file: /etc/alertmanager/secrets/monitoring-smtp-secret/SMTP_PASSWORD
                 smtp_require_tls: true
@@ -100,14 +100,14 @@ spec:
                 repeat_interval: 12h
                 receiver: email
                 routes:
-                  - receiver: 'null'
+                  - receiver: "null"
                     matchers:
                       - alertname =~ "InfoInhibitor|Watchdog"
               receivers:
-                - name: 'null'
+                - name: "null"
                 - name: email
                   email_configs:
-                    - to: 'homelab@timosur.com'
+                    - to: "homelab@timosur.com"
                       send_resolved: true
               inhibit_rules:
                 - source_matchers: [severity = critical]
@@ -248,7 +248,7 @@ spec:
                   }
                 }
 
-                // Extract kind and app_name from Faro logfmt lines as Loki labels
+                // Extract labels from Faro logfmt lines to match dashboard expectations
                 loki.process "faro" {
                   forward_to = [loki.write.default.receiver]
 
@@ -261,8 +261,15 @@ spec:
 
                   stage.labels {
                     values = {
-                      "kind"     = "",
-                      "app_name" = "",
+                      "kind"        = "",
+                      "Application" = "app_name",
+                      "Environment" = "",
+                    }
+                  }
+
+                  stage.static_labels {
+                    values = {
+                      "Environment" = "K8S_production",
                     }
                   }
                 }
