@@ -4,7 +4,7 @@ metadata:
   name: garden-postgres
   namespace: garden
 spec:
-  instances: 0
+  instances: 1
   enablePDB: false
 
   postgresql:
