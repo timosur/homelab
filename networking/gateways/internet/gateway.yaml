@@ -149,3 +149,41 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: fahrrad-wetter-com-cert
+    # www.bike-weather.com → bike-weather.com redirect
+    - name: www-bike-weather-http
+      port: 80
+      protocol: HTTP
+      hostname: "www.bike-weather.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: www-bike-weather-https
+      port: 443
+      protocol: HTTPS
+      hostname: "www.bike-weather.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: bike-weather-com-cert
+    # www.fahrrad-wetter.com → fahrrad-wetter.com redirect
+    - name: www-fahrrad-wetter-http
+      port: 80
+      protocol: HTTP
+      hostname: "www.fahrrad-wetter.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: www-fahrrad-wetter-https
+      port: 443
+      protocol: HTTPS
+      hostname: "www.fahrrad-wetter.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: fahrrad-wetter-com-cert

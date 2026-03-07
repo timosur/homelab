@@ -1,0 +1,81 @@
+# 301 redirect www.bike-weather.com → bike-weather.com (HTTP + HTTPS)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: www-bike-weather-http-redirect
+  namespace: envoy-gateway-internet-system
+spec:
+  parentRefs:
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: www-bike-weather-http
+  hostnames:
+    - "www.bike-weather.com"
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            hostname: bike-weather.com
+            scheme: https
+            statusCode: 301
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: www-bike-weather-https-redirect
+  namespace: envoy-gateway-internet-system
+spec:
+  parentRefs:
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: www-bike-weather-https
+  hostnames:
+    - "www.bike-weather.com"
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            hostname: bike-weather.com
+            scheme: https
+            statusCode: 301
+---
+# 301 redirect www.fahrrad-wetter.com → fahrrad-wetter.com (HTTP + HTTPS)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: www-fahrrad-wetter-http-redirect
+  namespace: envoy-gateway-internet-system
+spec:
+  parentRefs:
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: www-fahrrad-wetter-http
+  hostnames:
+    - "www.fahrrad-wetter.com"
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            hostname: fahrrad-wetter.com
+            scheme: https
+            statusCode: 301
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: www-fahrrad-wetter-https-redirect
+  namespace: envoy-gateway-internet-system
+spec:
+  parentRefs:
+    - name: envoy-gateway-internet
+      namespace: envoy-gateway-internet-system
+      sectionName: www-fahrrad-wetter-https
+  hostnames:
+    - "www.fahrrad-wetter.com"
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            hostname: fahrrad-wetter.com
+            scheme: https
+            statusCode: 301

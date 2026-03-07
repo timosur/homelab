@@ -10,3 +10,4 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - "fahrrad-wetter.com"
+    - "www.fahrrad-wetter.com"
