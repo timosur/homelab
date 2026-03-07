@@ -243,8 +243,27 @@ spec:
                     cors_allowed_origins = ["https://bike-weather.com", "https://fahrrad-wetter.com"]
                   }
                   output {
-                    logs   = [loki.write.default.receiver]
+                    logs   = [loki.process.faro.receiver]
                     traces = [otelcol.processor.tail_sampling.default.input]
+                  }
+                }
+
+                // Extract kind and app_name from Faro logfmt lines as Loki labels
+                loki.process "faro" {
+                  forward_to = [loki.write.default.receiver]
+
+                  stage.logfmt {
+                    mapping = {
+                      "kind"     = "",
+                      "app_name" = "",
+                    }
+                  }
+
+                  stage.labels {
+                    values = {
+                      "kind"     = "",
+                      "app_name" = "",
+                    }
                   }
                 }
 
