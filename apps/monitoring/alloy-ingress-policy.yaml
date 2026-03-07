@@ -1,0 +1,18 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-alloy-ingress-from-bike-weather
+  namespace: monitoring
+spec:
+  description: "Allow bike-weather nginx to reach Alloy Faro receiver on port 12347"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: bike-weather
+      toPorts:
+        - ports:
+            - port: "12347"
+              protocol: TCP

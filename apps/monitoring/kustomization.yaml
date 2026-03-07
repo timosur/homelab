@@ -4,3 +4,4 @@ namespace: monitoring
 resources:
   - namespace.yaml
   - external-secret.yaml
+  - alloy-ingress-policy.yaml
