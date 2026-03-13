@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bike-weather-preview-agent-config
+  namespace: bike-weather-preview
+data:
+  TZ: "Europe/Berlin"
+  PYTHONUNBUFFERED: "1"
+  AGENT_ADMIN_API_URL: "http://bike-weather-preview-backend:8000/api/admin"
+  AGENT_LLM_PROVIDER: "openai"
+  AGENT_LLM_MODEL: "gpt-4o-mini"
+  AGENT_REQUEST_TIMEOUT: "30"
+  AGENT_REQUEST_DELAY: "2"

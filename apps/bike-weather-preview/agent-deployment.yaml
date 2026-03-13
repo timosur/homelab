@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bike-weather-preview-agent
+  namespace: bike-weather-preview
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bike-weather-preview-agent
+  template:
+    metadata:
+      labels:
+        app: bike-weather-preview-agent
+    spec:
+      imagePullSecrets:
+        - name: ghcr-io-pull-secret
+      containers:
+        - name: agent
+          image: ghcr.io/timosur/bike-weather/agent:0.0.2-preview.1
+          args: ["--serve", "--host", "0.0.0.0"]
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: bike-weather-preview-agent-config
+            - secretRef:
+                name: bike-weather-preview-agent-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"

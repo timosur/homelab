@@ -19,7 +19,7 @@ spec:
         - name: ghcr-io-pull-secret
       containers:
         - name: frontend
-          image: ghcr.io/timosur/bike-weather/frontend:0.0.5-preview.2
+          image: ghcr.io/timosur/bike-weather/frontend:0.0.12-preview.1
           ports:
             - containerPort: 80
           env:
@@ -29,6 +29,8 @@ spec:
               value: "bike-weather-preview"
             - name: VITE_TURNSTILE_SITE_KEY
               value: "0x4AAAAAACiLCGBX77uzEqk9"
+            - name: VITE_FARO_COLLECTOR_URL
+              value: "https://preview.bike-weather.com/collect"
           livenessProbe:
             httpGet:
               path: /health

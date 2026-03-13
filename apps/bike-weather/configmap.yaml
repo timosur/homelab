@@ -22,6 +22,8 @@ data:
   DB_USER: "app"
   # Turnstile (disabled until real key provisioned)
   TURNSTILE_ENABLED: "true"
+  # Agent
+  AGENT_SERVICE_URL: "http://bike-weather-agent:8001"
   # OpenTelemetry
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://monitoring-alloy.monitoring.svc.cluster.local:4317"
   OTEL_SERVICE_NAME: "bike-weather-backend"

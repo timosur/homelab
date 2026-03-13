@@ -7,6 +7,8 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - external-secret.yaml
+  - agent-configmap.yaml
+  - agent-external-secret.yaml
   - postgres-external-secret.yaml
   - postgres-password-secret.yaml
   - postgres.yaml
@@ -14,6 +16,8 @@ resources:
   - nginx-configmap.yaml
   - backend-deployment.yaml
   - backend-service.yaml
+  - agent-deployment.yaml
+  - agent-service.yaml
   - frontend-deployment.yaml
   - frontend-service.yaml
   - nginx-deployment.yaml

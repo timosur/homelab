@@ -20,5 +20,7 @@ data:
   DB_PORT: "5432"
   DB_NAME: "app"
   DB_USER: "app"
+  # Agent
+  AGENT_SERVICE_URL: "http://bike-weather-preview-agent:8001"
   # Turnstile (disabled until real key provisioned)
   TURNSTILE_ENABLED: "true"

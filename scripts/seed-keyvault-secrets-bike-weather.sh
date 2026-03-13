@@ -65,6 +65,15 @@ set_secret "bike-weather-postgres-password"     "$PROD_PG_PASS"
 # then updated here. Placeholder for now.
 set_secret "bike-weather-authentik-api-token"    "PLACEHOLDER-create-in-authentik-admin"
 set_secret "bike-weather-turnstile-secret-key"   "PLACEHOLDER-create-in-cloudflare-dashboard"
+set_secret "bike-weather-google-maps-api-key"    "PLACEHOLDER-create-in-google-cloud-console"
+
+echo ""
+
+# ── Production Agent ─────────────────────────────────────────────────────────
+
+echo "── bike-weather agent (production) ──"
+set_secret "bike-weather-agent-llm-api-key"      "PLACEHOLDER-openai-api-key"
+set_secret "bike-weather-agent-admin-token"       "PLACEHOLDER-create-in-authentik-admin"
 
 echo ""
 
@@ -78,10 +87,19 @@ set_secret "bike-weather-preview-postgres-password"     "$PREVIEW_PG_PASS"
 # Authentik API token for preview — same Authentik instance, separate app
 set_secret "bike-weather-preview-authentik-api-token"    "PLACEHOLDER-create-in-authentik-admin"
 set_secret "bike-weather-preview-turnstile-secret-key"   "PLACEHOLDER-create-in-cloudflare-dashboard"
+set_secret "bike-weather-preview-google-maps-api-key"    "PLACEHOLDER-create-in-google-cloud-console"
 
 # htpasswd basic-auth credentials for preview
 set_secret "bike-weather-preview-htpasswd-username"      "preview"
 set_secret "bike-weather-preview-htpasswd-password"      "$(generate_password)"
+
+echo ""
+
+# ── Preview Agent ────────────────────────────────────────────────────────────
+
+echo "── bike-weather-preview agent ──"
+set_secret "bike-weather-preview-agent-llm-api-key"  "PLACEHOLDER-openai-api-key"
+set_secret "bike-weather-preview-agent-admin-token"   "PLACEHOLDER-create-in-authentik-admin"
 
 echo ""
 
