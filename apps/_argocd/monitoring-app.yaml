@@ -229,7 +229,7 @@ spec:
     # Alloy — telemetry collector (Faro receiver + OTLP relay)
     - repoURL: https://grafana.github.io/helm-charts
       chart: alloy
-      targetRevision: 1.6.1
+      targetRevision: 1.6.2
       helm:
         valuesObject:
           alloy:
