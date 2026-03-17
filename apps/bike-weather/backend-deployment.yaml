@@ -18,6 +18,8 @@ spec:
       labels:
         app: bike-weather-backend
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd
       imagePullSecrets:
         - name: ghcr-io-pull-secret
       initContainers:
