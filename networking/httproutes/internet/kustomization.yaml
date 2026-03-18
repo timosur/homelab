@@ -11,5 +11,6 @@ resources:
   - fahrrad-wetter-http-redirect.yaml
   - givgroov.yaml
   - mealie.yaml
+  - n8n.yaml
   - open-webui.yaml
   - portfolio.yaml
