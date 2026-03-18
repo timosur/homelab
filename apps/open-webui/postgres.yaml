@@ -7,6 +7,10 @@ spec:
   instances: 1
   enablePDB: false
 
+  affinity:
+    nodeSelector:
+      kubernetes.io/hostname: homelab-amd
+
   postgresql:
     parameters:
       max_connections: "200"
@@ -22,7 +26,7 @@ spec:
 
   storage:
     size: 20Gi
-    storageClass: local-path
+    storageClass: hcloud-volumes
 
   resources:
     requests:
