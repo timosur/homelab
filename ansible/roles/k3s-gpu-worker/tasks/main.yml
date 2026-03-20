@@ -50,7 +50,7 @@
     content: |
       node-label:
         - "node.kubernetes.io/gpu=amd"
-        - "gpu-type=rocm"
+        - "gpu-type=vulkan"
       node-taint:
         - "gpu=true:NoSchedule"
     mode: "0644"

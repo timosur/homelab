@@ -26,13 +26,16 @@ spec:
           effect: NoSchedule
       containers:
         - name: ollama
-          image: ollama/ollama:rocm
+          image: ollama/ollama:latest
           ports:
             - containerPort: 11434
               hostPort: 11434
           env:
-            - name: HSA_OVERRIDE_GFX_VERSION
-              value: "10.3.0"
+            # Use Vulkan backend - works better than ROCm on RX 5700 XT (gfx1010)
+            - name: OLLAMA_VULKAN
+              value: "1"
+            - name: OLLAMA_LLM_LIBRARY
+              value: "vulkan"
           resources:
             requests:
               cpu: "100m"
@@ -40,7 +43,9 @@ spec:
             limits:
               cpu: "4000m"
               memory: "16Gi"
-              amd.com/gpu: 1
+          # Mount GPU devices for Vulkan access
+          securityContext:
+            privileged: true
           volumeMounts:
             - name: ollama-volume
               mountPath: /root/.ollama

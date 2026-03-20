@@ -1,0 +1,5 @@
+# Ollama systemd override for Vulkan GPU backend
+# Use Vulkan instead of ROCm HIP for RX 5700 XT (gfx1010) compatibility
+[Service]
+Environment="OLLAMA_VULKAN=1"
+Environment="OLLAMA_LLM_LIBRARY=vulkan"

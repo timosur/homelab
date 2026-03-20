@@ -1,3 +1,4 @@
-# ROCm environment variables
-# Required for RX 5700 XT (gfx1010) to work with ROCm
-export HSA_OVERRIDE_GFX_VERSION={{ hsa_override_gfx_version }}
+# AMD GPU environment variables
+# ROCm is installed for monitoring (rocm-smi)
+# Ollama uses Vulkan backend for better RX 5700 XT (gfx1010) compatibility
+export PATH="/opt/rocm/bin:$PATH"

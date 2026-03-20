@@ -74,6 +74,28 @@
     mode: "0644"
   become: true
 
+- name: Check if Ollama is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/ollama
+  register: ollama_check
+
+- name: Create Ollama systemd override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/ollama.service.d
+    state: directory
+    mode: "0755"
+  become: true
+  when: ollama_check.stat.exists
+
+- name: Configure Ollama to use Vulkan backend
+  ansible.builtin.template:
+    src: ollama-vulkan.conf.j2
+    dest: /etc/systemd/system/ollama.service.d/vulkan.conf
+    mode: "0644"
+  become: true
+  notify: Reload systemd and restart ollama
+  when: ollama_check.stat.exists
+
 - name: Verify GPU detection with rocm-smi
   ansible.builtin.command: rocm-smi --showproductname
   register: rocm_smi_output
