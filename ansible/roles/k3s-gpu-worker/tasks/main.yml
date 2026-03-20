@@ -27,7 +27,7 @@
   when: hostvars['homelab-amd']['k3s_token'] is defined
 
 - name: Read k3s token directly from control plane (when run with --limit)
-  ansible.builtin.command: ssh homelab-amd 'cat /var/lib/rancher/k3s/server/node-token'
+  ansible.builtin.command: ssh 192.168.2.100 'cat /var/lib/rancher/k3s/server/node-token'
   register: k3s_token_cmd
   changed_when: false
   when: k3s_token is not defined
