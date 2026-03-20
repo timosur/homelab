@@ -18,3 +18,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     asyncio.run(run(args.config))
+
+
+if __name__ == "__main__":
+    main()
