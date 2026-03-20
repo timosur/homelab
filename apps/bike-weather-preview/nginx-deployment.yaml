@@ -4,7 +4,7 @@ metadata:
   name: bike-weather-preview-nginx
   namespace: bike-weather-preview
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: bike-weather-preview-nginx
