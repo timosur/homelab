@@ -13,8 +13,19 @@ spec:
         valuesObject:
           trivy:
             severity: CRITICAL,HIGH
+            resources:
+              requests:
+                cpu: 100m
+                memory: 100M
+              limits:
+                cpu: 500m
+                memory: 500M
+          scanJob:
+            tolerations: []
+            nodeSelector:
+              kubernetes.io/hostname: homelab-amd
           operator:
-            scanJobsConcurrentLimit: 3
+            scanJobsConcurrentLimit: 1
             vulnerabilityScannerScanOnlyCurrentRevisions: true
           serviceMonitor:
             enabled: false

@@ -4,7 +4,7 @@ metadata:
   name: bike-weather-preview-agent
   namespace: bike-weather-preview
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:

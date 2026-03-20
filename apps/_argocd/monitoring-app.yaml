@@ -63,6 +63,8 @@ spec:
                     enabled: true
                   serviceMap:
                     datasourceUid: monitoring-prometheus
+            nodeSelector:
+              kubernetes.io/hostname: homelab-amd
             grafana.ini:
               server:
                 protocol: http

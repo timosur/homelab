@@ -2,6 +2,9 @@
   "chat.tools.terminal.autoApprove": {
     "kubectl get": true,
     "base64": true,
-    "kubectl exec": true
+    "kubectl exec": true,
+    "awk": true,
+    "kubectl top": true,
+    "kubectl describe": true
   }
 }
