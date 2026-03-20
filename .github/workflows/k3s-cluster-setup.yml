@@ -4,24 +4,29 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'Action to perform'
+        description: "Action to perform"
         required: true
         type: choice
         options:
           - setup-cluster
           - update-cluster
           - teardown-cluster
-        default: 'setup-cluster'
+        default: "setup-cluster"
+      limit:
+        description: "Ansible --limit (e.g. gpu_workers, homelab-gpu). Leave empty for all hosts."
+        required: false
+        type: string
+        default: ""
 
 env:
-  ANSIBLE_HOST_KEY_CHECKING: 'False'
-  ANSIBLE_FORCE_COLOR: 'True'
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+  ANSIBLE_FORCE_COLOR: "True"
 
 jobs:
   setup-k3s-cluster:
     if: github.event.inputs.action == 'setup-cluster'
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -47,7 +52,8 @@ jobs:
         run: |
           ansible-playbook playbooks/k3s-cluster.yml \
             --syntax-check \
-            -i inventory.yml
+            -i inventory.yml \
+            ${{ github.event.inputs.limit && format('--limit {0}', github.event.inputs.limit) || '' }}
 
       - name: Run Ansible playbook
         working-directory: ansible
@@ -56,7 +62,8 @@ jobs:
         run: |
           ansible-playbook playbooks/k3s-cluster.yml \
             -i inventory.yml \
-            -v
+            -v \
+            ${{ github.event.inputs.limit && format('--limit {0}', github.event.inputs.limit) || '' }}
 
       - name: Verify installation of Ansible
         run: |
@@ -77,7 +84,7 @@ jobs:
   update-k3s-cluster:
     if: github.event.inputs.action == 'update-cluster'
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -146,7 +153,7 @@ jobs:
   teardown-k3s-cluster:
     if: github.event.inputs.action == 'teardown-cluster'
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
