@@ -1,0 +1,15 @@
+---
+# AMD GPU configuration
+# ROCm is installed for monitoring (rocm-smi) but Ollama uses Vulkan backend
+# because ROCm's HIP compute crashes on unsupported GPUs like RX 5700 XT (gfx1010)
+
+rocm_version: "7.2"
+amdgpu_install_version: "7.2.70200-1"
+ubuntu_codename: "noble"  # Ubuntu 24.04
+
+# User to add to render/video groups
+gpu_user: timosur
+
+# Ollama configuration - use Vulkan backend for RX 5700 XT
+# ROCm/HIP causes "illegal memory access" errors on gfx1010
+ollama_vulkan: true

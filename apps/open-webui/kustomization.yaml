@@ -12,7 +12,7 @@ resources:
   - postgres.yaml
   - external-secret.yaml
   - ollama-statefulset.yaml
-  - ollama-service.yaml
+  # ollama-service.yaml removed - traffic goes through wol-proxy now
   - webui-deployment.yaml
   - webui-pvc.yaml
   - webui-service.yaml

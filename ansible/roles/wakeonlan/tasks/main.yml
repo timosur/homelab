@@ -1,0 +1,13 @@
+---
+- name: Install wakeonlan package
+  ansible.builtin.package:
+    name: wakeonlan
+    state: present
+  become: true
+
+- name: Create WoL script for GPU nodes
+  ansible.builtin.template:
+    src: wake-gpu-nodes.sh.j2
+    dest: /usr/local/bin/wake-gpu-nodes.sh
+    mode: "0755"
+  become: true

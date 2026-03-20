@@ -1,0 +1,3 @@
+---
+# Wake-on-LAN role for control plane
+# Installs wakeonlan tool and creates WoL scripts for GPU nodes

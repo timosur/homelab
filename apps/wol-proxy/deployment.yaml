@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wol-proxy
+  namespace: wol-proxy
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wol-proxy
+  template:
+    metadata:
+      labels:
+        app: wol-proxy
+    spec:
+      # Run on control plane (always on)
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd
+      containers:
+        - name: wol-proxy
+          image: ghcr.io/timosur/homelab/wol-proxy:latest
+          ports:
+            - containerPort: 11434
+              name: ollama
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: ssh-key
+              mountPath: /secrets
+              readOnly: true
+          livenessProbe:
+            tcpSocket:
+              port: 11434
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 11434
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: wol-proxy-config
+        - name: ssh-key
+          secret:
+            secretName: wol-proxy-ssh-key
+            defaultMode: 0400
