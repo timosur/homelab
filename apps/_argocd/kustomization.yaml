@@ -26,3 +26,4 @@ resources:
   - pi-hole-app.yaml
   - portfolio-app.yaml
   - wol-proxy-app.yaml
+  - kured-app.yaml

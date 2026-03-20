@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kured
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://kubereboot.github.io/charts
+      chart: kured
+      targetRevision: 5.11.0
+      helm:
+        valuesObject:
+          configuration:
+            startTime: "1:00"
+            endTime: "5:00"
+            timeZone: Europe/Berlin
+            period: 1h
+            concurrency: 1
+            annotateNodes: true
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              effect: NoSchedule
+            - key: gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+          priorityClassName: system-node-critical
+          resources:
+            requests:
+              cpu: 10m
+              memory: 20Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+    - repoURL: https://github.com/timosur/homelab.git
+      targetRevision: HEAD
+      path: apps/kured
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kured
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
