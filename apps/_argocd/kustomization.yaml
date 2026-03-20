@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  - amd-gpu-device-plugin-app.yaml
   - bike-weather-app.yaml
   - bike-weather-auth-app.yaml
   - bike-weather-preview-app.yaml
@@ -25,3 +26,4 @@ resources:
   - pi-hole-app.yaml
   - portfolio-app.yaml
   - trivy-operator-app.yaml
+  - wol-proxy-app.yaml

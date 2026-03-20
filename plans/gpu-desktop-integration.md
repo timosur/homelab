@@ -1,24 +1,26 @@
-# Plan: Integrate AMD GPU Desktop PCs into K3s Cluster
+# Plan: Integrate AMD GPU Desktop PC into K3s Cluster
 
 ## Summary
 
-Add two desktop PCs with AMD GPUs as K3s worker nodes for GPU-accelerated LLM inference (Ollama) and other GPU workloads (image generation, transcription). Uses AMD ROCm stack for GPU passthrough to containers. Includes Wake-on-LAN support since desktops may not be always-on. Replaces the Mac Mini Ollama plan.
+Add a desktop PC with AMD GPU as a K3s worker node for GPU-accelerated LLM inference (Ollama) and other GPU workloads (image generation, transcription). Uses AMD ROCm stack for GPU passthrough to containers. Includes Wake-on-LAN support since the desktop may not be always-on. Replaces the Mac Mini Ollama plan.
 
 ## Prerequisites (before any implementation)
 
-- **Identify AMD GPU models** — run `lspci | grep -i vga` on both PCs to check ROCm compatibility. ROCm officially supports RX 7000/6000 series (RDNA 2/3); older cards have limited/no support. **This is a blocker.**
-- **Assign static IPs** on 192.168.2.x for both desktops (e.g., `.60`, `.61`)
-- **Enable Wake-on-LAN** in each desktop's BIOS/UEFI and note MAC addresses
+- ✅ **AMD GPU model confirmed** — RX 5700 XT (RDNA 1 / Navi 10). ROCm support is unofficial but functional with `HSA_OVERRIDE_GFX_VERSION=10.3.0` environment variable.
+- ✅ **Static IP assigned** — `192.168.2.47`
+- **Enable Wake-on-LAN** in the desktop's BIOS/UEFI and note MAC address
 
 ## Phase 1: OS & Base Setup
 
-1. Install **Ubuntu 24.04 LTS Server** on both desktops (best ROCm support, no desktop environment needed)
-2. Configure static IP, hostname (`homelab-gpu-1`, `homelab-gpu-2`), SSH key access with existing key from `keys/id_ed25519.pub`
+1. Install **Ubuntu 24.04 LTS Server** on the desktop (best ROCm support, no desktop environment needed)
+2. Configure static IP, hostname (`homelab-gpu`), SSH key access with existing key from `keys/id_ed25519.pub`
 3. Enable WoL at OS level — `ethtool -s <iface> wol g`, persisted via systemd or netplan
 
 ## Phase 2: AMD ROCm Drivers (new Ansible role)
 
-4. **Create `ansible/roles/amd-gpu/`** — installs AMD ROCm drivers (`amdgpu-dkms` + ROCm runtime) via AMD's official apt repo, configures `render`/`video` groups, verifies with `rocm-smi`
+> **Note**: ROCm 7.2 is already installed manually on `homelab-gpu`. This Ansible role codifies the setup for future reprovisioning.
+
+4. **Create `ansible/roles/amd-gpu/`** — installs AMD ROCm 7.2 via `amdgpu-install` package, configures `render`/`video` groups, verifies with `rocm-smi`
 
 ### Role structure
 
@@ -28,31 +30,42 @@ ansible/roles/amd-gpu/
 │   └── main.yml
 ├── handlers/
 │   └── main.yml
+├── templates/
+│   └── rocm-env.sh.j2
 └── defaults/
     └── main.yml
 ```
 
 ### Key tasks
 
-- Add AMD ROCm apt repository and GPG key
-- Install `amdgpu-dkms`, `rocm-hip-runtime`, `rocm-smi-lib`
+- Download and install `amdgpu-install_7.2.70200-1_all.deb` from AMD repo
+- Install `python3-setuptools`, `python3-wheel` (ROCm dependencies)
 - Add `timosur` user to `render` and `video` groups
+- Install `rocm` metapackage
+- Create `/etc/profile.d/rocm-env.sh` with `HSA_OVERRIDE_GFX_VERSION=10.3.0` (required for RX 5700 XT)
 - Verify GPU detection with `rocm-smi`
 - Handler to reboot if DKMS module was installed/updated
 
+### RX 5700 XT specific config
+
+The 5700 XT (gfx1010) requires GFX version override to work with ROCm:
+
+```bash
+# /etc/profile.d/rocm-env.sh
+export HSA_OVERRIDE_GFX_VERSION=10.3.0
+```
+
+This must also be set in container workloads (see Phase 5).
+
 ## Phase 3: K3s Worker Join with GPU Config
 
-5. **Add nodes to `ansible/inventory.yml`** — new `gpu_workers` group:
+5. **Add node to `ansible/inventory.yml`** — new `gpu_workers` group:
 
 ```yaml
 gpu_workers:
   hosts:
-    homelab-gpu-1:
-      ansible_host: 192.168.2.60
-      arch: amd64
-      wol_mac: "XX:XX:XX:XX:XX:XX"  # fill in
-    homelab-gpu-2:
-      ansible_host: 192.168.2.61
+    homelab-gpu:
+      ansible_host: 192.168.2.47
       arch: amd64
       wol_mac: "XX:XX:XX:XX:XX:XX"  # fill in
   vars:
@@ -123,38 +136,101 @@ apps/amd-gpu-device-plugin/
 | Toleration   | (none)                                | `gpu=true:NoSchedule`                         |
 | Memory limit | `4Gi`                                 | `16Gi` (GPU models need more RAM for loading) |
 | CPU limit    | `2000m`                               | `4000m`                                       |
+| Env var      | (none)                                | `HSA_OVERRIDE_GFX_VERSION=10.3.0`             |
 
-11. **Open WebUI stays unchanged** — connects to Ollama via same `ollama-service` DNS name
+> **RX 5700 XT note**: The `HSA_OVERRIDE_GFX_VERSION` env var is required for ROCm to recognize the gfx1010 architecture.
 
-## Phase 6: Wake-on-LAN Integration
+11. **Open WebUI connects to wol-proxy** — the proxy handles wake/sleep and forwards to Ollama
 
-12. **Create WoL utility on control plane** (`homelab-amd`, always on):
-    - Install `wakeonlan` package via Ansible
-    - Create script `/usr/local/bin/wake-gpu-nodes.sh` that reads MAC addresses and sends magic packets
-    - Optional: CronJob to wake GPU nodes on a schedule (e.g., 8am) and a script to suspend them (e.g., midnight)
-    - Store MAC addresses in Ansible inventory (already added in Phase 3)
+## Phase 6: WoL Proxy Service
 
-13. **Configure Kubernetes tolerations** for GPU node unavailability:
-    - K3s default `node.kubernetes.io/not-ready` toleration is 300s — GPU pods will wait 5 minutes before being evicted when a node sleeps
-    - Consider setting `tolerationSeconds: 3600` on Ollama StatefulSet if GPU nodes regularly sleep/wake
+The WoL proxy runs on the control plane (always on) and provides:
+- **On-demand wake**: If GPU node is sleeping, sends WoL magic packet and waits for backend
+- **Idle auto-sleep**: After X minutes of no requests, SSH to node and suspend
+- **Multi-backend support**: ConfigMap-driven, can proxy any GPU service (Ollama, ComfyUI, Whisper, etc.)
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Control Plane (homelab-amd) - always on                        │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │  wol-proxy (Deployment)                                    │ │
+│  │                                                            │ │
+│  │  ConfigMap-driven backends:                                │ │
+│  │  - ollama: :11434 → 192.168.2.47:11434                    │ │
+│  │                                                            │ │
+│  │  On request → TCP probe → WoL if needed → forward          │ │
+│  │  On idle timeout → SSH suspend                             │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  Open WebUI → ollama-service (ClusterIP) → wol-proxy:11434     │
+└─────────────────────────────────────────────────────────────────┘
+         │
+         │ WoL / SSH suspend
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  GPU Node (homelab-gpu) - sleeps when idle                      │
+│  - Ollama :11434                                                │
+│  - (future: ComfyUI :8188, Whisper :9000)                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+12. **Create `apps/wol-proxy/`** with:
+
+### App structure
+
+```
+apps/wol-proxy/
+├── kustomization.yaml
+├── namespace.yaml
+├── deployment.yaml
+├── service-ollama.yaml      # ClusterIP exposing :11434
+├── configmap.yaml           # Backend definitions
+└── external-secret.yaml     # SSH key for suspend
+```
+
+### ConfigMap example
+
+```yaml
+backends:
+  - name: ollama
+    listenPort: 11434
+    targetHost: 192.168.2.47
+    targetPort: 11434
+    wolMac: "2c:f0:5d:05:9d:80"
+    wolBroadcast: "192.168.2.255"
+    idleTimeoutMinutes: 30
+    wakeTimeoutSeconds: 120
+    sshUser: timosur
+```
+
+13. **Update `apps/open-webui/`** — change Ollama service reference:
+    - Point to `ollama-service.wol-proxy.svc.cluster.local:11434` (the proxy's service)
+    - Or keep the same service name in `open-webui` namespace pointing to the proxy
+
+14. **Store SSH key in Azure Key Vault** as `wol-proxy-ssh-key` for suspend capability
 
 ## Phase 7: Cleanup
 
-14. **Delete `plans/mac-mini-ollama.md`** — replaced by this plan
-15. **Update README.md** — document GPU nodes in architecture section
-16. **Update `ONBOARDING_GUIDE.md`** if GPU scheduling patterns should be documented
+15. **Delete `plans/mac-mini-ollama.md`** — replaced by this plan
+16. **Update README.md** — document GPU nodes in architecture section
+17. **Update `ONBOARDING_GUIDE.md`** if GPU scheduling patterns should be documented
 
 ## Verification Checklist
 
-- [ ] `rocm-smi` on each GPU node shows AMD GPU detected with temperature/utilization
-- [ ] `kubectl get nodes` — both GPU nodes show `Ready` with labels `node.kubernetes.io/gpu=amd`
-- [ ] `kubectl describe node homelab-gpu-1` — shows `amd.com/gpu: 1` in Allocatable resources
+- [ ] `rocm-smi` on GPU node shows AMD GPU detected with temperature/utilization
+- [ ] `kubectl get nodes` — GPU node shows `Ready` with label `node.kubernetes.io/gpu=amd`
+- [ ] `kubectl describe node homelab-gpu` — shows `amd.com/gpu: 1` in Allocatable resources
 - [ ] Non-GPU pods do NOT schedule on GPU nodes (taint enforcement)
 - [ ] Ollama pod logs show ROCm initialization and GPU detection
 - [ ] `rocm-smi` on GPU node shows utilization during model inference
-- [ ] Open WebUI chat is noticeably faster than CPU-only baseline
-- [ ] WoL: magic packet from control plane → desktop wakes → node rejoins cluster within ~2 min
 - [ ] ArgoCD shows `amd-gpu-device-plugin` app synced and healthy
+- [ ] ArgoCD shows `wol-proxy` app synced and healthy
+- [ ] WoL proxy test: suspend GPU node, send chat request → node wakes automatically
+- [ ] Idle timeout test: leave GPU idle for 30 min → node auto-suspends
+- [ ] Open WebUI chat works seamlessly (user unaware of wake/sleep)
 
 ## Architecture Decisions
 
@@ -166,21 +242,21 @@ apps/amd-gpu-device-plugin/
 | **ROCm** (not OpenCL)              | AMD's full compute platform with first-class Ollama and PyTorch support |
 | **CDI for device passthrough**     | Modern containerd-native approach, no need for custom runtime shim      |
 | **Separate `k3s-gpu-worker` role** | GPU workers need different config than ARM workers; keeps roles clean   |
+| **WoL proxy on control plane**     | Control plane always on; transparent wake/sleep for GPU workloads       |
+| **Ollama hostNetwork**             | Allows wol-proxy to reach Ollama directly at node IP for wake detection |
 
 ## Risks & Mitigations
 
-| Risk                                     | Mitigation                                                                                          |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| GPUs not ROCm-compatible (pre-RDNA)      | Check `lspci` output before starting. Fallback: use `llama.cpp` with Vulkan backend instead of ROCm |
-| ROCm driver instability on newer kernels | Pin Ubuntu HWE kernel version; test driver install on one node first                                |
-| GPU node unavailability (WoL wake time)  | Generous tolerationSeconds; StatefulSet won't reschedule to CPU automatically                       |
-| Power consumption when idle              | Implement scheduled sleep/wake; GPU nodes don't need to run 24/7                                    |
-| Ollama model storage on GPU node         | Use `hcloud-volumes` (Synology iSCSI) for PVC so models persist across node restarts                |
+| Risk                                     | Mitigation                                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ |
+| RX 5700 XT ROCm unofficial support       | Already tested and working; use `HSA_OVERRIDE_GFX_VERSION=10.3.0` workaround         |
+| ROCm driver instability on newer kernels | Pin Ubuntu HWE kernel version                                                        |
+| GPU node unavailability (WoL wake time)  | WoL proxy handles on-demand wake; ~60-120s cold start                                |
+| Power consumption when idle              | WoL proxy auto-suspends after configurable idle timeout                              |
+| Ollama model storage on GPU node         | Use `hcloud-volumes` (Synology iSCSI) for PVC so models persist across node restarts |
 
 ## Future Enhancements (not in scope)
 
-- On-demand WoL triggered by pending GPU pod (requires custom controller/webhook)
-- Multi-GPU model parallelism across both nodes (vLLM or similar)
+- Add second GPU node for multi-GPU model parallelism (vLLM or similar)
 - GPU monitoring in Prometheus/Grafana (ROCm exporter)
-- Automatic GPU node suspend after idle timeout
-- Additional GPU workloads: Stable Diffusion, Whisper transcription
+- Additional GPU workloads: Stable Diffusion, Whisper transcription (just add to wol-proxy config)

@@ -1,0 +1,5 @@
+---
+- name: Reboot for DKMS module
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    msg: "Rebooting to load new amdgpu DKMS module"

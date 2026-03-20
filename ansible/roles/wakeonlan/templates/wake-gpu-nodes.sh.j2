@@ -1,0 +1,12 @@
+#!/bin/bash
+# Wake GPU nodes via Wake-on-LAN
+# MAC addresses are pulled from inventory
+
+{% for host in groups['gpu_workers'] | default([]) %}
+{% if hostvars[host].wol_mac is defined and hostvars[host].wol_mac != 'XX:XX:XX:XX:XX:XX' %}
+echo "Waking {{ host }} ({{ hostvars[host].wol_mac }})"
+wakeonlan {{ hostvars[host].wol_mac }}
+{% else %}
+echo "Skipping {{ host }} - MAC address not configured"
+{% endif %}
+{% endfor %}

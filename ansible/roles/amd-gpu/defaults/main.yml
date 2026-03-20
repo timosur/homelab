@@ -1,0 +1,11 @@
+---
+# AMD ROCm configuration - using amdgpu-install package method
+rocm_version: "7.2"
+amdgpu_install_version: "7.2.70200-1"
+ubuntu_codename: "noble"  # Ubuntu 24.04
+
+# RX 5700 XT (gfx1010) requires GFX version override
+hsa_override_gfx_version: "10.3.0"
+
+# User to add to render/video groups
+gpu_user: timosur

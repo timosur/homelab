@@ -1,0 +1,93 @@
+---
+- name: Install open-iscsi for Synology CSI iSCSI support
+  ansible.builtin.package:
+    name: open-iscsi
+    state: present
+  become: true
+
+- name: Enable and start iscsid service
+  ansible.builtin.systemd:
+    name: iscsid
+    state: started
+    enabled: true
+  become: true
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Get control plane IP
+  ansible.builtin.set_fact:
+    control_plane_ip: "{{ hostvars['homelab-amd']['node_ip'] }}"
+
+- name: Get k3s token from control plane
+  ansible.builtin.set_fact:
+    k3s_token: "{{ hostvars['homelab-amd']['k3s_token'] }}"
+
+- name: Verify token is available
+  ansible.builtin.fail:
+    msg: "K3S token not available from control plane. Ensure control plane role has run successfully."
+  when: k3s_token is not defined or k3s_token | length == 0
+
+- name: Debug connection information
+  ansible.builtin.debug:
+    msg:
+      - "Control plane IP: {{ control_plane_ip }}"
+      - "Worker node IP: {{ node_ip }}"
+      - "K3S Token (first 20 chars): {{ k3s_token[:20] }}..."
+
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Create k3s agent config with GPU labels and taints
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      node-label:
+        - "node.kubernetes.io/gpu=amd"
+        - "gpu-type=rocm"
+      node-taint:
+        - "gpu=true:NoSchedule"
+    mode: "0644"
+  become: true
+
+- name: Install k3s agent with GPU configuration
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" \
+      K3S_URL="https://{{ control_plane_ip }}:6443" \
+      K3S_TOKEN="{{ k3s_token }}" \
+      INSTALL_K3S_EXEC="--node-ip={{ node_ip }}" \
+      sh -
+  args:
+    executable: /bin/bash
+    creates: /usr/local/bin/k3s
+  become: true
+  when: not k3s_binary.stat.exists
+
+- name: Ensure k3s-agent service is running
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: started
+    enabled: true
+  become: true
+
+- name: Wait for node to register
+  ansible.builtin.pause:
+    seconds: 30
+
+- name: Check k3s-agent service status
+  ansible.builtin.command: systemctl status k3s-agent --no-pager
+  register: k3s_agent_status
+  become: true
+  changed_when: false
+  failed_when: false
+
+- name: Show k3s-agent status
+  ansible.builtin.debug:
+    var: k3s_agent_status.stdout_lines

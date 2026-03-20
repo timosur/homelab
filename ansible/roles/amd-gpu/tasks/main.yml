@@ -1,0 +1,88 @@
+---
+- name: Gather OS facts
+  ansible.builtin.setup:
+    filter: ansible_distribution*
+
+- name: Ensure Ubuntu 24.04
+  ansible.builtin.fail:
+    msg: "This role requires Ubuntu 24.04 (noble). Found: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+  when: ansible_distribution != 'Ubuntu' or ansible_distribution_version != '24.04'
+
+- name: Check if amdgpu-install is already installed
+  ansible.builtin.stat:
+    path: /usr/bin/amdgpu-install
+  register: amdgpu_install_check
+
+- name: Download amdgpu-install package
+  ansible.builtin.get_url:
+    url: "https://repo.radeon.com/amdgpu-install/{{ rocm_version }}/ubuntu/{{ ubuntu_codename }}/amdgpu-install_{{ amdgpu_install_version }}_all.deb"
+    dest: /tmp/amdgpu-install.deb
+    mode: "0644"
+  become: true
+  when: not amdgpu_install_check.stat.exists
+
+- name: Install amdgpu-install package
+  ansible.builtin.apt:
+    deb: /tmp/amdgpu-install.deb
+    state: present
+  become: true
+  when: not amdgpu_install_check.stat.exists
+
+- name: Install Python dependencies for ROCm
+  ansible.builtin.apt:
+    name:
+      - python3-setuptools
+      - python3-wheel
+    state: present
+    update_cache: true
+  become: true
+
+- name: Add user to render group
+  ansible.builtin.user:
+    name: "{{ gpu_user }}"
+    groups: render
+    append: true
+  become: true
+
+- name: Add user to video group
+  ansible.builtin.user:
+    name: "{{ gpu_user }}"
+    groups: video
+    append: true
+  become: true
+
+- name: Check if ROCm is already installed
+  ansible.builtin.command: rocm-smi --version
+  register: rocm_check
+  changed_when: false
+  failed_when: false
+
+- name: Install ROCm
+  ansible.builtin.apt:
+    name: rocm
+    state: present
+    update_cache: true
+  become: true
+  register: rocm_install
+  notify: Reboot for DKMS module
+  when: rocm_check.rc != 0
+
+- name: Create ROCm environment script
+  ansible.builtin.template:
+    src: rocm-env.sh.j2
+    dest: /etc/profile.d/rocm-env.sh
+    mode: "0644"
+  become: true
+
+- name: Verify GPU detection with rocm-smi
+  ansible.builtin.command: rocm-smi --showproductname
+  register: rocm_smi_output
+  changed_when: false
+  failed_when: rocm_smi_output.rc != 0
+  become: true
+  when: rocm_check.rc == 0
+
+- name: Display GPU information
+  ansible.builtin.debug:
+    var: rocm_smi_output.stdout_lines
+  when: rocm_smi_output is defined and rocm_smi_output.stdout_lines is defined

@@ -24,6 +24,7 @@
   become: true
   roles:
     - k3s-control-plane
+    - wakeonlan
 
 - name: Setup k3s worker nodes
   hosts: workers
@@ -31,6 +32,15 @@
   become: true
   roles:
     - k3s-worker
+
+- name: Setup GPU workers
+  hosts: gpu_workers
+  gather_facts: true
+  become: true
+  roles:
+    - node-hardening
+    - amd-gpu
+    - k3s-gpu-worker
 
 - name: Install and configure Cilium
   hosts: control_plane

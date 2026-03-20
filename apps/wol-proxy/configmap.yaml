@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wol-proxy-config
+  namespace: wol-proxy
+data:
+  config.yaml: |
+    backends:
+      - name: ollama
+        listenPort: 11434
+        targetHost: 192.168.2.47
+        targetPort: 11434
+        wolMac: "2c:f0:5d:05:9d:80"
+        wolBroadcast: "192.168.2.255"
+        idleTimeoutMinutes: 30
+        wakeTimeoutSeconds: 120
+        sshUser: timosur
+        sshKeyPath: /secrets/ssh-key
