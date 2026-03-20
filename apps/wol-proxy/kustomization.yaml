@@ -7,3 +7,4 @@ resources:
   - external-secret.yaml
   - deployment.yaml
   - service-ollama.yaml
+  - allow-ingress-from-open-webui.yaml

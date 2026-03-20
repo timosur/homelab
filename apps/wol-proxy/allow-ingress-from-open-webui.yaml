@@ -1,0 +1,18 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-ingress-from-open-webui
+  namespace: wol-proxy
+spec:
+  description: "Allow open-webui to reach wol-proxy on port 11434 (Ollama proxy)"
+  endpointSelector:
+    matchLabels:
+      app: wol-proxy
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: open-webui
+      toPorts:
+        - ports:
+            - port: "11434"
+              protocol: TCP
