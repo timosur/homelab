@@ -11,8 +11,8 @@ resources:
   - redis-service.yaml
   - postgres.yaml
   - external-secret.yaml
-  - ollama-statefulset.yaml
-  # ollama-service.yaml removed - traffic goes through wol-proxy now
+  # Ollama runs natively on GPU node (systemd), not as a K8s pod
+  # Traffic goes through wol-proxy: open-webui -> wol-proxy -> 192.168.2.47:11434
   - webui-deployment.yaml
   - webui-pvc.yaml
   - webui-service.yaml
