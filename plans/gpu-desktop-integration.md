@@ -262,3 +262,22 @@ backends:
 - Add second GPU node for multi-GPU model parallelism (vLLM or similar)
 - GPU monitoring in Prometheus/Grafana (ROCm exporter)
 - Additional GPU workloads: Stable Diffusion, Whisper transcription (just add to wol-proxy config)
+
+## Wake On LAN issue
+
+That's a BIOS power setting issue. The NIC needs standby power to receive WoL packets.
+
+Check these BIOS settings:
+
+ErP Ready / EuP Ready → DISABLE (this cuts standby power to save energy)
+Deep Sleep → DISABLE or set to S3 only (S4/S5 deep sleep cuts NIC power)
+Power On By PCI-E / PME Event Wake Up → ENABLE
+Wake on LAN → ENABLE
+Soft-Off by PWR-BTTN → Check it's not set to instant-off
+The most common culprit is ErP/EuP — it's an energy-saving EU regulation mode that powers down everything during suspend/shutdown, including the NIC.
+
+On the motherboard, also check:
+
+Some boards have a physical jumper for Wake-on-LAN
+The NIC may need to be in a specific PCI-E slot for WoL
+What motherboard/brand is this PC? I can give more specific BIOS navigation.
