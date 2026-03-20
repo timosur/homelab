@@ -21,9 +21,21 @@
   ansible.builtin.set_fact:
     control_plane_ip: "{{ hostvars['homelab-amd']['node_ip'] }}"
 
-- name: Get k3s token from control plane
+- name: Get k3s token from control plane hostvars
   ansible.builtin.set_fact:
     k3s_token: "{{ hostvars['homelab-amd']['k3s_token'] }}"
+  when: hostvars['homelab-amd']['k3s_token'] is defined
+
+- name: Read k3s token directly from control plane (when run with --limit)
+  ansible.builtin.command: ssh homelab-amd 'cat /var/lib/rancher/k3s/server/node-token'
+  register: k3s_token_cmd
+  changed_when: false
+  when: k3s_token is not defined
+
+- name: Set k3s token from direct read
+  ansible.builtin.set_fact:
+    k3s_token: "{{ k3s_token_cmd.stdout | trim }}"
+  when: k3s_token is not defined and k3s_token_cmd.stdout is defined
 
 - name: Verify token is available
   ansible.builtin.fail:
