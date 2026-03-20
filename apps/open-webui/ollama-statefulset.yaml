@@ -55,7 +55,7 @@ spec:
         name: ollama-volume
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: hcloud-volumes
+        storageClassName: local-path
         resources:
           requests:
             storage: 50Gi
