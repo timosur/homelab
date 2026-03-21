@@ -15,6 +15,13 @@ spec:
       labels:
         app: bike-weather-auth-worker
     spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: bike-weather-auth-server
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: worker
           image: ghcr.io/goauthentik/server:2026.2.1
