@@ -18,6 +18,7 @@ spec:
             period: 1h
             concurrency: 1
             annotateNodes: true
+            drainTimeout: 10m
           tolerations:
             - key: node-role.kubernetes.io/control-plane
               effect: NoSchedule
