@@ -10,7 +10,7 @@ class BackendConfig:
     target_host: str
     target_port: int
     wol_mac: str
-    wol_broadcast: str = "255.255.255.255"
+    wol_host: str = ""
     idle_timeout_minutes: int = 30
     wake_timeout_seconds: int = 120
     ssh_user: str = ""
@@ -35,7 +35,7 @@ def load_config(path: str) -> Config:
                 target_host=b["targetHost"],
                 target_port=b["targetPort"],
                 wol_mac=b["wolMac"],
-                wol_broadcast=b.get("wolBroadcast", "255.255.255.255"),
+                wol_host=b.get("wolHost", ""),
                 idle_timeout_minutes=b.get("idleTimeoutMinutes", 30),
                 wake_timeout_seconds=b.get("wakeTimeoutSeconds", 120),
                 ssh_user=b.get("sshUser", ""),

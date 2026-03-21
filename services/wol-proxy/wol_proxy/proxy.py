@@ -40,7 +40,13 @@ class ProxyBackend:
                 self._is_awake = True
                 return
 
-            send_wol_packet(self.cfg.wol_mac, self.cfg.wol_broadcast, self.cfg.name)
+            await send_wol_packet(
+                self.cfg.wol_mac,
+                self.cfg.name,
+                self.cfg.wol_host,
+                self.cfg.ssh_user,
+                self.cfg.ssh_key_path,
+            )
             deadline = time.monotonic() + self.cfg.wake_timeout_seconds
             log.info(
                 "[%s] Waiting for backend to wake (timeout: %ds)",
@@ -119,6 +125,13 @@ class ProxyBackend:
             await asyncio.sleep(60)
             if not self._is_awake:
                 continue
+
+            log.info(
+                "[%s] Idle for %.0fm / %.0fm",
+                self.cfg.name,
+                self.idle_seconds / 60,
+                self.cfg.idle_timeout_minutes,
+            )
             if self.idle_seconds >= timeout:
                 log.info(
                     "[%s] Backend idle for %.0fm, suspending",

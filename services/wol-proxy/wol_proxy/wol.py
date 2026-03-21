@@ -1,14 +1,38 @@
+import asyncio
 import logging
-import socket
+import subprocess
 
 log = logging.getLogger("wol-proxy")
 
 
-def send_wol_packet(mac: str, broadcast: str, name: str) -> None:
-    """Send a Wake-on-LAN magic packet to the given MAC address."""
-    mac_bytes = bytes.fromhex(mac.replace(":", "").replace("-", ""))
-    packet = b"\xff" * 6 + mac_bytes * 16
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.sendto(packet, (broadcast, 9))
-    log.info("[%s] Sent WoL packet to %s", name, mac)
+async def send_wol_packet(
+    mac: str, name: str, wol_host: str, ssh_user: str, ssh_key_path: str
+) -> None:
+    """Send a Wake-on-LAN magic packet by SSHing to the host and running wakeonlan."""
+    log.info("[%s] Sending WoL for %s via SSH to %s@%s", name, mac, ssh_user, wol_host)
+    proc = await asyncio.create_subprocess_exec(
+        "ssh",
+        "-i",
+        ssh_key_path,
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "ConnectTimeout=10",
+        f"{ssh_user}@{wol_host}",
+        "wakeonlan",
+        mac,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    output, _ = await proc.communicate()
+    if proc.returncode == 0:
+        log.info("[%s] Sent WoL packet to %s", name, mac)
+    else:
+        log.error(
+            "[%s] WoL failed (rc=%s): %s",
+            name,
+            proc.returncode,
+            output.decode(errors="replace"),
+        )
