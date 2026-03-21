@@ -46,6 +46,7 @@ class ProxyBackend:
                 self.cfg.wol_host,
                 self.cfg.ssh_user,
                 self.cfg.ssh_key_path,
+                self.cfg.wol_broadcast,
             )
             deadline = time.monotonic() + self.cfg.wake_timeout_seconds
             log.info(
