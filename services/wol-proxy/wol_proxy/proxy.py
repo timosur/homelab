@@ -194,9 +194,7 @@ class ProxyBackend:
                     return web.Response(
                         status=upstream.status,
                         body=body,
-                        content_type=upstream.headers.get(
-                            "content-type", "application/json"
-                        ),
+                        content_type="application/json",
                     )
 
                 resp = web.StreamResponse(

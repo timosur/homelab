@@ -13,7 +13,7 @@ data:
         wolMac: "2c:f0:5d:05:9d:80"
         wolHost: "192.168.2.100"        
         wolBroadcast: "192.168.2.255"
-        idleTimeoutMinutes: 5
+        idleTimeoutMinutes: 30
         wakeTimeoutSeconds: 120
         sshUser: timosur
         sshKeyPath: /secrets/ssh-key
