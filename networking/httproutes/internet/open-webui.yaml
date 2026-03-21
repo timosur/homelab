@@ -16,8 +16,8 @@ spec:
             type: PathPrefix
             value: /
       timeouts:
-        request: "0"
-        backendRequest: "0"
+        request: "3600s"
+        backendRequest: "3600s"
       backendRefs:
         - name: open-webui-service
           port: 8080
