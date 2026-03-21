@@ -218,6 +218,7 @@ class ProxyBackend:
                 await resp.prepare(request)
                 try:
                     async for chunk in upstream.content.iter_any():
+                        self.touch()
                         await resp.write(chunk)
                     await resp.write_eof()
                 except (ConnectionResetError, ConnectionError):
