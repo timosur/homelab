@@ -22,11 +22,13 @@ spec:
         - name: fix-ssh-key-perms
           image: busybox
           command:
-            [
-              "sh",
-              "-c",
-              "cp /ssh-secret/ssh-key /ssh-key/ssh-key && chown 1000:1000 /ssh-key/ssh-key && chmod 400 /ssh-key/ssh-key",
-            ]
+            - sh
+            - -c
+            - |
+              # Azure Key Vault strips newlines; restore PEM format
+              sed 's/-----BEGIN /\n-----BEGIN /;s/-----END /\n-----END /;s/ /\n/g' /ssh-secret/ssh-key > /ssh-key/ssh-key
+              chown 1000:1000 /ssh-key/ssh-key
+              chmod 400 /ssh-key/ssh-key
           volumeMounts:
             - name: ssh-key-secret
               mountPath: /ssh-secret
