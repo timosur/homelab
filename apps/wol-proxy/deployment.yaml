@@ -25,8 +25,7 @@ spec:
             - sh
             - -c
             - |
-              # Azure Key Vault strips newlines; restore PEM format
-              sed 's/-----BEGIN /\n-----BEGIN /;s/-----END /\n-----END /;s/ /\n/g' /ssh-secret/ssh-key > /ssh-key/ssh-key
+              base64 -d /ssh-secret/ssh-key > /ssh-key/ssh-key
               chown 1000:1000 /ssh-key/ssh-key
               chmod 400 /ssh-key/ssh-key
           volumeMounts:
