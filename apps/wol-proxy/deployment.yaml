@@ -18,6 +18,21 @@ spec:
       # Run on control plane (always on)
       nodeSelector:
         kubernetes.io/hostname: homelab-amd
+      initContainers:
+        - name: fix-ssh-key-perms
+          image: busybox
+          command:
+            [
+              "sh",
+              "-c",
+              "cp /ssh-secret/ssh-key /ssh-key/ssh-key && chown 1000:1000 /ssh-key/ssh-key && chmod 400 /ssh-key/ssh-key",
+            ]
+          volumeMounts:
+            - name: ssh-key-secret
+              mountPath: /ssh-secret
+              readOnly: true
+            - name: ssh-key
+              mountPath: /ssh-key
       containers:
         - name: wol-proxy
           image: ghcr.io/timosur/homelab/wol-proxy:latest
@@ -52,7 +67,8 @@ spec:
         - name: config
           configMap:
             name: wol-proxy-config
-        - name: ssh-key
+        - name: ssh-key-secret
           secret:
             secretName: wol-proxy-ssh-key
-            defaultMode: 0400
+        - name: ssh-key
+          emptyDir: {}
