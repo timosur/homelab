@@ -16,6 +16,8 @@ class BackendConfig:
     wake_timeout_seconds: int = 120
     ssh_user: str = ""
     ssh_key_path: str = "/secrets/ssh-key"
+    cached_paths: list[str] = field(default_factory=list)
+    cached_path_defaults: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -42,6 +44,8 @@ def load_config(path: str) -> Config:
                 wake_timeout_seconds=b.get("wakeTimeoutSeconds", 120),
                 ssh_user=b.get("sshUser", ""),
                 ssh_key_path=b.get("sshKeyPath", "/secrets/ssh-key"),
+                cached_paths=b.get("cachedPaths", []),
+                cached_path_defaults=b.get("cachedPathDefaults", {}),
             )
         )
 

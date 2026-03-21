@@ -17,6 +17,8 @@ class ProxyBackend:
         self._last_activity = time.monotonic()
         self._is_awake = False
         self._wake_lock = asyncio.Lock()
+        self._cache: dict[str, str] = dict(cfg.cached_path_defaults)
+        self._cached_paths: set[str] = set(cfg.cached_paths)
 
     # -- Health check -------------------------------------------------------
 
@@ -144,14 +146,30 @@ class ProxyBackend:
     # -- HTTP reverse proxy -------------------------------------------------
 
     async def handle_request(self, request: web.Request) -> web.StreamResponse:
-        self.touch()
+        path = request.path
+        is_cacheable = path in self._cached_paths and request.method == "GET"
 
         if not await self.check_health():
+            # Serve cached response for lightweight polling endpoints
+            if is_cacheable:
+                if path in self._cache:
+                    log.info(
+                        "[%s] Serving cached %s (backend asleep)", self.cfg.name, path
+                    )
+                    return web.Response(
+                        text=self._cache[path],
+                        content_type="application/json",
+                    )
+
+            # Non-cacheable request: wake the backend
+            self.touch()
             log.info("[%s] Backend not responding, attempting wake", self.cfg.name)
             try:
                 await self.wake_and_wait()
             except RuntimeError as exc:
                 return web.Response(status=503, text=f"Failed to wake GPU node: {exc}")
+        else:
+            self.touch()
 
         target = (
             f"http://{self.cfg.target_host}:{self.cfg.target_port}{request.path_qs}"
@@ -169,6 +187,18 @@ class ProxyBackend:
                 },
                 data=await request.read(),
             ) as upstream:
+                # For cacheable endpoints, read full body and cache it
+                if is_cacheable and upstream.status == 200:
+                    body = await upstream.read()
+                    self._cache[path] = body.decode(errors="replace")
+                    return web.Response(
+                        status=upstream.status,
+                        body=body,
+                        content_type=upstream.headers.get(
+                            "content-type", "application/json"
+                        ),
+                    )
+
                 resp = web.StreamResponse(
                     status=upstream.status,
                     headers={

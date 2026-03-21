@@ -17,3 +17,9 @@ data:
         wakeTimeoutSeconds: 120
         sshUser: timosur
         sshKeyPath: /secrets/ssh-key
+        cachedPaths:
+          - /api/tags
+          - /api/ps
+        cachedPathDefaults:
+          /api/tags: '{"models":[]}'
+          /api/ps: '{"models":[]}'
