@@ -216,7 +216,10 @@ class ProxyBackend:
                     resp.content_length = int(content_length)
 
                 await resp.prepare(request)
-                async for chunk in upstream.content.iter_any():
-                    await resp.write(chunk)
-                await resp.write_eof()
+                try:
+                    async for chunk in upstream.content.iter_any():
+                        await resp.write(chunk)
+                    await resp.write_eof()
+                except (ConnectionResetError, ConnectionError):
+                    log.info("[%s] Client disconnected during streaming", self.cfg.name)
                 return resp
