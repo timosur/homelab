@@ -39,7 +39,7 @@ class ProxyBackend:
     async def wake_and_wait(self) -> None:
         async with self._wake_lock:
             if await self.check_health():
-                self._is_awake = True
+                self.mark_awake()
                 return
 
             await send_wol_packet(
@@ -61,13 +61,18 @@ class ProxyBackend:
                 await asyncio.sleep(2)
                 if await self.check_health():
                     log.info("[%s] Backend is now awake", self.cfg.name)
-                    self._is_awake = True
+                    self.mark_awake()
                     await asyncio.sleep(2)  # let it fully initialise
                     return
 
             raise RuntimeError(
                 f"Backend did not wake within {self.cfg.wake_timeout_seconds}s"
             )
+
+    def mark_awake(self) -> None:
+        if not self._is_awake:
+            log.info("[%s] Backend detected as awake", self.cfg.name)
+            self._is_awake = True
 
     # -- Suspend ------------------------------------------------------------
 
@@ -169,6 +174,7 @@ class ProxyBackend:
             except RuntimeError as exc:
                 return web.Response(status=503, text=f"Failed to wake GPU node: {exc}")
         else:
+            self.mark_awake()
             self.touch()
 
         target = (
