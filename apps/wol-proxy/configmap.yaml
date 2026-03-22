@@ -20,6 +20,8 @@ data:
         cachedPaths:
           - /api/tags
           - /api/ps
+          - /api/version
         cachedPathDefaults:
           /api/tags: '{"models":[]}'
           /api/ps: '{"models":[]}'
+          /api/version: '{"version":"0.0.0"}'

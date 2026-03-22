@@ -168,7 +168,12 @@ class ProxyBackend:
 
             # Non-cacheable request: wake the backend
             self.touch()
-            log.info("[%s] Backend not responding, attempting wake", self.cfg.name)
+            log.info(
+                "[%s] Backend not responding, attempting wake for %s %s",
+                self.cfg.name,
+                request.method,
+                path,
+            )
             try:
                 await self.wake_and_wait()
             except RuntimeError as exc:
@@ -221,8 +226,8 @@ class ProxyBackend:
                 if content_length:
                     resp.content_length = int(content_length)
 
-                await resp.prepare(request)
                 try:
+                    await resp.prepare(request)
                     async for chunk in upstream.content.iter_any():
                         self.touch()
                         await resp.write(chunk)
