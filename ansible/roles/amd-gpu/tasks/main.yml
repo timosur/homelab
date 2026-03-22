@@ -87,6 +87,52 @@
   become: true
   when: ollama_check.stat.exists
 
+- name: Create Ollama models parent directory
+  ansible.builtin.file:
+    path: "{{ ollama_models_path | dirname }}"
+    state: directory
+    owner: ollama
+    group: ollama
+    mode: "0755"
+  become: true
+  when: ollama_check.stat.exists
+
+- name: Ensure home directory is traversable by ollama
+  ansible.builtin.file:
+    path: "{{ ollama_models_path | dirname | dirname }}"
+    mode: "0755"
+  become: true
+  when: ollama_check.stat.exists
+
+- name: Create Ollama models directory on secondary disk
+  ansible.builtin.file:
+    path: "{{ ollama_models_path }}"
+    state: directory
+    owner: ollama
+    group: ollama
+    mode: "0755"
+    recurse: false
+  become: true
+  when: ollama_check.stat.exists
+
+- name: Check if old Ollama models directory exists
+  ansible.builtin.stat:
+    path: /usr/share/ollama/.ollama/models
+  register: old_ollama_models
+  when: ollama_check.stat.exists
+
+- name: Move existing models to new location
+  ansible.builtin.shell: |
+    set -o pipefail
+    if [ -d /usr/share/ollama/.ollama/models ] && [ "$(ls -A /usr/share/ollama/.ollama/models 2>/dev/null)" ]; then
+      rsync -a --remove-source-files /usr/share/ollama/.ollama/models/ {{ ollama_models_path }}/
+      find /usr/share/ollama/.ollama/models -type d -empty -delete
+    fi
+  args:
+    executable: /bin/bash
+  become: true
+  when: ollama_check.stat.exists and old_ollama_models.stat.exists | default(false) and old_ollama_models.stat.isdir | default(false)
+
 - name: Configure Ollama to use Vulkan backend
   ansible.builtin.template:
     src: ollama-vulkan.conf.j2

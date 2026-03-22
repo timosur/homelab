@@ -1,6 +1,8 @@
 # Ollama systemd override for Vulkan GPU backend
 # Use Vulkan instead of ROCm HIP for RX 5700 XT (gfx1010) compatibility
+# Models stored on secondary disk to free NVMe SSD for swap
 [Service]
 Environment="OLLAMA_VULKAN=1"
 Environment="OLLAMA_LLM_LIBRARY=vulkan"
 Environment="OLLAMA_HOST=0.0.0.0"
+Environment="OLLAMA_MODELS={{ ollama_models_path }}"

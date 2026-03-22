@@ -5,7 +5,7 @@
 
 rocm_version: "7.2"
 amdgpu_install_version: "7.2.70200-1"
-ubuntu_codename: "noble"  # Ubuntu 24.04
+ubuntu_codename: "noble" # Ubuntu 24.04
 
 # User to add to render/video groups
 gpu_user: timosur
@@ -13,3 +13,6 @@ gpu_user: timosur
 # Ollama configuration - use Vulkan backend for RX 5700 XT
 # ROCm/HIP causes "illegal memory access" errors on gfx1010
 ollama_vulkan: true
+
+# Ollama model storage - use secondary disk to free NVMe SSD for swap
+ollama_models_path: /home/timosur/.ollama/models
