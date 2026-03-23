@@ -22,7 +22,7 @@ spec:
       enableServiceLinks: false
       containers:
         - name: n8n
-          image: docker.n8n.io/n8nio/n8n:2.12.3
+          image: docker.n8n.io/n8nio/n8n:2.13.2
           ports:
             - containerPort: 5678
           envFrom:
