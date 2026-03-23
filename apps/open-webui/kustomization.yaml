@@ -16,3 +16,6 @@ resources:
   - webui-deployment.yaml
   - webui-pvc.yaml
   - webui-service.yaml
+  - open-terminal-pvc.yaml
+  - open-terminal-deployment.yaml
+  - open-terminal-service.yaml

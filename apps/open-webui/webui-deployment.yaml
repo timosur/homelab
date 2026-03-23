@@ -80,6 +80,11 @@ spec:
                 secretKeyRef:
                   name: open-webui-secrets
                   key: webui-secret-key
+            - name: TERMINAL_SERVER_CONNECTIONS
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: terminal-server-connections
           lifecycle:
             preStop:
               exec:
