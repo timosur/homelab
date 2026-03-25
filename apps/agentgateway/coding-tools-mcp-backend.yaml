@@ -1,0 +1,9 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: coding-tools-mcp
+  namespace: agentgateway-system
+spec:
+  mcp:
+    host: coding-tools-mcp.mcp.svc.cluster.local
+    port: 80

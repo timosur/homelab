@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - actual.yaml
+  - agents.yaml
   - argocd.yaml
   - garden.yaml
   - grafana.yaml

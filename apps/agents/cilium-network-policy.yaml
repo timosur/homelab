@@ -1,0 +1,62 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: agents-network-policy
+  namespace: agents
+spec:
+  description: "Network policy for kagent engine, controller, and UI pods"
+  endpointSelector: {}
+  ingress:
+    # kagent UI exposed via envoy-gateway-home
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: envoy-gateway-system
+    # Internal pod-to-pod within agents namespace (engine ↔ postgres)
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: agents
+  egress:
+    # DNS
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    # AgentGateway for LLM inference
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: agentgateway-system
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+    # MCP tool server
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: mcp
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+    # Kubernetes API server
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP
+    # Internal pod-to-pod within agents namespace (engine ↔ postgres)
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: agents
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP

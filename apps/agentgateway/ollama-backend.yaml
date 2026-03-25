@@ -1,0 +1,40 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: ollama
+  namespace: agentgateway-system
+spec:
+  ai:
+    provider:
+      openai:
+        model: nemotron-3-nano:4b
+    host: ollama.agentgateway-system.svc.cluster.local
+    port: 11434
+---
+# Headless service + EndpointSlice routing to wol-proxy
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: agentgateway-system
+spec:
+  clusterIP: None
+  ports:
+    - port: 11434
+      protocol: TCP
+  selector: {}
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: ollama
+  namespace: agentgateway-system
+  labels:
+    kubernetes.io/service-name: ollama
+addressType: FQDN
+ports:
+  - port: 11434
+    protocol: TCP
+endpoints:
+  - addresses:
+      - ollama-service.wol-proxy.svc.cluster.local

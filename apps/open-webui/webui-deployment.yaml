@@ -46,6 +46,7 @@ spec:
               memory: "2Gi"
           env:
             - name: OLLAMA_BASE_URL
+              # value: "http://agentgateway-proxy.agentgateway-system.svc:80/ollama"
               value: "http://ollama-service.wol-proxy.svc.cluster.local:11434"
             - name: REDIS_URL
               value: "redis://redis-service.open-webui.svc.cluster.local:6379"

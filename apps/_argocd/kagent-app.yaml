@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kagent
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: oci://ghcr.io/kagent-dev/kagent/helm/kagent
+      chart: kagent
+      targetRevision: v0.8.0
+      helm:
+        valuesObject:
+          providers:
+            default: ollama
+          kmcp:
+            enabled: true
+          database:
+            postgres:
+              deploy: false
+              host: kagent-postgres-rw.agents.svc.cluster.local
+              port: 5432
+              database: kagent
+              secretRef:
+                name: kagent-postgres-credentials
+                usernameKey: username
+                passwordKey: password
+    - repoURL: https://github.com/timosur/homelab.git
+      targetRevision: HEAD
+      path: apps/agents
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: agents
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

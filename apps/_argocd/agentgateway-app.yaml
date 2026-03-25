@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: agentgateway
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: oci://cr.agentgateway.dev/charts
+      chart: agentgateway
+      targetRevision: v1.0.1
+    - repoURL: https://github.com/timosur/homelab.git
+      targetRevision: HEAD
+      path: apps/agentgateway
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: agentgateway-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,49 @@
+apiVersion: cilium.tetragon.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: agents-process-policy
+  namespace: agents
+spec:
+  podSelector:
+    matchLabels: {}
+  kprobes:
+    # Process allow-list: kill anything not in the approved list
+    - call: "sys_execve"
+      syscall: true
+      args:
+        - index: 0
+          type: "string"
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: "NotIn"
+              values:
+                - "/ko-app/kagent"
+                - "/ko-app/controller"
+                - "/ko-app/ui"
+          matchActions:
+            - action: Sigkill
+    # File write access: deny writes outside allowed dirs
+    - call: "sys_openat"
+      syscall: true
+      args:
+        - index: 1
+          type: "string"
+        - index: 2
+          type: "int"
+      selectors:
+        - matchArgs:
+            - index: 2
+              operator: "Mask"
+              values:
+                - "2"  # O_WRONLY or O_RDWR
+            - index: 1
+              operator: "NotPrefix"
+              values:
+                - "/var/lib/postgresql"
+                - "/tmp"
+                - "/dev/null"
+                - "/run"
+                - "/proc/self"
+          matchActions:
+            - action: Sigkill

@@ -1,0 +1,37 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: mcp-network-policy
+  namespace: mcp
+spec:
+  description: "Sandboxed network policy for MCP tool server pods"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: mcp
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: agents
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: agentgateway-system
+  egress:
+    # DNS
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    # All HTTPS for fetch_url (github.com, docs, etc.)
+    - toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Block all other RFC1918 egress
+    - toEntities:
+        - world

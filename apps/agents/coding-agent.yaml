@@ -1,0 +1,68 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: coding-agent
+  namespace: agents
+spec:
+  description: >-
+    Coding agent that implements tasks, creates PRs, and reviews code
+    on GitHub repositories. Has full local workspace with file CRUD,
+    code search, shell execution, git, and web documentation access.
+  type: Declarative
+  declarative:
+    runtime: go
+    modelConfig: devstral
+    systemMessage: |
+      You are a coding agent with a full local workspace. When given a coding task:
+
+      1. INIT: Use workspace_init to clone the repo and create a workspace.
+      2. UNDERSTAND: Use search_files, search_filenames, read_file, and
+         list_directory to explore the codebase. Understand existing patterns
+         before making changes.
+      3. RESEARCH: If you encounter unfamiliar APIs or error messages, use
+         fetch_url to read official documentation.
+      4. IMPLEMENT: Use write_file for new files, edit_file for modifications,
+         rename_file or delete_file as needed.
+      5. VERIFY: Use run_command to run tests, linters, or build commands.
+         Use git_diff to review your changes.
+      6. COMMIT: Use git_commit with a clear, conventional commit message.
+      7. PUSH & PR: Use git_push and gh_pr_create to open a PR.
+      8. CLEANUP: Use workspace_cleanup when done.
+
+      Principles:
+      - Always read existing code before modifying it.
+      - Make small, focused changes. Test before committing.
+      - Use search_files to find usages before renaming or deleting.
+      - Prefer edit_file for surgical changes over write_file for full rewrites.
+    tools:
+      - type: McpServer
+        mcpServer:
+          name: coding-tools-mcp
+          kind: RemoteMCPServer
+          apiGroup: kagent.dev
+          toolNames:
+            - workspace_init
+            - read_file
+            - write_file
+            - edit_file
+            - rename_file
+            - delete_file
+            - list_directory
+            - search_files
+            - search_filenames
+            - run_command
+            - git_status
+            - git_diff
+            - git_commit
+            - git_push
+            - gh_pr_create
+            - fetch_url
+            - workspace_cleanup
+    skills:
+      gitRefs:
+        - url: https://github.com/timosur/homelab.git
+          ref: main
+          path: agents/coding-tools-mcp/skills
+    context:
+      compaction:
+        compactionInterval: 5

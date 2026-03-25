@@ -1,0 +1,10 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: coding-tools-mcp
+  namespace: agents
+spec:
+  url: http://coding-tools-mcp.mcp.svc.cluster.local/mcp
+  protocol: STREAMABLE_HTTP
+  timeout: 120s
+  sseReadTimeout: 10m0s
