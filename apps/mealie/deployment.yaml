@@ -13,6 +13,8 @@ spec:
       labels:
         app: mealie
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd
       containers:
         - name: mealie
           image: ghcr.io/mealie-recipes/mealie:v3.13.1

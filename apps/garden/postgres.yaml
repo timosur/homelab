@@ -7,6 +7,9 @@ spec:
   instances: 1
   enablePDB: false
 
+  nodeSelector:
+    kubernetes.io/hostname: homelab-amd
+
   postgresql:
     parameters:
       max_connections: "200"
