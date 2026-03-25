@@ -15,7 +15,7 @@
            │ kagent REST/WebSocket API
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  kagent namespace                                                   │
+│  agents namespace                                                   │
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────────┐  │
 │  │ kagent Controller (Go)                                        │  │
@@ -54,7 +54,7 @@
 │  ┌────────────────────────────┐  ┌──────────────────────────────┐  │
 │  │ CiliumNetworkPolicy        │  │ Tetragon TracingPolicy       │  │
 │  │ - Egress: AgentGateway,    │  │ - Process: allow-list only   │  │
-│  │   agents ns, K8s API, DNS  │  │   (kagent binaries,          │  │
+│  │   mcp ns, K8s API, DNS     │  │   (kagent binaries,          │  │
 │  │ - Ingress: ProductHub,     │  │    postgres)                 │  │
 │  │   envoy-gateway-home       │  │ - File: r/o root, r/w        │  │
 │  │ - Deny all else            │  │   postgres data + /tmp       │  │
@@ -64,7 +64,7 @@
            │ MCP tool calls (Streamable HTTP)
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  agents namespace (sandboxed MCP tool server)                       │
+│  mcp namespace (sandboxed MCP tool server)                          │
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────────┐  │
 │  │ Coding Tools MCP Server (Deployment + ClusterIP)              │  │
@@ -111,7 +111,7 @@
 │  │ CiliumNetworkPolicy        │  │ Tetragon TracingPolicy       │  │
 │  │ - Egress: all HTTPS,       │  │ - Process: allow-list only   │  │
 │  │   github.com:443, DNS      │  │   (git, gh, bash, sh, jq,    │  │
-│  │ - Ingress: from kagent ns, │  │    coding-tools-mcp)         │  │
+│  │ - Ingress: from agents ns, │  │    coding-tools-mcp)         │  │
 │  │   from agentgateway-system │  │ - File: r/o root, r/w        │  │
 │  │ - Deny all RFC1918         │  │   /workspace and /tmp        │  │
 │  └────────────────────────────┘  └──────────────────────────────┘  │
@@ -134,8 +134,8 @@
 │  │    (multiple model backends, ProductHub selects per task)     │  │
 │  │                                                                │  │
 │  │  HTTPRoute /mcp/* → AgentgatewayBackend (MCP targets)         │  │
-│  │    → coding-tools-mcp.agents.svc                              │  │
-│  │    → producthub-mcp.agents.svc                                │  │
+│  │    → coding-tools-mcp.mcp.svc                                 │  │
+│  │    → producthub-mcp.mcp.svc                                   │  │
 │  │                                                                │  │
 │  │  AgentgatewayPolicy:                                          │  │
 │  │  - Token rate limiting per consumer                           │  │
@@ -212,7 +212,7 @@ AgentGateway ships as two Helm charts (CRDs + main), both from OCI registry `cr.
   ```
   Plus headless Service + EndpointSlice pointing at `ollama-service.wol-proxy.svc.cluster.local:11434`
 - `ollama-route.yaml` — HTTPRoute for LLM traffic → ollama backend
-- `coding-tools-mcp-backend.yaml` — AgentgatewayBackend (MCP target, static host: `coding-tools-mcp.agents.svc.cluster.local`)
+- `coding-tools-mcp-backend.yaml` — AgentgatewayBackend (MCP target, static host: `coding-tools-mcp.mcp.svc.cluster.local`)
 - `coding-tools-mcp-route.yaml` — HTTPRoute `/mcp/coding-tools` → MCP backend
 
 **1b.5** Register both `agentgateway-crds-app.yaml` and `agentgateway-app.yaml` in `apps/_argocd/kustomization.yaml`
@@ -227,17 +227,17 @@ AgentGateway ships as two Helm charts (CRDs + main), both from OCI registry `cr.
 
 kagent ships as two Helm charts (`kagent-crds` + `kagent`), both from OCI registry `ghcr.io/kagent-dev/kagent/helm/`.
 
-**2.1** Create `apps/kagent/kustomization.yaml` — overlay with CRD resources (ModelConfig, Agent, etc.)
+**2.1** Create `apps/agents/kustomization.yaml` — overlay with CRD resources (ModelConfig, Agent, etc.)
 
 **2.2** Create `apps/_argocd/kagent-crds-app.yaml`:
 - Chart: `kagent-crds` from `oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds`, version `v0.8.0`
-- Namespace: `kagent`
+- Namespace: `agents`
 - `ServerSideApply=true`
 
 **2.3** Create `apps/_argocd/kagent-app.yaml` — Helm+overlay:
 - Chart: `kagent` from `oci://ghcr.io/kagent-dev/kagent/helm/kagent`, version `v0.8.0`
-- Namespace: `kagent`
-- Overlay path: `apps/kagent`
+- Namespace: `agents`
+- Overlay path: `apps/agents`
 - Helm values:
   ```yaml
   providers:
@@ -246,13 +246,13 @@ kagent ships as two Helm charts (`kagent-crds` + `kagent`), both from OCI regist
     enabled: true
   ```
 
-**2.4** Create `apps/kagent/postgres.yaml` — CloudNative-PG Cluster for kagent:
+**2.4** Create `apps/agents/postgres.yaml` — CloudNative-PG Cluster for kagent:
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
   name: kagent-postgres
-  namespace: kagent
+  namespace: agents
 spec:
   instances: 1
   enablePDB: false
@@ -278,7 +278,7 @@ spec:
       cpu: "500m"
 ```
 
-**2.5** Create `apps/kagent/external-secret.yaml` — PostgreSQL credentials:
+**2.5** Create `apps/agents/external-secret.yaml` — PostgreSQL credentials:
 - Azure KV keys: `kagent-postgres-username`, `kagent-postgres-password`
 - Secret name: `kagent-postgres-credentials`, type: `kubernetes.io/basic-auth`
 
@@ -327,15 +327,15 @@ Full-featured MCP tool server that gives kagent's coding-agent a local workspace
 - Create non-root user `agent` (UID 1000)
 - Binary: `/usr/local/bin/coding-tools-mcp`
 
-**3.3** Create `apps/agents/namespace.yaml` — namespace `agents`
+**3.3** Create `apps/mcp/namespace.yaml` — namespace `mcp`
 
-**3.4** Create `apps/agents/deployment.yaml` — Coding Tools MCP Server:
+**3.4** Create `apps/mcp/deployment.yaml` — Coding Tools MCP Server:
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: coding-tools-mcp
-  namespace: agents
+  namespace: mcp
 spec:
   replicas: 1
   strategy:
@@ -347,7 +347,7 @@ spec:
     metadata:
       labels:
         app: coding-tools-mcp
-        app.kubernetes.io/part-of: agents
+        app.kubernetes.io/part-of: mcp
     spec:
       containers:
         - name: coding-tools-mcp
@@ -359,7 +359,7 @@ spec:
             - name: GITHUB_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: agents-github-credentials
+                  name: mcp-github-credentials
                   key: GITHUB_TOKEN
           resources:
             requests:
@@ -394,13 +394,13 @@ spec:
             sizeLimit: 5Gi
 ```
 
-**3.5** Create `apps/agents/service.yaml`:
+**3.5** Create `apps/mcp/service.yaml`:
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: coding-tools-mcp
-  namespace: agents
+  namespace: mcp
   labels:
     app: coding-tools-mcp
 spec:
@@ -412,25 +412,25 @@ spec:
       appProtocol: agentgateway.dev/mcp
 ```
 
-**3.6** Create `apps/agents/external-secret.yaml` — GitHub PAT for git push + PR creation:
-- Azure KV key: `agents-github-pat`
-- Secret name: `agents-github-credentials`, type: `Opaque` with `GITHUB_TOKEN` key
+**3.6** Create `apps/mcp/external-secret.yaml` — GitHub PAT for git push + PR creation:
+- Azure KV key: `mcp-github-pat`
+- Secret name: `mcp-github-credentials`, type: `Opaque` with `GITHUB_TOKEN` key
 
-**3.7** Create `apps/agents/kustomization.yaml` with all resources
+**3.7** Create `apps/mcp/kustomization.yaml` with all resources
 
-**3.8** Create `apps/_argocd/agents-app.yaml`, register in `apps/_argocd/kustomization.yaml`
+**3.8** Create `apps/_argocd/mcp-app.yaml`, register in `apps/_argocd/kustomization.yaml`
 
 **3.9** CI: GitHub Actions workflow to build + push `ghcr.io/timosur/homelab/coding-tools-mcp` (multi-arch)
 
 ### Phase 4: kagent Agent CRDs & Skills
 
-**4.1** Create `apps/kagent/model-configs.yaml` — Multiple ModelConfig CRDs (ProductHub selects per task):
+**4.1** Create `apps/agents/model-configs.yaml` — Multiple ModelConfig CRDs (ProductHub selects per task):
 ```yaml
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
 metadata:
   name: ollama-nano
-  namespace: kagent
+  namespace: agents
 spec:
   apiKeySecretKey: OPENAI_API_KEY
   apiKeySecret: kagent-ollama-dummy
@@ -443,7 +443,7 @@ apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
 metadata:
   name: ollama-large
-  namespace: kagent
+  namespace: agents
 spec:
   apiKeySecretKey: OPENAI_API_KEY
   apiKeySecret: kagent-ollama-dummy
@@ -454,13 +454,13 @@ spec:
 ```
 ProductHub specifies which agent (and thus which ModelConfig) to invoke per task based on complexity. Start with `ollama-nano` for simple tasks. Add larger models to Ollama and create corresponding ModelConfigs as needed.
 
-**4.2** Create `apps/kagent/coding-agent.yaml` — Agent CRD:
+**4.2** Create `apps/agents/coding-agent.yaml` — Agent CRD:
 ```yaml
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
   name: coding-agent
-  namespace: kagent
+  namespace: agents
 spec:
   description: >-
     Coding agent that implements tasks, creates PRs, and reviews code
@@ -496,7 +496,7 @@ spec:
       - type: McpServer
         mcpServer:
           name: coding-tools-mcp
-          namespace: agents
+          namespace: mcp
           kind: Service
           toolNames:
             - workspace_init
@@ -533,21 +533,21 @@ spec:
 
 ### Phase 5: Sandboxing (Cilium + Tetragon)
 
-#### 5a: agents namespace (MCP tool server)
+#### 5a: mcp namespace (MCP tool server)
 
-**5a.1** Create `apps/agents/cilium-network-policy.yaml`:
-- **Selector**: all pods with label `app.kubernetes.io/part-of: agents`
+**5a.1** Create `apps/mcp/cilium-network-policy.yaml`:
+- **Selector**: all pods with label `app.kubernetes.io/part-of: mcp`
 - **Egress allow**:
   - DNS → `kube-system` (UDP/TCP 53)
   - All HTTPS (port 443) — needed for `fetch_url` to access arbitrary documentation. GitHub (`github.com`, `api.github.com`) is the primary target but any doc host must be reachable.
 - **Egress deny**: all RFC1918 (prevent lateral movement within cluster/LAN), non-HTTPS protocols
 - **Ingress allow**:
-  - From `kagent` namespace (kagent engine → MCP tool calls)
+  - From `agents` namespace (kagent engine → MCP tool calls)
   - From `agentgateway-system` namespace (if routing MCP via AgentGateway)
 - **Ingress deny**: all else
 - **Note**: No Ollama egress needed — coding-tools-mcp is a pure tool server, it never calls the LLM directly. Only kagent engine calls Ollama (via AgentGateway).
 
-**5a.2** Create `apps/agents/tetragon-policy.yaml` — TracingPolicy for MCP server pods:
+**5a.2** Create `apps/mcp/tetragon-policy.yaml` — TracingPolicy for MCP server pods:
 
 - **Process enforcement** (`kprobe` on `execve`): allow-list only
   - `/usr/bin/git`, `/usr/bin/gh`, `/bin/bash`, `/bin/sh`, `/usr/bin/jq`
@@ -562,24 +562,24 @@ spec:
 
 - **No network enforcement** — Cilium handles L3/L4, AgentGateway handles L7
 
-#### 5b: kagent namespace (agent engine + controller)
+#### 5b: agents namespace (agent engine + controller)
 
-**5b.1** Create `apps/kagent/cilium-network-policy.yaml`:
-- **Selector**: all pods in `kagent` namespace
+**5b.1** Create `apps/agents/cilium-network-policy.yaml`:
+- **Selector**: all pods in `agents` namespace
 - **Egress allow**:
   - DNS → `kube-system` (UDP/TCP 53)
   - AgentGateway → `agentgateway-system` namespace (TCP 80) — for LLM inference
-  - MCP tool server → `agents` namespace (TCP 80) — for tool calls
+  - MCP tool server → `mcp` namespace (TCP 80) — for tool calls
   - Kubernetes API server → `default` namespace or IP (TCP 443) — kagent controller needs to reconcile CRDs
-  - CloudNative-PG → self-namespace (TCP 5432) — postgres within kagent namespace
+  - CloudNative-PG → self-namespace (TCP 5432) — postgres within agents namespace
 - **Egress deny**: all internet, all RFC1918 not in allow-list
 - **Ingress allow**:
   - From `envoy-gateway-system` namespace (kagent UI exposed on home network via HTTPRoute)
   - From `envoy-gateway-internet-system` namespace (if ProductHub accesses kagent API from internet)
-  - Note: internal pod-to-pod within kagent namespace (engine ↔ postgres) is allowed by selector
+  - Note: internal pod-to-pod within agents namespace (engine ↔ postgres) is allowed by selector
 - **Ingress deny**: all else
 
-**5b.2** Create `apps/kagent/tetragon-policy.yaml` — TracingPolicy for kagent pods:
+**5b.2** Create `apps/agents/tetragon-policy.yaml` — TracingPolicy for kagent pods:
 
 - **Process enforcement** (`kprobe` on `execve`): allow-list only
   - kagent controller/engine/UI Go binaries (single binary, multiple entrypoints)
@@ -604,7 +604,7 @@ spec:
 - kagent agent processes asynchronously
 - ProductHub polls session status for completion
 
-**6.2** ProductHub MCP Server (optional) — runs in `agents` namespace:
+**6.2** ProductHub MCP Server (optional) — runs in `mcp` namespace:
 - Registered as kagent `MCPServer` CRD (kagent manages lifecycle)
 - OR as `AgentgatewayBackend` in AgentGateway
 - Tools: `get_task`, `update_task_status`, `post_comment`, `get_prd`
@@ -649,11 +649,11 @@ spec:
 - `apps/_argocd/agentgateway-app.yaml`
 
 ### kagent (Phase 2)
-- `apps/kagent/kustomization.yaml`
-- `apps/kagent/postgres.yaml`
-- `apps/kagent/external-secret.yaml`
-- `apps/kagent/model-configs.yaml`
-- `apps/kagent/coding-agent.yaml`
+- `apps/agents/kustomization.yaml`
+- `apps/agents/postgres.yaml`
+- `apps/agents/external-secret.yaml`
+- `apps/agents/model-configs.yaml`
+- `apps/agents/coding-agent.yaml`
 - `apps/_argocd/kagent-crds-app.yaml`
 - `apps/_argocd/kagent-app.yaml`
 
@@ -663,21 +663,21 @@ spec:
 - `agents/coding-tools-mcp/skills/pr-workflow.md`
 - `agents/coding-tools-mcp/skills/code-review.md`
 - `agents/coding-tools-mcp/skills/task-decomposition.md`
-- `apps/agents/namespace.yaml`
-- `apps/agents/deployment.yaml`
-- `apps/agents/service.yaml`
-- `apps/agents/external-secret.yaml`
-- `apps/agents/kustomization.yaml`
-- `apps/_argocd/agents-app.yaml`
+- `apps/mcp/namespace.yaml`
+- `apps/mcp/deployment.yaml`
+- `apps/mcp/service.yaml`
+- `apps/mcp/external-secret.yaml`
+- `apps/mcp/kustomization.yaml`
+- `apps/_argocd/mcp-app.yaml`
 
 ### Sandboxing (Phase 5)
+- `apps/mcp/cilium-network-policy.yaml`
+- `apps/mcp/tetragon-policy.yaml`
 - `apps/agents/cilium-network-policy.yaml`
 - `apps/agents/tetragon-policy.yaml`
-- `apps/kagent/cilium-network-policy.yaml`
-- `apps/kagent/tetragon-policy.yaml`
 
 ### Files to Modify
-- `apps/_argocd/kustomization.yaml` — add tetragon, agentgateway-crds, agentgateway, kagent-crds, kagent, agents entries (alphabetical)
+- `apps/_argocd/kustomization.yaml` — add tetragon, agentgateway-crds, agentgateway, kagent-crds, kagent, mcp entries (alphabetical)
 - `apps/wol-proxy/allow-ingress-from-open-webui.yaml` — add `agentgateway-system` namespace
 - `apps/open-webui/configmap.yaml` — update `OLLAMA_BASE_URL` to point at AgentGateway (Phase 1b.7)
 
@@ -695,7 +695,7 @@ spec:
 - **All HTTPS egress allowed** — CiliumNetworkPolicy permits all port 443 egress for `fetch_url` to reach arbitrary documentation. RFC1918 denied to prevent lateral movement.
 - **Tetragon for process + file** — process allow-listing (git, gh, bash, sh, jq, coding-tools-mcp) and file access control (r/w only in /workspace and /tmp); no network rules (delegated to Cilium + AgentGateway). No ripgrep or curl binaries — search and HTTP are Go-native.
 - **Skip agentregistry** — GitOps is sufficient governance at homelab scale; can add later if agent/skill catalog grows
-- **Sandboxing on both namespaces** — `agents` namespace: restrictive (process allow-list, file access control, all HTTPS egress, RFC1918 denied). `kagent` namespace: infrastructure-grade (network restricted to AgentGateway + agents + K8s API + postgres, process restricted to Go binaries + postgres, no internet egress). Defense in depth — even if kagent is compromised, lateral movement is limited.
+- **Sandboxing on both namespaces** — `mcp` namespace: restrictive (process allow-list, file access control, all HTTPS egress, RFC1918 denied). `agents` namespace: infrastructure-grade (network restricted to AgentGateway + mcp + K8s API + postgres, process restricted to Go binaries + postgres, no internet egress). Defense in depth — even if kagent is compromised, lateral movement is limited.
 - **kmcp for MCP server** — integrated with kagent, native Go, lower footprint vs Python FastMCP
 - **Coding tools are pure side-effects** — MCP server never calls the LLM; it only executes file/git/shell/fetch operations. All reasoning stays in kagent engine.
 - **Open-WebUI migrated to AgentGateway** — `OLLAMA_BASE_URL` updated to point at AgentGateway in Phase 1b. Unifies all LLM consumers under one observability layer.
