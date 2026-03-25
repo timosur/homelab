@@ -1,6 +1,6 @@
 # Plan: K8s-Native Agent Platform (kagent + AgentGateway)
 
-**TL;DR**: Kubernetes-native agent platform built on the Solo.io open-source stack. **kagent** (CNCF sandbox) provides declarative Agent CRDs, conversation engine (Go ADK), built-in UI, and observability. **AgentGateway** provides unified LLM/MCP gateway with token budgets, model routing, and observability — all LLM consumers (kagent, Open-WebUI) route through it. kagent's engine drives coding directly via a custom **Coding Tools MCP Server** (Go, built with kmcp) providing file CRUD, regex code search, shell execution, Git operations, GitHub CLI, and web/doc fetching — single LLM loop, no wrapper layers, full local workspace. **ProductHub selects the model per task** — multiple ModelConfigs in kagent, AgentGateway routes to the right backend. **Cilium** provides L3/L4 network isolation (all HTTPS egress allowed). **Tetragon** provides process allow-listing and file access control. Single-task execution only. Agents create PRs on GitHub. GPU node serves Ollama models via wol-proxy (WoL on demand).
+**TL;DR**: Kubernetes-native agent platform built on the Solo.io open-source stack. **kagent** (CNCF sandbox) provides declarative Agent CRDs, conversation engine (Go ADK), built-in UI, and observability. **AgentGateway** provides unified LLM/MCP gateway with TrafficPolicy for token budgets, model routing, and observability — all LLM consumers (kagent, Open-WebUI) route through it. kagent's engine drives coding directly via a custom **Coding Tools MCP Server** (Python + FastMCP) providing file CRUD, regex code search, shell execution, Git operations, GitHub CLI, and web/doc fetching — single LLM loop, no wrapper layers, full local workspace. **Three Ollama models** available: `devstral:latest` (14GB, default for coding), `mistral:7b` (4.4GB, medium), `nemotron-3-nano:4b` (2.8GB, simple tasks). Multiple ModelConfigs in kagent; kagent UI for task submission now, ProductHub integration later. **Cilium** provides L3/L4 network isolation (all HTTPS egress allowed). **Tetragon** provides process allow-listing and file access control. Single-task execution only. Agents create PRs on GitHub. GPU node serves Ollama models via wol-proxy (WoL on demand).
 
 **agentregistry** is intentionally skipped — GitOps is sufficient governance at homelab scale.
 
@@ -8,11 +8,11 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  ProductHub (React + FastAPI)                                       │
-│  - Sends coding tasks as conversations to kagent API                │
-│  - Monitors agent sessions, collects results                        │
+│  Task Entry Points                                                   │
+│  - kagent UI (built-in web dashboard) — primary, available now       │
+│  - ProductHub (React + FastAPI) — future integration via A2A+SSE     │
 └──────────┬──────────────────────────────────────────────────────────┘
-           │ kagent REST/WebSocket API
+           │ kagent REST API + A2A SSE streaming
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │  agents namespace                                                   │
@@ -39,10 +39,10 @@
 │                                                                     │
 │  ┌──────────────────────────────┐  ┌─────────────────────────────┐ │
 │  │ ModelConfig CRDs (one per    │  │ Agent CRD: coding-agent     │ │
-│  │ model, selected by           │  │ runtime: go                 │ │
-│  │ ProductHub per task):        │  │ tools: coding-tools-mcp     │ │
+│  │ model):                      │  │ runtime: go                 │ │
+│  │ - devstral (14GB, default)   │  │ modelConfig: devstral       │ │
+│  │ - ollama-mistral (7b)        │  │ tools: coding-tools-mcp     │ │
 │  │ - ollama-nano (4b)           │  │ skills: [pr-workflow, ...]  │ │
-│  │ - ollama-large (8b+)         │  │                             │ │
 │  │ All → AgentGateway → Ollama  │  │                             │ │
 │  └──────────────────────────────┘  └─────────────────────────────┘ │
 │                                                                     │
@@ -52,11 +52,12 @@
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
 │  ┌────────────────────────────┐  ┌──────────────────────────────┐  │
+│  ┌────────────────────────────┐  ┌──────────────────────────────┐  │
 │  │ CiliumNetworkPolicy        │  │ Tetragon TracingPolicy       │  │
 │  │ - Egress: AgentGateway,    │  │ - Process: allow-list only   │  │
 │  │   mcp ns, K8s API, DNS     │  │   (kagent binaries,          │  │
-│  │ - Ingress: ProductHub,     │  │    postgres)                 │  │
-│  │   envoy-gateway-home       │  │ - File: r/o root, r/w        │  │
+│  │ - Ingress: envoy-gateway   │  │    postgres)                 │  │
+│  │   -home (kagent UI)        │  │ - File: r/o root, r/w        │  │
 │  │ - Deny all else            │  │   postgres data + /tmp       │  │
 │  └────────────────────────────┘  └──────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
@@ -68,7 +69,7 @@
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────────┐  │
 │  │ Coding Tools MCP Server (Deployment + ClusterIP)              │  │
-│  │ - Go binary (built with kmcp), Streamable HTTP on :8080       │  │
+│  │ - Python + FastMCP, Streamable HTTP on :8080                  │  │
 │  │ - Per-workspace temp dir /workspace/<uuid>/                   │  │
 │  │                                                               │  │
 │  │   FILE OPERATIONS                                             │  │
@@ -102,9 +103,9 @@
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ ProductHub MCP Server (Deployment + ClusterIP) — optional     │  │
+│  │ ProductHub MCP Server — FUTURE (not built yet)                │  │
 │  │ - Tools: get_task, update_task_status, post_comment           │  │
-│  │ - Registered as MCPServer CRD in kagent                       │  │
+│  │ - Registered as RemoteMCPServer CRD in kagent                 │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
 │  ┌────────────────────────────┐  ┌──────────────────────────────┐  │
@@ -127,17 +128,16 @@
 │  │                                                                │  │
 │  │  Gateway: agentgateway-proxy (class: agentgateway, port 80)   │  │
 │  │                                                                │  │
-│  │  Consumers: kagent engine, Open-WebUI, ProductHub             │  │
+│  │  Consumers: kagent engine, Open-WebUI                          │  │
 │  │                                                                │  │
 │  │  HTTPRoute /ollama → AgentgatewayBackend (OpenAI-compat)      │  │
 │  │    → headless svc → wol-proxy:11434 → GPU node 192.168.2.47  │  │
-│  │    (multiple model backends, ProductHub selects per task)     │  │
+│  │    (all 3 models served by single Ollama instance)            │  │
 │  │                                                                │  │
 │  │  HTTPRoute /mcp/* → AgentgatewayBackend (MCP targets)         │  │
 │  │    → coding-tools-mcp.mcp.svc                                 │  │
-│  │    → producthub-mcp.mcp.svc                                   │  │
 │  │                                                                │  │
-│  │  AgentgatewayPolicy:                                          │  │
+│  │  TrafficPolicy:                                               │  │
 │  │  - Token rate limiting per consumer                           │  │
 │  │  - OpenTelemetry metrics, logs, traces                        │  │
 │  └───────────────────────────────────────────────────────────────┘  │
@@ -148,20 +148,22 @@
 ┌──────────────────────┐        ┌─────────────────────┐
 │ wol-proxy:11434      │  WoL   │ GPU node             │
 │ (wakes GPU on demand)│───────►│ 192.168.2.47:11434   │
-│                      │        │ nemotron-3-nano:4b   │
-└──────────────────────┘        └─────────────────────┘
+│                      │        │ devstral:latest (14GB)│
+│                      │        │ mistral:7b (4.4GB)   │
+│                      │        │ nemotron-3-nano:4b    │
+└──────────────────────┘        └──────────────────────┘
 ```
 
 ## Component Stack
 
-| Layer                    | Component                          | Role                                                      |
-| ------------------------ | ---------------------------------- | --------------------------------------------------------- |
-| **Agent framework**      | kagent (CNCF sandbox, v0.8.0)      | Agent CRDs, ADK engine, UI, observability                 |
-| **LLM/MCP gateway**      | AgentGateway (v1.0.0)              | L7 proxy, token budgets, rate limiting, OTel              |
-| **Process/file sandbox** | Tetragon (v1.3.0)                  | eBPF process allow-list, file access control              |
-| **Network sandbox**      | Cilium (existing)                  | L3/L4 isolation, egress deny RFC1918                      |
-| **Coding tools**         | Coding Tools MCP Server (Go, kmcp) | File CRUD, code search, shell, git, GitHub CLI, web fetch |
-| **LLM inference**        | Ollama on GPU node (existing)      | nemotron-3-nano:4b via wol-proxy                          |
+| Layer                    | Component                                    | Role                                                      |
+| ------------------------ | -------------------------------------------- | --------------------------------------------------------- |
+| **Agent framework**      | kagent (CNCF sandbox, v0.8.0)                | Agent CRDs, ADK engine, UI, observability                 |
+| **LLM/MCP gateway**      | AgentGateway (v1.0.1)                        | L7 proxy, TrafficPolicy rate limiting, OTel               |
+| **Process/file sandbox** | Tetragon (v1.6.0)                            | eBPF process allow-list, file access control              |
+| **Network sandbox**      | Cilium (existing)                            | L3/L4 isolation, egress deny RFC1918                      |
+| **Coding tools**         | Coding Tools MCP Server (Python, FastMCP)    | File CRUD, code search, shell, git, GitHub CLI, web fetch |
+| **LLM inference**        | Ollama on GPU node (existing)                | devstral, mistral:7b, nemotron-3-nano:4b via wol-proxy    |
 
 ## Steps
 
@@ -170,7 +172,7 @@
 **1a.1** Create `apps/tetragon/kustomization.yaml` — empty overlay (placeholder for future overrides)
 
 **1a.2** Create `apps/_argocd/tetragon-app.yaml` — Helm+overlay ArgoCD Application:
-- Chart: `tetragon` from `https://helm.cilium.io`, version `v1.3.0`
+- Chart: `tetragon` from `https://helm.cilium.io`, version `v1.6.0`
 - Deploy into `kube-system` (Tetragon needs host access for eBPF)
 - Helm values: enable `TracingPolicy` CRD
 - `ServerSideApply=true` (CRD-heavy chart)
@@ -184,12 +186,12 @@ AgentGateway ships as two Helm charts (CRDs + main), both from OCI registry `cr.
 **1b.1** Create `apps/agentgateway/kustomization.yaml` — overlay with backend + route + gateway manifests
 
 **1b.2** Create `apps/_argocd/agentgateway-crds-app.yaml`:
-- Chart: `agentgateway-crds` from `cr.agentgateway.dev/charts`, version `v1.0.0`
+- Chart: `agentgateway-crds` from `cr.agentgateway.dev/charts`, version `v1.0.1`
 - Namespace: `agentgateway-system`
 - `ServerSideApply=true`
 
 **1b.3** Create `apps/_argocd/agentgateway-app.yaml`:
-- Chart: `agentgateway` from `cr.agentgateway.dev/charts`, version `v1.0.0`
+- Chart: `agentgateway` from `cr.agentgateway.dev/charts`, version `v1.0.1`
 - Namespace: `agentgateway-system`
 - Overlay path: `apps/agentgateway`
 
@@ -220,8 +222,8 @@ AgentGateway ships as two Helm charts (CRDs + main), both from OCI registry `cr.
 **1b.6** Prerequisite check: Verify Gateway API CRDs v1.5.0 are installed (likely already present via Envoy Gateway). If not, install via `kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml`
 
 **1b.7** Migrate Open-WebUI to route through AgentGateway:
-- Update `OLLAMA_BASE_URL` in `apps/open-webui/configmap.yaml` from `http://ollama-service.wol-proxy.svc.cluster.local:11434` to `http://agentgateway-proxy.agentgateway-system.svc:80/ollama`
-- This gives unified LLM visibility — all consumers (kagent, Open-WebUI, ProductHub) go through AgentGateway for token tracking and observability
+- Update `OLLAMA_BASE_URL` in `apps/open-webui/webui-deployment.yaml` (env var on the container spec) from `http://ollama-service.wol-proxy.svc.cluster.local:11434` to `http://agentgateway-proxy.agentgateway-system.svc:80/ollama`
+- This gives unified LLM visibility — all consumers (kagent, Open-WebUI) go through AgentGateway for token tracking and observability
 
 ### Phase 2: kagent Deployment (new — replaces raw K8s Job infrastructure)
 
@@ -244,6 +246,16 @@ kagent ships as two Helm charts (`kagent-crds` + `kagent`), both from OCI regist
     default: ollama
   kmcp:
     enabled: true
+  database:
+    postgres:
+      deploy: false  # Use external CloudNative-PG instead of bundled postgres
+      host: kagent-postgres-rw.agents.svc.cluster.local
+      port: 5432
+      database: kagent
+      secretRef:
+        name: kagent-postgres-credentials
+        usernameKey: username
+        passwordKey: password
   ```
 
 **2.4** Create `apps/agents/postgres.yaml` — CloudNative-PG Cluster for kagent:
@@ -282,15 +294,30 @@ spec:
 - Azure KV keys: `kagent-postgres-username`, `kagent-postgres-password`
 - Secret name: `kagent-postgres-credentials`, type: `kubernetes.io/basic-auth`
 
-**2.6** Register `kagent-crds-app.yaml` and `kagent-app.yaml` in `apps/_argocd/kustomization.yaml`
+**2.6** Create `apps/agents/ollama-dummy-secret.yaml` — Dummy API key secret required by kagent ModelConfig even for Ollama (which has no auth):
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kagent-ollama-dummy
+  namespace: agents
+type: Opaque
+stringData:
+  OPENAI_API_KEY: "not-needed"
+```
+
+**2.7** Register `kagent-crds-app.yaml` and `kagent-app.yaml` in `apps/_argocd/kustomization.yaml`
 
 ### Phase 3: Coding Tools MCP Server
 
-Full-featured MCP tool server that gives kagent's coding-agent a local workspace with file CRUD, code search, shell execution, git operations, and web fetching. Built with kmcp (Go). No second LLM — kagent's engine drives all reasoning in a single Ollama loop and calls these tools for side effects.
+Full-featured MCP tool server that gives kagent's coding-agent a local workspace with file CRUD, code search, shell execution, git operations, and web fetching. Python application using **FastMCP** (the official high-level MCP Python SDK). No second LLM — kagent's engine drives all reasoning in a single Ollama loop and calls these tools for side effects.
 
-**3.1** Create `agents/coding-tools-mcp/main.go` — MCP server implementation (kmcp):
-- Transport: Streamable HTTP on port 8080
-- Health endpoint: `GET /health`
+**3.1** Create `agents/coding-tools-mcp/` — Python MCP server project:
+- `server.py` — FastMCP server implementation (main entrypoint)
+- `tools/` — tool modules grouped by capability
+- `pyproject.toml` — dependencies: `fastmcp`, `httpx`, `beautifulsoup4`, `lxml`
+- Transport: Streamable HTTP on port 8080 (FastMCP built-in `mcp.run(transport="streamable-http", host="0.0.0.0", port=8080)`)
+- Health endpoint: `GET /health` (FastMCP supports custom routes)
 - Workspace lifecycle: temp dirs under `/workspace/<uuid>/`, cleaned up per-session
 - Tools (grouped by capability):
 
@@ -304,28 +331,29 @@ Full-featured MCP tool server that gives kagent's coding-agent a local workspace
   - `list_directory(workspace_id, path)` → list entries (files/dirs) with type indicators
 
   **Search / Codebase Indexing:**
-  - `search_files(workspace_id, regex, path?)` → regex search across files using Go's built-in `regexp` + `filepath.Walk`, return matching lines with context. Optional `path` scopes search to subdirectory.
-  - `search_filenames(workspace_id, glob)` → find files by name pattern (e.g. `*.go`, `*_test.py`)
+  - `search_files(workspace_id, regex, path?)` → regex search across files using Python `re` + `os.walk`, return matching lines with context. Optional `path` scopes search to subdirectory.
+  - `search_filenames(workspace_id, glob)` → find files by name pattern using `pathlib.glob` (e.g. `*.py`, `*_test.py`)
 
   **Terminal & Git:**
-  - `run_command(workspace_id, command)` → execute shell command in workspace dir, return stdout/stderr/exit_code. Tetragon enforces process allow-list.
+  - `run_command(workspace_id, command)` → execute shell command in workspace dir via `asyncio.create_subprocess_shell`, return stdout/stderr/exit_code. Tetragon enforces process allow-list.
   - `git_status(workspace_id)` → `git status --porcelain`, return working tree status
   - `git_diff(workspace_id)` → `git diff`, return unified diff of unstaged changes
-  - `git_commit(workspace_id, message)` → `git add -A && git commit -m "<message>"`, return commit hash
+  - `git_commit(workspace_id, message)` → `git add . && git commit -m "<message>"`, return commit hash (uses `git add .` instead of `git add -A` to respect .gitignore)
   - `git_push(workspace_id)` → `git push origin HEAD`, return status
   - `gh_pr_create(workspace_id, title, body)` → `gh pr create --title --body`, return PR URL
 
   **Web / Documentation:**
-  - `fetch_url(url)` → HTTP GET (Go `net/http`), convert HTML→plain text (strip tags, extract content), return text. Useful for reading docs and error message lookups. All HTTPS egress allowed via CiliumNetworkPolicy.
+  - `fetch_url(url)` → HTTP GET via `httpx`, convert HTML→plain text using `beautifulsoup4`, return text. Useful for reading docs and error message lookups. All HTTPS egress allowed via CiliumNetworkPolicy.
 
   **Lifecycle:**
   - `workspace_cleanup(workspace_id)` → remove `/workspace/<uuid>/`
 
-**3.2** Create `agents/coding-tools-mcp/Dockerfile` — slim Go binary image:
-- Multi-stage build: Go builder → `debian:bookworm-slim`
-- Install runtime deps: `git`, `gh` (GitHub CLI), `jq`, `openssh-client`, `curl`
+**3.2** Create `agents/coding-tools-mcp/Dockerfile` — Python slim image:
+- Base: `python:3.12-slim-bookworm`
+- Install system deps: `git`, `gh` (GitHub CLI), `jq`, `openssh-client`, `curl`
+- Install Python deps via `pip install --no-cache-dir` from `pyproject.toml`
 - Create non-root user `agent` (UID 1000)
-- Binary: `/usr/local/bin/coding-tools-mcp`
+- Entrypoint: `python -m server`
 
 **3.3** Create `apps/mcp/namespace.yaml` — namespace `mcp`
 
@@ -364,10 +392,10 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              memory: 768Mi
           securityContext:
             runAsUser: 1000
             runAsNonRoot: true
@@ -391,7 +419,7 @@ spec:
       volumes:
         - name: workspace
           emptyDir:
-            sizeLimit: 5Gi
+            sizeLimit: 10Gi
 ```
 
 **3.5** Create `apps/mcp/service.yaml`:
@@ -415,17 +443,48 @@ spec:
 **3.6** Create `apps/mcp/external-secret.yaml` — GitHub PAT for git push + PR creation:
 - Azure KV key: `mcp-github-pat`
 - Secret name: `mcp-github-credentials`, type: `Opaque` with `GITHUB_TOKEN` key
+- **PAT scope**: needs `repo` (full) permission since the agent works on any repository the PAT has access to. Use a fine-grained PAT scoped to the target GitHub user/org.
 
 **3.7** Create `apps/mcp/kustomization.yaml` with all resources
 
 **3.8** Create `apps/_argocd/mcp-app.yaml`, register in `apps/_argocd/kustomization.yaml`
 
-**3.9** CI: GitHub Actions workflow to build + push `ghcr.io/timosur/homelab/coding-tools-mcp` (multi-arch)
+**3.9** CI: GitHub Actions workflow to build + push `ghcr.io/timosur/homelab/coding-tools-mcp`:
+- Trigger: on push to `main` when `agents/coding-tools-mcp/**` changes
+- Multi-arch build with `docker buildx` for `linux/amd64,linux/arm64` (mixed cluster)
+- Push to GHCR with semantic version tags + `latest`
+- Uses `GITHUB_TOKEN` for GHCR authentication (built-in Actions token)
 
 ### Phase 4: kagent Agent CRDs & Skills
 
-**4.1** Create `apps/agents/model-configs.yaml` — Multiple ModelConfig CRDs (ProductHub selects per task):
+**4.1** Create `apps/agents/model-configs.yaml` — Three ModelConfig CRDs for the models available on Ollama:
 ```yaml
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: devstral
+  namespace: agents
+spec:
+  apiKeySecretKey: OPENAI_API_KEY
+  apiKeySecret: kagent-ollama-dummy
+  model: devstral:latest
+  provider: Ollama
+  ollama:
+    host: http://agentgateway-proxy.agentgateway-system.svc:80/ollama
+---
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: ollama-mistral
+  namespace: agents
+spec:
+  apiKeySecretKey: OPENAI_API_KEY
+  apiKeySecret: kagent-ollama-dummy
+  model: mistral:7b
+  provider: Ollama
+  ollama:
+    host: http://agentgateway-proxy.agentgateway-system.svc:80/ollama
+---
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
 metadata:
@@ -438,23 +497,24 @@ spec:
   provider: Ollama
   ollama:
     host: http://agentgateway-proxy.agentgateway-system.svc:80/ollama
----
+```
+Default coding-agent uses `devstral` (Mistral's coding model, 14GB) — best tool-calling and code generation capability. Use `ollama-mistral` for medium tasks, `ollama-nano` for simple tasks. Model can be overridden per session via kagent API `model_override` parameter.
+
+**4.2** Create `apps/agents/remote-mcp-server.yaml` — RemoteMCPServer CRD so kagent can discover the coding tools MCP server:
+```yaml
 apiVersion: kagent.dev/v1alpha2
-kind: ModelConfig
+kind: RemoteMCPServer
 metadata:
-  name: ollama-large
+  name: coding-tools-mcp
   namespace: agents
 spec:
-  apiKeySecretKey: OPENAI_API_KEY
-  apiKeySecret: kagent-ollama-dummy
-  model: <larger-model-tbd>  # e.g. qwen2.5-coder:7b, codellama:13b
-  provider: Ollama
-  ollama:
-    host: http://agentgateway-proxy.agentgateway-system.svc:80/ollama
+  url: http://coding-tools-mcp.mcp.svc.cluster.local/mcp
+  protocol: STREAMABLE_HTTP
+  timeout: 120s
+  sseReadTimeout: 10m0s
 ```
-ProductHub specifies which agent (and thus which ModelConfig) to invoke per task based on complexity. Start with `ollama-nano` for simple tasks. Add larger models to Ollama and create corresponding ModelConfigs as needed.
 
-**4.2** Create `apps/agents/coding-agent.yaml` — Agent CRD:
+**4.3** Create `apps/agents/coding-agent.yaml` — Agent CRD:
 ```yaml
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -469,7 +529,7 @@ spec:
   type: Declarative
   declarative:
     runtime: go
-    modelConfig: ollama-nano  # Default; ProductHub can invoke different agent variants
+    modelConfig: devstral  # Default to best coding model; override per session via model_override
     systemMessage: |
       You are a coding agent with a full local workspace. When given a coding task:
 
@@ -496,8 +556,8 @@ spec:
       - type: McpServer
         mcpServer:
           name: coding-tools-mcp
-          namespace: mcp
-          kind: Service
+          kind: RemoteMCPServer
+          apiGroup: kagent.dev
           toolNames:
             - workspace_init
             - read_file
@@ -526,7 +586,7 @@ spec:
         compactionInterval: 5
 ```
 
-**4.3** Create `agents/coding-tools-mcp/skills/` directory with markdown skill files:
+**4.4** Create `agents/coding-tools-mcp/skills/` directory with markdown skill files:
 - `pr-workflow.md` — PR creation conventions, commit message format, branch naming
 - `code-review.md` — review criteria, what to check for, comment style
 - `task-decomposition.md` — how to break down complex tasks, when to split PRs
@@ -551,12 +611,12 @@ spec:
 
 - **Process enforcement** (`kprobe` on `execve`): allow-list only
   - `/usr/bin/git`, `/usr/bin/gh`, `/bin/bash`, `/bin/sh`, `/usr/bin/jq`
-  - `/usr/local/bin/coding-tools-mcp`
+  - `/usr/local/bin/python3`, `/usr/local/bin/python`
   - Kill any process not in the allow-list (`sigkill` action)
-  - Note: `search_files` and `fetch_url` are implemented in Go (no external binaries)
+  - Note: `search_files` and `fetch_url` are implemented in Python (no external binaries needed for those)
 
 - **File access enforcement** (`kprobe` on `open/openat`):
-  - Read-only: `/usr`, `/lib`, `/etc`, `/proc`, `/dev/urandom`
+  - Read-only: `/usr`, `/lib`, `/etc`, `/proc`, `/dev/urandom`, `/usr/local/lib/python3.12`
   - Read-write: `/workspace`, `/tmp`, `/dev/null`
   - Deny: everything else (block writes to system paths)
 
@@ -575,9 +635,9 @@ spec:
 - **Egress deny**: all internet, all RFC1918 not in allow-list
 - **Ingress allow**:
   - From `envoy-gateway-system` namespace (kagent UI exposed on home network via HTTPRoute)
-  - From `envoy-gateway-internet-system` namespace (if ProductHub accesses kagent API from internet)
   - Note: internal pod-to-pod within agents namespace (engine ↔ postgres) is allowed by selector
 - **Ingress deny**: all else
+- **Note**: Ensure the clusterwide default-deny ingress policy (in `networking/cilium-network-policies/`) excludes the `agents`, `mcp`, and `agentgateway-system` namespaces, or that these namespace-scoped allow policies take precedence.
 
 **5b.2** Create `apps/agents/tetragon-policy.yaml` — TracingPolicy for kagent pods:
 
@@ -594,43 +654,73 @@ spec:
 
 - **No network enforcement** — Cilium handles L3/L4
 
-**5b.3** Update `apps/wol-proxy/allow-ingress-from-open-webui.yaml` → extend to also allow ingress from `agentgateway-system` namespace on port 11434 (kagent engine routes LLM traffic via AgentGateway → wol-proxy)
+**5b.3** Create `networking/httproutes/home/agents.yaml` — HTTPRoute to expose kagent UI on home network:
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: agents
+  namespace: agents
+spec:
+  parentRefs:
+    - name: home
+      namespace: envoy-gateway-home
+  hostnames:
+    - agents.home.timosur.com
+  rules:
+    - backendRefs:
+        - name: kagent-ui
+          port: 8080
+```
+Register in `networking/httproutes/home/kustomization.yaml`.
 
-### Phase 6: ProductHub Integration
+**5b.4** Update `apps/wol-proxy/allow-ingress-from-open-webui.yaml` → extend to also allow ingress from `agentgateway-system` namespace on port 11434 (kagent engine routes LLM traffic via AgentGateway → wol-proxy)
 
-**6.1** ProductHub talks to **kagent API** instead of creating raw K8s Jobs:
-- Send coding task as a conversation to kagent agent session (REST)
-- Message format: `"Implement the following task on repo <url>, branch <name>: <description>"`
-- kagent agent processes asynchronously
-- ProductHub polls session status for completion
+### Phase 6: Interim Workflow (kagent UI — no ProductHub yet)
 
-**6.2** ProductHub MCP Server (optional) — runs in `mcp` namespace:
-- Registered as kagent `MCPServer` CRD (kagent manages lifecycle)
-- OR as `AgentgatewayBackend` in AgentGateway
+ProductHub does not exist yet. Phases 1-5 deliver a fully functional agent platform accessible via **kagent's built-in web UI**.
+
+**6.1** Interim task submission workflow:
+- Access kagent UI at `agents.home.timosur.com` (HTTPRoute from Phase 5b.3)
+- Create a new chat session with the `coding-agent`
+- Send task as a message: `"Implement the following task on repo <url>, branch <name>: <description>"`
+- Monitor execution in the conversation viewer (tool call traces, HITL approval gates)
+- Agent creates PR on GitHub when done
+
+**6.2** kagent API details (for future ProductHub integration):
+- `POST /api/sessions` → create a new session (returns session ID)
+- `POST /a2a/{namespace}/{agent-name}/task` → send task with **SSE streaming** response
+  - Payload: `{ "app_name": "coding-agent", "message": "<task>", "model_override": "devstral" }`
+  - Response: Server-Sent Events stream with `TaskStatusUpdate` messages (tool execution, message chunks, approval requests, completion)
+- ProductHub will need to consume SSE streams, not poll — design for this when building it
+
+**6.3** ProductHub MCP Server (future) — runs in `mcp` namespace when ProductHub is built:
+- Registered as kagent `RemoteMCPServer` CRD
 - Tools: `get_task`, `update_task_status`, `post_comment`, `get_prd`
 - Allows coding agent to query ProductHub for task context during execution
 
 ### Phase 7: WoL Integration
 
-**7.1** Before sending a task, ProductHub calls wol-proxy health endpoint to ensure GPU node is awake
-- If GPU node is down, wol-proxy wakes it (existing functionality)
-- ProductHub waits for Ollama to be ready before creating session
+**7.1** wol-proxy already handles Wake-on-LAN transparently:
+- Any request to Ollama via AgentGateway → wol-proxy triggers WoL if GPU node is down
+- No special handling needed for task submission — wol-proxy manages the wake + readiness check
+- Existing 30-min idle timeout keeps GPU node awake during agent sessions
 
-**7.2** Fallback: kagent engine retries Ollama connection with exponential backoff
+**7.2** Fallback: kagent engine retries Ollama connection with exponential backoff (if GPU node takes time to wake)
 
 ## Key CRDs
 
-| CRD                   | Source                    | Purpose                                                     |
-| --------------------- | ------------------------- | ----------------------------------------------------------- |
-| `Agent`               | kagent                    | Declarative agent definition (prompt, tools, skills, model) |
-| `ModelConfig`         | kagent                    | LLM provider config (Ollama host, model name)               |
-| `MCPServer`           | kagent/kmcp               | MCP tool server lifecycle management                        |
-| `RemoteMCPServer`     | kagent                    | Ref to built-in kagent tool servers                         |
-| `AgentgatewayBackend` | AgentGateway              | LLM/MCP backend routing target                              |
-| `AgentgatewayPolicy`  | AgentGateway              | Token budgets, rate limits                                  |
-| `TracingPolicy`       | Tetragon                  | eBPF process/file enforcement                               |
-| `CiliumNetworkPolicy` | Cilium (existing)         | L3/L4 network isolation                                     |
-| `Cluster`             | CloudNative-PG (existing) | PostgreSQL instances                                        |
+| CRD                   | Source                    | Purpose                                                              |
+| --------------------- | ------------------------- | -------------------------------------------------------------------- |
+| `Agent`               | kagent                    | Declarative agent definition (prompt, tools, skills, model)          |
+| `ModelConfig`         | kagent                    | LLM provider config (Ollama host, model name)                        |
+| `MCPServer`           | kagent/kmcp (v1alpha1)    | Deploy MCP server into K8s (kmcp-managed lifecycle)                  |
+| `RemoteMCPServer`     | kagent (v1alpha2)         | Reference to externally-running MCP server (URL + protocol)          |
+| `AgentgatewayBackend` | AgentGateway              | LLM/MCP backend routing target                                       |
+| `TrafficPolicy`       | AgentGateway              | Token rate limiting, token budgets per consumer                      |
+| `TracingPolicy`       | Tetragon                  | eBPF process/file enforcement                                        |
+| `CiliumNetworkPolicy` | Cilium (existing)         | L3/L4 network isolation                                              |
+| `Cluster`             | CloudNative-PG (existing) | PostgreSQL instances                                                 |
 
 ## Files to Create
 
@@ -648,17 +738,22 @@ spec:
 - `apps/_argocd/agentgateway-crds-app.yaml`
 - `apps/_argocd/agentgateway-app.yaml`
 
-### kagent (Phase 2)
+### kagent (Phase 2 + 4)
+
 - `apps/agents/kustomization.yaml`
 - `apps/agents/postgres.yaml`
 - `apps/agents/external-secret.yaml`
+- `apps/agents/ollama-dummy-secret.yaml`
 - `apps/agents/model-configs.yaml`
+- `apps/agents/remote-mcp-server.yaml`
 - `apps/agents/coding-agent.yaml`
 - `apps/_argocd/kagent-crds-app.yaml`
 - `apps/_argocd/kagent-app.yaml`
 
 ### Coding Tools MCP Server (Phase 3)
-- `agents/coding-tools-mcp/main.go`
+- `agents/coding-tools-mcp/server.py`
+- `agents/coding-tools-mcp/tools/` (tool modules)
+- `agents/coding-tools-mcp/pyproject.toml`
 - `agents/coding-tools-mcp/Dockerfile`
 - `agents/coding-tools-mcp/skills/pr-workflow.md`
 - `agents/coding-tools-mcp/skills/code-review.md`
@@ -670,35 +765,46 @@ spec:
 - `apps/mcp/kustomization.yaml`
 - `apps/_argocd/mcp-app.yaml`
 
-### Sandboxing (Phase 5)
+### Sandboxing + Networking (Phase 5)
+
 - `apps/mcp/cilium-network-policy.yaml`
 - `apps/mcp/tetragon-policy.yaml`
 - `apps/agents/cilium-network-policy.yaml`
 - `apps/agents/tetragon-policy.yaml`
+- `networking/httproutes/home/agents.yaml`
+
+### CI (Phase 3.9)
+
+- `.github/workflows/coding-tools-mcp.yaml`
 
 ### Files to Modify
+
 - `apps/_argocd/kustomization.yaml` — add tetragon, agentgateway-crds, agentgateway, kagent-crds, kagent, mcp entries (alphabetical)
 - `apps/wol-proxy/allow-ingress-from-open-webui.yaml` — add `agentgateway-system` namespace
-- `apps/open-webui/configmap.yaml` — update `OLLAMA_BASE_URL` to point at AgentGateway (Phase 1b.7)
+- `apps/open-webui/webui-deployment.yaml` — update `OLLAMA_BASE_URL` env var to point at AgentGateway (Phase 1b.7)
+- `networking/httproutes/home/kustomization.yaml` — add `agents.yaml` entry
 
 ## Decisions
 
 - **kagent replaces raw K8s Jobs** — declarative Agent CRDs instead of ephemeral Jobs; kagent controller manages agent pod lifecycle
 - **Single LLM loop, full local workspace** — kagent engine drives coding directly via a custom MCP tool server with file CRUD, regex code search, shell execution, git, GitHub CLI, and web fetching. No wrapper layers, no double LLM overhead. The LLM reasons and calls tools in one loop.
-- **Custom coding-tools-mcp over existing MCP servers** — Existing reference servers (Filesystem, Git, GitHub, Fetch) each run in separate pods and can't share a local workspace filesystem. A single custom Go server provides all capabilities in one pod with a shared `/workspace` volume. Avoids coordinating 4+ separate services.
-- **Go ADK runtime** — ~2s startup vs ~15s for Python, lower resource usage; sufficient for coding tasks
-- **All LLM traffic via AgentGateway** — kagent, Open-WebUI, and ProductHub all route through AgentGateway (→ wol-proxy → Ollama on GPU host). Unified token tracking, rate limiting, and observability across all consumers.
-- **ProductHub selects model per task** — Multiple ModelConfig CRDs (e.g. `ollama-nano`, `ollama-large`). ProductHub invokes the appropriate agent variant based on task complexity. New models added by creating a new ModelConfig + Agent CRD pair.
+- **Custom coding-tools-mcp over existing MCP servers** — Existing reference servers (Filesystem, Git, GitHub, Fetch) each run in separate pods and can't share a local workspace filesystem. A single custom Python server provides all capabilities in one pod with a shared `/workspace` volume. Avoids coordinating 4+ separate services.
+- **Go ADK runtime for kagent engine** — ~2s startup vs ~15s for Python, lower resource usage; sufficient for coding tasks
+- **All LLM traffic via AgentGateway** — kagent and Open-WebUI route through AgentGateway (→ wol-proxy → Ollama on GPU host). Unified token tracking (via TrafficPolicy), rate limiting, and observability across all consumers. ProductHub will be added as a consumer when built.
+- **Three concrete models** — `devstral:latest` (14GB, Mistral's coding model, default), `mistral:7b` (4.4GB, medium), `nemotron-3-nano:4b` (2.8GB, simple tasks). Each has a ModelConfig CRD. Model overrideable per session via kagent API `model_override` parameter.
 - **Single-task execution only** — One agent session at a time. No concurrency. GPU can't parallelize inference effectively. Keep it simple.
 - **No agent memory (no pgvector)** — kagent postgres stores conversations only. Long-term memory via pgvector skipped for now. Can be added later.
-- **Go built-in search, no ripgrep** — `search_files` uses Go's `regexp` + `filepath.Walk`. No external `rg` binary. Simpler container, simpler Tetragon policy, sufficient for homelab-scale repos.
+- **Python built-in search, no ripgrep** — `search_files` uses Python `re` + `os.walk`. No external `rg` binary. Simpler container, simpler Tetragon policy, sufficient for homelab-scale repos.
 - **All HTTPS egress allowed** — CiliumNetworkPolicy permits all port 443 egress for `fetch_url` to reach arbitrary documentation. RFC1918 denied to prevent lateral movement.
-- **Tetragon for process + file** — process allow-listing (git, gh, bash, sh, jq, coding-tools-mcp) and file access control (r/w only in /workspace and /tmp); no network rules (delegated to Cilium + AgentGateway). No ripgrep or curl binaries — search and HTTP are Go-native.
+- **Tetragon for process + file** — process allow-listing (git, gh, bash, sh, jq, python3) and file access control (r/w only in /workspace and /tmp); no network rules (delegated to Cilium + AgentGateway). No ripgrep or curl binaries — search and HTTP are Python-native (`re`/`os.walk`, `httpx`/`beautifulsoup4`).
 - **Skip agentregistry** — GitOps is sufficient governance at homelab scale; can add later if agent/skill catalog grows
 - **Sandboxing on both namespaces** — `mcp` namespace: restrictive (process allow-list, file access control, all HTTPS egress, RFC1918 denied). `agents` namespace: infrastructure-grade (network restricted to AgentGateway + mcp + K8s API + postgres, process restricted to Go binaries + postgres, no internet egress). Defense in depth — even if kagent is compromised, lateral movement is limited.
-- **kmcp for MCP server** — integrated with kagent, native Go, lower footprint vs Python FastMCP
+- **Python + FastMCP for MCP server** — FastMCP is the official high-level Python SDK for MCP. Provides decorator-based tool registration, built-in Streamable HTTP transport, and simple async patterns. Faster to develop and iterate vs Go. Slightly higher memory footprint (~256MB vs ~128MB) but acceptable for a single-replica tool server.
 - **Coding tools are pure side-effects** — MCP server never calls the LLM; it only executes file/git/shell/fetch operations. All reasoning stays in kagent engine.
-- **Open-WebUI migrated to AgentGateway** — `OLLAMA_BASE_URL` updated to point at AgentGateway in Phase 1b. Unifies all LLM consumers under one observability layer.
+- **Open-WebUI migrated to AgentGateway** — `OLLAMA_BASE_URL` in `webui-deployment.yaml` updated to point at AgentGateway in Phase 1b. Unifies all LLM consumers under one observability layer.
+- **Interim workflow via kagent UI** — ProductHub does not exist yet. Phases 1-5 are self-contained and usable via kagent's built-in web UI at `agents.home.timosur.com`. ProductHub integration (Phase 6.2-6.3) is documented for future implementation.
+- **Multi-arch container builds** — Mixed cluster (x86_64 + arm64) requires `linux/amd64,linux/arm64` builds for the coding-tools-mcp image. GitHub Actions with `docker buildx`.
+- **No observability stack yet** — AgentGateway supports OTel metrics/traces/logs, but no OTel collector or Prometheus/Grafana is deployed in this plan. Can be added as a follow-up.
 
 ## Open Questions
 
@@ -710,12 +816,18 @@ _All original open questions have been resolved and moved to Decisions above._
 
 2. **Concurrent coding tasks** → **Resolved: single-task only.** One agent session at a time. GPU can't parallelize inference effectively on a single Ollama instance. Keep it simple.
 
-3. **Open-WebUI migration** → **Resolved: yes, migrate now (Phase 1b.7).** Update `OLLAMA_BASE_URL` to point at AgentGateway. All LLM consumers (kagent, Open-WebUI, ProductHub) route through AgentGateway for unified token tracking.
+3. **Open-WebUI migration** → **Resolved: yes, migrate now (Phase 1b.7).** Update `OLLAMA_BASE_URL` in `webui-deployment.yaml` to point at AgentGateway. All LLM consumers route through AgentGateway for unified token tracking.
 
 4. **kagent database with pgvector** → **Resolved: skip agent memory for now.** CloudNative-PG for kagent conversation store only, no `pgvector` extension. Memory can be added later when needed.
 
-5. **Model selection** → **Resolved: ProductHub decides per task.** Multiple ModelConfig CRDs (e.g. `ollama-nano`, `ollama-large`). ProductHub selects which agent to invoke based on task complexity. AgentGateway routes to the right Ollama model backend.
+5. **Model selection** → **Resolved: three concrete models.** `devstral:latest` (default, best for coding), `mistral:7b` (medium), `nemotron-3-nano:4b` (simple). Overrideable per session via kagent API `model_override`. ProductHub model selection is a future enhancement.
 
 6. **fetch_url egress scope** → **Resolved: allow all HTTPS egress.** Simpler CiliumNetworkPolicy — all port 443 traffic permitted. RFC1918 still denied to prevent lateral movement.
 
-7. **ripgrep vs built-in search** → **Resolved: Go built-in `regexp` + `filepath.Walk`.** No external `rg` binary dependency. Simpler container image, simpler Tetragon policy. Sufficient performance for homelab-scale repos.
+7. **ripgrep vs built-in search** → **Resolved: Python built-in `re` + `os.walk`.** No external `rg` binary dependency. Simpler container image, simpler Tetragon policy. Sufficient performance for homelab-scale repos.
+
+8. **Token budgets / rate limiting** → **Resolved: use TrafficPolicy CRD (not AgentgatewayPolicy).** AgentgatewayPolicy handles prompt guards and model aliases. TrafficPolicy handles token bucket rate limiting per consumer.
+
+9. **MCP server tool reference** → **Resolved: use RemoteMCPServer CRD.** kagent Agent CRD references tools via `kind: RemoteMCPServer` (not `kind: Service`). A `RemoteMCPServer` CRD in the agents namespace points to the coding-tools-mcp service URL.
+
+10. **Task entry point without ProductHub** → **Resolved: kagent built-in UI.** Phases 1-5 are self-contained. Tasks submitted via kagent web UI at `agents.home.timosur.com`. ProductHub integration documented for future.
