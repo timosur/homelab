@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: oci://cr.agentgateway.dev/charts
+    repoURL: oci://cr.agentgateway.dev/charts/agentgateway-crds
     chart: agentgateway-crds
     targetRevision: 1.0.1
   destination:
