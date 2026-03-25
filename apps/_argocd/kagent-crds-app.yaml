@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds
     chart: kagent-crds
-    targetRevision: v0.8.0
+    targetRevision: 0.8.0
   destination:
     server: https://kubernetes.default.svc
     namespace: agents

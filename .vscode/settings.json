@@ -5,6 +5,8 @@
     "kubectl exec": true,
     "awk": true,
     "kubectl top": true,
-    "kubectl describe": true
+    "kubectl describe": true,
+    "kubectl config": true,
+    "ssh": true
   }
 }
