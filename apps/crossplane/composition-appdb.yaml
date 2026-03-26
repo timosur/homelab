@@ -89,7 +89,7 @@ spec:
             ---
             apiVersion: meta.gotemplating.fn.crossplane.io/v1alpha1
             kind: CompositeConnectionDetails
-            {{ if .observed.resources.role }}
+            {{ if and .observed.resources.role .observed.resources.role.connectionDetails }}
             {{ $roleSecret := .observed.resources.role.connectionDetails }}
             data:
               host: {{ "central-postgres-rw.postgres.svc.cluster.local" | b64enc }}
