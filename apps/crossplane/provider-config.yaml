@@ -6,9 +6,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
+  sslMode: disable
   credentials:
-    source: PostgreSQLConnectionString
-    connectionStringSecretRef:
+    source: PostgreSQLConnectionSecret
+    connectionSecretRef:
       namespace: postgres
       name: central-postgres-provider-connection
-      key: connection-string
