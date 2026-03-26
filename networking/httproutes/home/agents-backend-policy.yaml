@@ -1,0 +1,14 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: agents-streaming-timeout
+  namespace: agents
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: agents
+  timeout:
+    http:
+      requestTimeout: 600s
+      connectionIdleTimeout: 600s
