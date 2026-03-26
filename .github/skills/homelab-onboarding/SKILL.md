@@ -2,12 +2,13 @@
 name: homelab-onboarding
 description: >-
   End-to-end onboarding of new applications into the K3s homelab cluster. Creates all Kubernetes
-  manifests (Kustomize), ArgoCD Application CRDs, HTTPRoutes, ExternalSecrets, CloudNative-PG
-  databases, PVCs, ConfigMaps, and optionally scaffolds the app repository with Dockerfiles and
-  GitHub Actions CI/CD. Use this skill whenever someone wants to add a new app, deploy a new
-  service, onboard an application, set up a new project in the homelab, or create Kubernetes
-  manifests for the homelab cluster. Also use when the user mentions "new app", "deploy app",
-  "add service to homelab", "onboard", or wants to scaffold any part of the homelab app structure.
+  manifests (Kustomize), ArgoCD Application CRDs, HTTPRoutes, ExternalSecrets, Crossplane
+  AppDBClaim database provisioning, PVCs, ConfigMaps, and optionally scaffolds the app repository
+  with Dockerfiles and GitHub Actions CI/CD. Use this skill whenever someone wants to add a new
+  app, deploy a new service, onboard an application, set up a new project in the homelab, or
+  create Kubernetes manifests for the homelab cluster. Also use when the user mentions "new app",
+  "deploy app", "add service to homelab", "onboard", or wants to scaffold any part of the homelab
+  app structure.
 ---
 
 # Homelab App Onboarding
@@ -45,7 +46,9 @@ that aren't relevant based on earlier answers.
    If yes, capture the domain name — this requires adding listeners to the internet gateway.
 
 6. **Database** — does the app need PostgreSQL?
-   - If yes: database name (default: `app`), storage size (default: `10Gi`)
+   - If yes: database name (default: `app`), role name (default: same as app name)
+   - Does the app need any PostgreSQL extensions? (e.g., `vector` for pgvector)
+   - The database is provisioned on the central shared CNPG cluster via Crossplane AppDBClaim
 
 7. **Secrets** — does the app need secrets from Azure Key Vault?
    - If yes: list of secret keys the app needs (e.g., `API_KEY`, `DATABASE_PASSWORD`)
@@ -79,7 +82,7 @@ Before generating files, present a summary of what will be created:
 - apps/<app-name>/kustomization.yaml
 - apps/<app-name>/configmap.yaml          (if env vars needed)
 - apps/<app-name>/external-secret.yaml    (if secrets needed)
-- apps/<app-name>/postgres.yaml           (if database needed)
+- apps/<app-name>/appdb.yaml              (if database needed)
 - apps/<app-name>/pvc.yaml                (if storage needed)
 - apps/<app-name>/cronjob.yaml            (if cronjob needed)
 - apps/_argocd/<app-name>-app.yaml
@@ -161,8 +164,23 @@ access from internet-exposed pods.
 Azure Key Vault keys follow the pattern `<app-name>-<secret-key-kebab>`. For example, if the
 app is `my-app` and needs `API_KEY`, the Azure KV key is `my-app-api-key`.
 
-For PostgreSQL credentials, always create a separate ExternalSecret that produces a
-`kubernetes.io/basic-auth` typed secret.
+PostgreSQL credentials are **NOT** stored in Azure Key Vault. They are automatically provisioned
+by Crossplane via the `AppDBClaim` resource, which creates a `<app-name>-db-connection` secret
+in the app's namespace with keys: `host`, `port`, `username`, `password`, `dbname`, `sslmode`,
+`uri`.
+
+### Database provisioning (Crossplane AppDBClaim)
+
+All new apps use the central shared CNPG cluster (`central-postgres` in namespace `postgres`)
+via Crossplane self-service provisioning. Create an `appdb.yaml` with an `AppDBClaim` resource.
+Crossplane automatically provisions the PostgreSQL role, database, optional extensions, and a
+connection secret (`<app-name>-db-connection`) in the app's namespace.
+
+The deployment should reference the Crossplane-managed secret for DB credentials:
+- Individual `env` entries with `secretKeyRef` pointing to `<app-name>-db-connection`
+- DB host in the ConfigMap: `central-postgres-rw.postgres.svc.cluster.local`
+
+See the n8n app (`apps/n8n/`) as the reference implementation.
 
 ### Kustomization updates
 
@@ -186,11 +204,14 @@ After generating all files, remind the user of manual steps they still need to d
 ### Before deploying:
 - [ ] Add secrets to Azure Key Vault (key vault: homelab-timosur)
       Keys to add: <list the Azure KV key names>
+      (Note: DB credentials are NOT needed in AKV — Crossplane provisions them automatically)
 - [ ] Build and push Docker images (if new app repo)
 - [ ] Update image SHA digests in deployment.yaml once images are built
 
 ### After deploying (ArgoCD will sync automatically on git push):
 - [ ] Verify ArgoCD shows the app as synced and healthy
+- [ ] Verify AppDBClaim is ready (if database): kubectl get appdbclaim -n <app-name>
+- [ ] Verify connection secret exists (if database): kubectl get secret <app-name>-db-connection -n <app-name>
 - [ ] Verify pods are running: kubectl get pods -n <app-name>
 - [ ] Test the URL: <app-url>
 - [ ] Verify database connection (if applicable)
