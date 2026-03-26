@@ -13,6 +13,11 @@ spec:
         valuesObject:
           providers:
             default: ollama
+            ollama:
+              provider: Ollama
+              model: devstral:latest
+              config:
+                host: ollama.agentgateway-system.svc.cluster.local:11434
           kmcp:
             enabled: true
           database:

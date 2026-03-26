@@ -1,27 +1,12 @@
-# Headless service + EndpointSlice routing to wol-proxy ollama
+# ExternalName service routing to wol-proxy ollama
 apiVersion: v1
 kind: Service
 metadata:
   name: ollama
   namespace: agentgateway-system
 spec:
-  clusterIP: None
+  type: ExternalName
+  externalName: ollama-service.wol-proxy.svc.cluster.local
   ports:
     - port: 11434
       protocol: TCP
-  selector: {}
----
-apiVersion: discovery.k8s.io/v1
-kind: EndpointSlice
-metadata:
-  name: ollama
-  namespace: agentgateway-system
-  labels:
-    kubernetes.io/service-name: ollama
-addressType: FQDN
-ports:
-  - port: 11434
-    protocol: TCP
-endpoints:
-  - addresses:
-      - ollama-service.wol-proxy.svc.cluster.local
