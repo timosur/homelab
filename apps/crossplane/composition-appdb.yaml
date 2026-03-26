@@ -94,6 +94,9 @@ spec:
               namespace: {{ .observed.composite.resource.spec.appName }}
               annotations:
                 {{ setResourceNameAnnotation "connection-secret" }}
+                {{ if and .observed.resources.role .observed.resources.role.connectionDetails }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                {{ end }}
             {{ if and .observed.resources.role .observed.resources.role.connectionDetails }}
             {{ $roleSecret := .observed.resources.role.connectionDetails }}
             data:
