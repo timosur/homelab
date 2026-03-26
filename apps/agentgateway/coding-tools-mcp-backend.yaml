@@ -5,5 +5,9 @@ metadata:
   namespace: agentgateway-system
 spec:
   mcp:
-    host: coding-tools-mcp.mcp.svc.cluster.local
-    port: 80
+    targets:
+      - name: coding-tools-mcp
+        static:
+          host: coding-tools-mcp.mcp.svc.cluster.local
+          port: 80
+          path: /mcp

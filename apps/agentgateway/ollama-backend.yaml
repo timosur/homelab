@@ -5,11 +5,13 @@ metadata:
   namespace: agentgateway-system
 spec:
   ai:
-    provider:
-      openai:
-        model: nemotron-3-nano:4b
-    host: ollama.agentgateway-system.svc.cluster.local
-    port: 11434
+    groups:
+      - providers:
+          - name: ollama
+            openai:
+              model: nemotron-3-nano:4b
+            host: ollama.agentgateway-system.svc.cluster.local
+            port: 11434
 ---
 # Headless service + EndpointSlice routing to wol-proxy
 apiVersion: v1
