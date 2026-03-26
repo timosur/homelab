@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - bike-weather.yaml
   - bike-weather-auth.yaml
-  - bike-weather-preview.yaml
   - bike-weather-http-redirect.yaml
   - bike-weather-www-redirect.yaml
   - fahrrad-wetter.yaml
