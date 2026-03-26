@@ -10,7 +10,7 @@ Replace all placeholders with actual values. Remove any optional sections that d
 3. [service.yaml](#serviceyaml)
 4. [configmap.yaml](#configmapyaml)
 5. [external-secret.yaml](#external-secretyaml)
-6. [postgres.yaml](#postgresyaml)
+6. [appdb.yaml](#appdbyaml)
 7. [pvc.yaml](#pvcyaml)
 8. [cronjob.yaml](#cronjobyaml)
 9. [kustomization.yaml (app)](#kustomizationyaml-app)
@@ -72,6 +72,18 @@ spec:
                 name: <app-name>-config
             - secretRef:
                 name: <app-name>-secrets
+          # If the app needs a database, add individual env entries for DB credentials:
+          # env:
+          #   - name: <DB_USERNAME_ENV_VAR>
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: <app-name>-db-connection
+          #         key: username
+          #   - name: <DB_PASSWORD_ENV_VAR>
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: <app-name>-db-connection
+          #         key: password
           livenessProbe:
             httpGet:
               path: /health
@@ -152,6 +164,10 @@ metadata:
 data:
   TZ: "Europe/Berlin"
   # Add app-specific env vars here
+  # If the app needs a database, add the central cluster host:
+  # <DB_HOST_ENV_VAR>: "central-postgres-rw.postgres.svc.cluster.local"
+  # <DB_PORT_ENV_VAR>: "5432"
+  # <DB_NAME_ENV_VAR>: "<db-name>"
 ```
 
 ---
@@ -180,75 +196,57 @@ spec:
         key: <app-name>-<secret-key-kebab>
 ```
 
-PostgreSQL credentials (separate ExternalSecret, only if database is needed):
+Note: PostgreSQL credentials are **NOT** managed via ExternalSecret for new apps. They are
+automatically provisioned by Crossplane via the AppDBClaim, which creates a
+`<app-name>-db-connection` secret with keys: `host`, `port`, `username`, `password`, `dbname`,
+`sslmode`, `uri`.
+
+If an app uses a `DATABASE_URL` env var, reference the Crossplane connection secret's `uri` key
+in the Deployment:
 
 ```yaml
----
-apiVersion: external-secrets.io/v1beta1
-kind: ExternalSecret
-metadata:
-  name: <app-name>-postgres-credentials
-  namespace: <app-name>
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: azure-keyvault-store
-    kind: ClusterSecretStore
-  target:
-    name: <app-name>-postgres-credentials
-    template:
-      type: kubernetes.io/basic-auth
-      data:
-        username: "app"
-        password: "{{ .password }}"
-    creationPolicy: Owner
-  data:
-    - secretKey: password
-      remoteRef:
-        key: <app-name>-postgres-password
+env:
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: <app-name>-db-connection
+        key: uri
 ```
 
-Templated DATABASE_URL (combine with app secrets if needed):
-
-```yaml
-  target:
-    name: <app-name>-secrets
-    template:
-      type: Opaque
-      data:
-        DATABASE_URL: "postgresql://app:{{ .password }}@<app-name>-postgres-rw:5432/<db-name>"
-    creationPolicy: Owner
-  data:
-    - secretKey: password
-      remoteRef:
-        key: <app-name>-postgres-password
-```
-
-Note: CloudNative-PG exposes services as `<cluster-name>-rw` for the read-write endpoint.
+If the app needs a non-standard URI scheme (e.g., `postgresql+asyncpg://`), use an ExternalSecret
+template that reads from the Crossplane connection secret instead of Azure Key Vault.
 
 ---
 
-## postgres.yaml
+## appdb.yaml
+
+Crossplane AppDBClaim for provisioning a database on the central shared CNPG cluster:
 
 ```yaml
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
 metadata:
-  name: <app-name>-postgres
+  name: <app-name>-db
   namespace: <app-name>
 spec:
-  instances: 1
-  imageName: postgres:17.2
-  bootstrap:
-    initdb:
-      database: <db-name>
-      owner: app
-      secret:
-        name: <app-name>-postgres-credentials
-  storage:
-    size: <db-storage-size>
-    storageClassName: hcloud-volumes
+  appName: <app-name>
+  databaseName: <db-name>
+  roleName: <role-name>
+  compositionRef:
+    name: appdb-central-postgres
+  # Only if the app needs PostgreSQL extensions:
+  # extensions:
+  #   - name: vector
 ```
+
+Naming rules:
+- `appName` **must** match the app's namespace (Crossplane creates the connection secret there)
+- `databaseName`: the PostgreSQL database name (default: `app`, or use the app name)
+- `roleName`: the PostgreSQL role/user name (default: same as app name)
+- Use underscores in role/database names if needed (e.g., `vinyl_manager`)
+
+Crossplane automatically creates a secret named `<appName>-db-connection` in the app's namespace
+with keys: `host`, `port`, `username`, `password`, `dbname`, `sslmode`, `uri`.
 
 ---
 
@@ -304,15 +302,15 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - external-secret.yaml
-  - postgres.yaml
+  - appdb.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml
   - cronjob.yaml
 ```
 
-Only list files that actually exist. Order: namespace → config → secrets → database → storage →
-deployment → service → cronjob.
+Only list files that actually exist. Order: namespace → config → secrets → database (appdb) →
+storage → deployment → service → cronjob.
 
 ---
 

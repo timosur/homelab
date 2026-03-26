@@ -234,7 +234,6 @@ kubectl logs -n <app> deployment/<app> | tail -20
 | -------------------- | ------- | ------------- | ------------- | ---------------------------------------- | ----------------------------------------------------------------- | ------------------------ |
 | bike-weather-preview | C       | app           | app           | `DB_HOST` (configmap)                    | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
 | bike-weather-auth    | A       | authentik     | authentik     | `AUTHENTIK_POSTGRESQL__HOST` (configmap) | ConfigMap has user, ExternalSecret has password                   | `jit=off` param          |
-| agents               | D       | kagent        | kagent        | ArgoCD Helm values                       | ExternalSecret `kagent-postgres-credentials`                      | Helm-based               |
 | vinyl-manager        | C       | vinyl_manager | vinyl_manager | N/A (URL only)                           | ExternalSecret templates `DATABASE_URL`                           | underscore names         |
 | bike-weather         | C       | app           | app           | `DB_HOST` (configmap)                    | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
 | garden               | A       | garden        | garden        | `DB_HOST` (configmap)                    | ExternalSecret `garden-postgres-password`                         | multi-service app        |
@@ -244,9 +243,10 @@ kubectl logs -n <app> deployment/<app> | tail -20
 
 ### Completed migrations
 
-| App | Status                 | Commit    |
-| --- | ---------------------- | --------- |
-| n8n | Pattern B, scaled to 0 | `aa1c108` |
+| App    | Status                 | Commit    |
+| ------ | ---------------------- | --------- |
+| n8n    | Pattern B, scaled to 0 | `aa1c108` |
+| agents | Pattern D, Helm values | —         |
 
 ---
 

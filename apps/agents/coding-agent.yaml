@@ -58,11 +58,6 @@ spec:
             - gh_pr_create
             - fetch_url
             - workspace_cleanup
-    skills:
-      gitRefs:
-        - url: https://github.com/timosur/homelab.git
-          ref: main
-          path: agents/coding-tools-mcp/skills
     context:
       compaction:
         compactionInterval: 5

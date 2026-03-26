@@ -7,22 +7,6 @@ spec:
   podSelector:
     matchLabels: {}
   kprobes:
-    # Process allow-list: kill anything not in the approved list
-    - call: "sys_execve"
-      syscall: true
-      args:
-        - index: 0
-          type: "string"
-      selectors:
-        - matchArgs:
-            - index: 0
-              operator: "NotIn"
-              values:
-                - "/ko-app/kagent"
-                - "/ko-app/controller"
-                - "/ko-app/ui"
-          matchActions:
-            - action: Sigkill
     # File write access: deny writes outside allowed dirs
     - call: "sys_openat"
       syscall: true
