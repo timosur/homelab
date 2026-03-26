@@ -1,19 +1,4 @@
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayBackend
-metadata:
-  name: ollama
-  namespace: agentgateway-system
-spec:
-  ai:
-    groups:
-      - providers:
-          - name: ollama
-            openai:
-              model: nemotron-3-nano:4b
-            host: ollama.agentgateway-system.svc.cluster.local
-            port: 11434
----
-# Headless service + EndpointSlice routing to wol-proxy
+# Headless service + EndpointSlice routing to wol-proxy ollama
 apiVersion: v1
 kind: Service
 metadata:

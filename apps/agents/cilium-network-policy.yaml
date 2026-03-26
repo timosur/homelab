@@ -27,13 +27,13 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
-    # AgentGateway for LLM inference
+    # Ollama LLM inference (direct via headless service)
     - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: agentgateway-system
       toPorts:
         - ports:
-            - port: "80"
+            - port: "11434"
               protocol: TCP
     # MCP tool server
     - toEndpoints:

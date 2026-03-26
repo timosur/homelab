@@ -9,7 +9,7 @@ spec:
   model: devstral:latest
   provider: Ollama
   ollama:
-    host: http://agentgateway-proxy.agentgateway-system.svc:80/ollama
+    host: http://ollama.agentgateway-system.svc.cluster.local:11434
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
@@ -22,7 +22,7 @@ spec:
   model: mistral:7b
   provider: Ollama
   ollama:
-    host: http://agentgateway-proxy.agentgateway-system.svc:80/ollama
+    host: http://ollama.agentgateway-system.svc.cluster.local:11434
 ---
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig
@@ -35,4 +35,4 @@ spec:
   model: nemotron-3-nano:4b
   provider: Ollama
   ollama:
-    host: http://agentgateway-proxy.agentgateway-system.svc:80/ollama
+    host: http://ollama.agentgateway-system.svc.cluster.local:11434
