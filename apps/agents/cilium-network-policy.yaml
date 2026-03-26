@@ -27,10 +27,10 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
-    # Ollama LLM inference (direct via headless service)
+    # Ollama LLM inference (ExternalName → wol-proxy)
     - toEndpoints:
         - matchLabels:
-            io.kubernetes.pod.namespace: agentgateway-system
+            io.kubernetes.pod.namespace: wol-proxy
       toPorts:
         - ports:
             - port: "11434"
