@@ -6,9 +6,10 @@ metadata:
 spec:
   instances: 1
   enablePDB: false
-  
-  nodeSelector:
-    kubernetes.io/hostname: homelab-amd
+
+  affinity:
+    nodeSelector:
+      kubernetes.io/hostname: homelab-amd
 
   bootstrap:
     initdb:
