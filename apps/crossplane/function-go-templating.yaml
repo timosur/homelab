@@ -2,5 +2,7 @@ apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
 metadata:
   name: crossplane-contrib-function-go-templating
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.7.0

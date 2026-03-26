@@ -2,6 +2,8 @@ apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
   name: appdbs.k8s.homelab.timosur.com
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   group: k8s.homelab.timosur.com
   names:
