@@ -5,7 +5,7 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - external-secret.yaml
-  - postgres.yaml
+  - appdb.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml

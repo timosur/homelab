@@ -1,0 +1,13 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: n8n-db
+  namespace: n8n
+spec:
+  appName: n8n
+  databaseName: n8n
+  roleName: n8n
+  compositionRef:
+    name: appdb-central-postgres
+  writeConnectionSecretToRef:
+    name: n8n-db-connection
