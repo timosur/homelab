@@ -18,11 +18,11 @@ spec:
           database:
             postgres:
               deploy: false
-              host: kagent-postgres-rw.agents.svc.cluster.local
+              host: central-postgres-rw.postgres.svc.cluster.local
               port: 5432
               database: kagent
               secretRef:
-                name: kagent-postgres-credentials
+                name: agents-db-connection
                 usernameKey: username
                 passwordKey: password
     - repoURL: https://github.com/timosur/homelab.git

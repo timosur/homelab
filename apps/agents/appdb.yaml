@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: agents-db
+  namespace: agents
+spec:
+  appName: agents
+  databaseName: kagent
+  roleName: kagent
+  compositionRef:
+    name: appdb-central-postgres
