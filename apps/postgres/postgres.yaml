@@ -6,6 +6,9 @@ metadata:
 spec:
   instances: 1
   enablePDB: false
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: central-postgres-superuser-credentials
 
   affinity:
     nodeSelector:
