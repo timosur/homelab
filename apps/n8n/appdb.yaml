@@ -9,5 +9,3 @@ spec:
   roleName: n8n
   compositionRef:
     name: appdb-central-postgres
-  writeConnectionSecretToRef:
-    name: n8n-db-connection

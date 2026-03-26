@@ -87,8 +87,13 @@ spec:
                 name: central-postgres
             {{ end }}
             ---
-            apiVersion: meta.gotemplating.fn.crossplane.io/v1alpha1
-            kind: CompositeConnectionDetails
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ .observed.composite.resource.spec.appName }}-db-connection
+              namespace: {{ .observed.composite.resource.spec.appName }}
+              annotations:
+                {{ setResourceNameAnnotation "connection-secret" }}
             {{ if and .observed.resources.role .observed.resources.role.connectionDetails }}
             {{ $roleSecret := .observed.resources.role.connectionDetails }}
             data:
@@ -99,4 +104,6 @@ spec:
               dbname: {{ .observed.composite.resource.spec.databaseName | b64enc }}
               sslmode: {{ "disable" | b64enc }}
               uri: {{ printf "postgresql://%s:%s@central-postgres-rw.postgres.svc.cluster.local:5432/%s?sslmode=disable" .observed.composite.resource.spec.roleName (index $roleSecret "password" | b64dec) .observed.composite.resource.spec.databaseName | b64enc }}
+            {{ else }}
+            data: {}
             {{ end }}
