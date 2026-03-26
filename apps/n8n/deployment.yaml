@@ -4,7 +4,7 @@ metadata:
   name: n8n
   namespace: n8n
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:
