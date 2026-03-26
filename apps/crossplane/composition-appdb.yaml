@@ -89,6 +89,9 @@ spec:
             ---
             apiVersion: gotemplating.fn.crossplane.io/v1beta1
             kind: CompositeConnectionDetails
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: connection-details
             {{ if .observed.resources.role }}
             {{ $roleSecret := .observed.resources.role.connectionDetails }}
             data:
