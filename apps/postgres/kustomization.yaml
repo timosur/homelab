@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - superuser-external-secret.yaml
+  - provider-connection-secret.yaml
+  - postgres.yaml

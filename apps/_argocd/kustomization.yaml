@@ -28,6 +28,7 @@ resources:
   - paperless-app.yaml
   - pi-hole-app.yaml
   - portfolio-app.yaml
+  - postgres-app.yaml
   - wol-proxy-app.yaml
   - kured-app.yaml
   - kagent-crds-app.yaml

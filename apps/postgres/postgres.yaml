@@ -1,0 +1,30 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: central-postgres
+  namespace: postgres
+spec:
+  instances: 1
+  enablePDB: false
+
+  bootstrap:
+    initdb:
+      database: postgres
+      owner: postgres
+      secret:
+        name: central-postgres-superuser-credentials
+
+  storage:
+    size: 100Gi
+    storageClass: hcloud-volumes
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+  monitoring:
+    enablePodMonitor: false

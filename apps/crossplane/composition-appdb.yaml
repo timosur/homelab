@@ -1,0 +1,100 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: appdb-central-postgres
+spec:
+  compositeTypeRef:
+    apiVersion: k8s.homelab.timosur.com/v1
+    kind: AppDB
+  mode: Pipeline
+  pipeline:
+    - step: create-database-and-role
+      functionRef:
+        name: crossplane-contrib-function-go-templating
+      input:
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |
+            ---
+            apiVersion: postgresql.sql.crossplane.io/v1alpha1
+            kind: Role
+            metadata:
+              name: {{ .observed.composite.resource.spec.roleName }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: role
+                {{ if .observed.resources.role }}
+                {{ if eq (.observed.resources.role | getResourceCondition "Ready").Status "True" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                {{ end }}
+                {{ end }}
+              labels:
+                k8s.homelab.timosur.com/app: {{ .observed.composite.resource.spec.appName }}
+            spec:
+              forProvider:
+                privileges:
+                  bypassRls: false
+                  createDb: false
+                  createRole: false
+                  inherit: true
+                  login: true
+                  replication: false
+                  superUser: false
+              writeConnectionSecretToRef:
+                name: {{ .observed.composite.resource.spec.appName }}-role-secret
+                namespace: {{ .observed.composite.resource.spec.appName }}
+              providerConfigRef:
+                name: central-postgres
+            ---
+            apiVersion: postgresql.sql.crossplane.io/v1alpha1
+            kind: Database
+            metadata:
+              name: {{ .observed.composite.resource.spec.databaseName }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: database
+                {{ if .observed.resources.database }}
+                {{ if eq (.observed.resources.database | getResourceCondition "Ready").Status "True" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                {{ end }}
+                {{ end }}
+              labels:
+                k8s.homelab.timosur.com/app: {{ .observed.composite.resource.spec.appName }}
+            spec:
+              forProvider:
+                allowConnections: true
+                owner: "{{ .observed.composite.resource.spec.roleName }}"
+              providerConfigRef:
+                name: central-postgres
+            {{ range .observed.composite.resource.spec.extensions }}
+            ---
+            apiVersion: postgresql.sql.crossplane.io/v1alpha1
+            kind: Extension
+            metadata:
+              name: {{ $.observed.composite.resource.spec.databaseName }}-{{ .name }}
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: extension-{{ .name }}
+              labels:
+                k8s.homelab.timosur.com/app: {{ $.observed.composite.resource.spec.appName }}
+            spec:
+              forProvider:
+                databaseRef:
+                  name: {{ $.observed.composite.resource.spec.databaseName }}
+                extension: {{ .name }}
+              providerConfigRef:
+                name: central-postgres
+            {{ end }}
+            ---
+            apiVersion: gotemplating.fn.crossplane.io/v1beta1
+            kind: CompositeConnectionDetails
+            {{ if .observed.resources.role }}
+            {{ $roleSecret := .observed.resources.role.connectionDetails }}
+            data:
+              host: {{ "central-postgres-rw.postgres.svc.cluster.local" | b64enc }}
+              port: {{ "5432" | b64enc }}
+              username: {{ .observed.composite.resource.spec.roleName | b64enc }}
+              password: {{ index $roleSecret "password" }}
+              dbname: {{ .observed.composite.resource.spec.databaseName | b64enc }}
+              sslmode: {{ "disable" | b64enc }}
+              uri: {{ printf "postgresql://%s:%s@central-postgres-rw.postgres.svc.cluster.local:5432/%s?sslmode=disable" .observed.composite.resource.spec.roleName (index $roleSecret "password" | b64dec) .observed.composite.resource.spec.databaseName | b64enc }}
+            {{ end }}

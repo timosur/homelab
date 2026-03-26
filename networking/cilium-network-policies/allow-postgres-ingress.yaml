@@ -1,0 +1,27 @@
+# Allow application namespaces to connect to the central PostgreSQL cluster
+# on port 5432. The postgres namespace is excluded from the default-deny
+# policy (via cnpg-system exemption), so this policy explicitly restricts
+# ingress to only port 5432 from pods outside the namespace.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-postgres-ingress
+  namespace: postgres
+spec:
+  endpointSelector: {}
+  ingress:
+    # Allow intra-namespace traffic (CNPG operator, replicas)
+    - fromEndpoints:
+        - {}
+    # Allow from cnpg-system (operator)
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: cnpg-system
+    # Allow from any namespace on PostgreSQL port
+    - toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    # Allow kubelet health probes
+    - fromEntities:
+        - host

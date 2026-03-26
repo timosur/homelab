@@ -1,0 +1,57 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: appdbs.k8s.homelab.timosur.com
+spec:
+  group: k8s.homelab.timosur.com
+  names:
+    kind: AppDB
+    plural: appdbs
+  claimNames:
+    kind: AppDBClaim
+    plural: appdbclaims
+  versions:
+    - name: v1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                appName:
+                  type: string
+                  description: The name of the application
+                databaseName:
+                  type: string
+                  description: The name of the database to create
+                roleName:
+                  type: string
+                  description: The name of the PostgreSQL role (user) to create
+                extensions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                    required:
+                      - name
+                  description: PostgreSQL extensions to install in the database
+              required:
+                - appName
+                - databaseName
+                - roleName
+            status:
+              type: object
+              properties: {}
+  connectionSecretKeys:
+    - host
+    - port
+    - username
+    - password
+    - dbname
+    - sslmode
+    - uri

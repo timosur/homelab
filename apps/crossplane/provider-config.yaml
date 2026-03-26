@@ -1,0 +1,11 @@
+apiVersion: postgresql.sql.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: central-postgres
+spec:
+  credentials:
+    source: PostgreSQLConnectionString
+    connectionStringSecretRef:
+      namespace: postgres
+      name: central-postgres-provider-connection
+      key: connection-string
