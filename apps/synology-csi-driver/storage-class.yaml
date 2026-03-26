@@ -8,6 +8,7 @@ parameters:
   dsm: "192.168.1.26"
   location: "/volume1"
   fsType: "btrfs"
+  formatOptions: "-K"
   protocol: iSCSI
 provisioner: csi.san.synology.com
 reclaimPolicy: Retain
@@ -23,6 +24,7 @@ parameters:
   dsm: "192.168.1.26"
   location: "/volume1"
   fsType: "btrfs"
+  formatOptions: "-K"
   protocol: iSCSI
 provisioner: csi.san.synology.com
 reclaimPolicy: Retain
