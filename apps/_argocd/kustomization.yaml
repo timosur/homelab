@@ -10,6 +10,7 @@ resources:
   - bike-weather-preview-app.yaml
   - cert-manager-app.yaml
   - cloudnative-pg-app.yaml
+  - crossplane-app.yaml
   - envoy-gateway-app.yaml
   - external-secrets-app.yaml
   - garden-app.yaml
