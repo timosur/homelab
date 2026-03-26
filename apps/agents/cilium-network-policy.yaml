@@ -52,11 +52,15 @@ spec:
               protocol: TCP
             - port: "6443"
               protocol: TCP
-    # Internal pod-to-pod within agents namespace (engine ↔ postgres)
+    # Central PostgreSQL cluster
     - toEndpoints:
         - matchLabels:
-            io.kubernetes.pod.namespace: agents
+            io.kubernetes.pod.namespace: postgres
       toPorts:
         - ports:
             - port: "5432"
               protocol: TCP
+    # Internal pod-to-pod within agents namespace (controller ↔ tool servers, etc.)
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: agents

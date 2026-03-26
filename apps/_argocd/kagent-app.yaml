@@ -17,14 +17,32 @@ spec:
             enabled: true
           database:
             postgres:
-              deploy: false
-              host: central-postgres-rw.postgres.svc.cluster.local
-              port: 5432
-              database: kagent
-              secretRef:
-                name: agents-db-connection
-                usernameKey: username
-                passwordKey: password
+              urlFile: /etc/kagent/db/uri
+              bundled:
+                enabled: false
+          controller:
+            volumes:
+              - name: db-connection
+                secret:
+                  secretName: agents-db-connection
+            volumeMounts:
+              - name: db-connection
+                mountPath: /etc/kagent/db
+                readOnly: true
+          agents:
+            istio-agent:
+              enabled: false
+            promql-agent:
+              enabled: false
+            argo-rollouts-agent:
+              enabled: false
+            helm-agent:
+              enabled: false
+          tools:
+            grafana-mcp:
+              enabled: false
+            querydoc:
+              enabled: false
     - repoURL: https://github.com/timosur/homelab.git
       targetRevision: HEAD
       path: apps/agents
