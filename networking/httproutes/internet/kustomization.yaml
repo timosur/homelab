@@ -12,4 +12,5 @@ resources:
   - mealie.yaml
   - n8n.yaml
   - open-webui.yaml
+  - paperless.yaml
   - portfolio.yaml

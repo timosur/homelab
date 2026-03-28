@@ -3,8 +3,7 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - postgres.yaml
-  - external-secret.yaml
+  - appdb.yaml
   - secret.yaml
   - configmap.yaml
   - pvc.yaml

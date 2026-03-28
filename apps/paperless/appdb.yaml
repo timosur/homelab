@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: paperless-db
+  namespace: paperless
+spec:
+  appName: paperless
+  databaseName: paperless
+  roleName: paperless
+  compositionRef:
+    name: appdb-central-postgres
