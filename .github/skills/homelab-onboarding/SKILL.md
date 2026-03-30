@@ -55,8 +55,8 @@ that aren't relevant based on earlier answers.
    - Each will be stored in Azure Key Vault as `<app-name>-<secret-key-kebab>`
 
 8. **Persistent storage** — does the app need a PVC?
-   - If yes: storage size, storage class (`hcloud-volumes` default, or `storage-box-smb` for
-     large shared data)
+   - If yes: storage size, storage class (`homelab-smb` default, or `homelab-iscsi` for
+     iSCSI-backed storage)
 
 9. **Environment variables** — any non-secret config the app needs (ConfigMap)?
    - `TZ: Europe/Berlin` is always included by default
@@ -143,6 +143,7 @@ volume mount conflicts during rolling updates.
 ### Probes
 
 Every container must have `livenessProbe` and `readinessProbe`. Defaults:
+
 - HTTP GET to `/health` (or `/` for frontend/nginx containers)
 - `initialDelaySeconds: 30` / `periodSeconds: 30` for liveness
 - `initialDelaySeconds: 10` / `periodSeconds: 10` for readiness
@@ -150,6 +151,7 @@ Every container must have `livenessProbe` and `readinessProbe`. Defaults:
 ### Resources
 
 Every container must have `resources.requests` and `resources.limits`. Sensible defaults:
+
 - Backend: requests `128Mi`/`100m`, limits `512Mi`/`500m`
 - Frontend (nginx): requests `64Mi`/`50m`, limits `256Mi`/`250m`
 
@@ -177,6 +179,7 @@ Crossplane automatically provisions the PostgreSQL role, database, optional exte
 connection secret (`<app-name>-db-connection`) in the app's namespace.
 
 The deployment should reference the Crossplane-managed secret for DB credentials:
+
 - Individual `env` entries with `secretKeyRef` pointing to `<app-name>-db-connection`
 - DB host in the ConfigMap: `central-postgres-rw.postgres.svc.cluster.local`
 
@@ -219,6 +222,7 @@ After generating all files, remind the user of manual steps they still need to d
 ```
 
 If the app uses a custom domain (not `*.timosur.com`), also remind:
+
 ```
 - [ ] Add DNS records for <custom-domain> pointing to the cluster
 - [ ] Add listener + certificate to networking/gateways/internet/gateway.yaml
@@ -238,6 +242,7 @@ See `references/templates.md` for Dockerfile templates per framework.
 ### GitHub Actions
 
 Generate `.github/workflows/build-and-push-images.yml` with:
+
 - Trigger on push/PR to main + workflow_dispatch
 - Multi-arch build: `linux/amd64,linux/arm64` (the cluster has ARM worker nodes)
 - Push to `ghcr.io/timosur/<app-name>/<service>`
@@ -246,6 +251,7 @@ Generate `.github/workflows/build-and-push-images.yml` with:
 ### docker-compose.yml
 
 Generate a `docker-compose.yml` for local development that mirrors the K8s architecture:
+
 - All services the app needs
 - A PostgreSQL container if the app uses a database
 - Volumes for persistent data

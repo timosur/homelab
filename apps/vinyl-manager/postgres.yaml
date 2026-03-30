@@ -19,4 +19,4 @@ spec:
         name: vinyl-manager-postgres-credentials
   storage:
     size: 100Gi
-    storageClass: storage-box-smb
+    storageClass: homelab-iscsi

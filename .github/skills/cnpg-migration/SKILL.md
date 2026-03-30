@@ -18,7 +18,7 @@ namespace using Crossplane `AppDBClaim` for self-service database provisioning.
 ## Architecture
 
 - **Central cluster**: `central-postgres` in namespace `postgres`, CNPG Cluster with
-  `enableSuperuserAccess: true`, storage on `hcloud-volumes`
+  `enableSuperuserAccess: true`, storage on `homelab-iscsi`
 - **Crossplane self-service**: Apps create an `AppDBClaim` (XRD: `k8s.homelab.timosur.com/v1`).
   Crossplane provisions a Role, Database, optional Extensions, and a connection Secret
   (`<appName>-db-connection`) in the app's namespace

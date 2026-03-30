@@ -33,6 +33,7 @@ K3s homelab cluster managed via GitOps. All infrastructure changes happen throug
 **App of Apps pattern**: `apps/root.yaml` points to `apps/_argocd/`, which contains ArgoCD Application CRDs that each point to an app's manifests in `apps/<app-name>/`. All app manifests use Kustomize.
 
 **Two ArgoCD app types**:
+
 - **Kustomize apps** (most apps): ArgoCD Application points to `apps/<app-name>/` containing raw K8s manifests with a `kustomization.yaml`
 - **Helm + overlay apps** (cert-manager, envoy-gateway): ArgoCD Application uses `sources:` with a Helm chart plus a local overlay path from this repo
 
@@ -40,7 +41,7 @@ K3s homelab cluster managed via GitOps. All infrastructure changes happen throug
 
 **Secrets**: All secrets live in Azure Key Vault and are synced via External Secrets Operator using `ClusterSecretStore` named `azure-keyvault-store`.
 
-**Storage**: Two storage classes — `hcloud-volumes` (Synology iSCSI, default) and `storage-box-smb` (SMB/NAS).
+**Storage**: Two storage classes — `homelab-iscsi` (Synology iSCSI via `csi.san.synology.com`) and `homelab-smb` (SMB via `smb.csi.k8s.io`, default).
 
 **Databases**: PostgreSQL via CloudNative-PG operator. Each app gets its own `Cluster` CRD in `postgres.yaml`.
 
@@ -103,7 +104,7 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true
+      - CreateNamespace=true
 ```
 
 ## Infrastructure Provisioning
