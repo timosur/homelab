@@ -24,8 +24,8 @@ spec:
             - sh
             - -c
             - |
-              echo "Waiting for database at bike-weather-preview-postgres-rw:5432..."
-              until nc -z bike-weather-preview-postgres-rw 5432; do
+              echo "Waiting for database at central-postgres-rw.postgres.svc.cluster.local:5432..."
+              until nc -z central-postgres-rw.postgres.svc.cluster.local 5432; do
                 echo "Database not ready, retrying in 3s..."
                 sleep 3
               done
@@ -40,6 +40,25 @@ spec:
                 name: bike-weather-preview-config
             - secretRef:
                 name: bike-weather-preview-secrets
+          env:
+            - name: DB_HOST
+              value: "central-postgres-rw.postgres.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "app"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: bike-weather-preview-db-connection
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bike-weather-preview-db-connection
+                  key: password
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
           livenessProbe:
             httpGet:
               path: /health

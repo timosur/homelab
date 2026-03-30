@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: bike-weather-preview-db
+  namespace: bike-weather-preview
+spec:
+  appName: bike-weather-preview
+  databaseName: app
+  roleName: app
+  compositionRef:
+    name: appdb-central-postgres

@@ -11,9 +11,7 @@ resources:
   - agent-configmap.yaml
   - agent-external-secret.yaml
   - htpasswd-external-secret.yaml
-  - postgres-external-secret.yaml
-  - postgres-password-secret.yaml
-  - postgres.yaml
+  - appdb.yaml
   - nginx-configmap.yaml
   - backend-deployment.yaml
   - backend-service.yaml

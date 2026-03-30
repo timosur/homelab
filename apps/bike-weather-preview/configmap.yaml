@@ -16,10 +16,9 @@ data:
   AUTHENTIK_AUTH_FLOW_SLUG: "default-authentication-flow"
   AUTHENTIK_RECOVERY_FLOW_SLUG: "bike-weather-preview-recovery"
   # Database
-  DB_HOST: "bike-weather-preview-postgres-rw"
+  DB_HOST: "central-postgres-rw.postgres.svc.cluster.local"
   DB_PORT: "5432"
   DB_NAME: "app"
-  DB_USER: "app"
   # Agent
   AGENT_SERVICE_URL: "http://bike-weather-preview-agent:8001"
   # Turnstile (disabled until real key provisioned)

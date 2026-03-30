@@ -230,23 +230,23 @@ kubectl logs -n <app> deployment/<app> | tail -20
 
 ### Apps remaining to migrate
 
-| App                  | Pattern | DB Name       | Role          | Host Env Var                             | Credential Source                                                 | Special                  |
-| -------------------- | ------- | ------------- | ------------- | ---------------------------------------- | ----------------------------------------------------------------- | ------------------------ |
-| bike-weather-preview | C       | app           | app           | `DB_HOST` (configmap)                    | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
-| bike-weather-auth    | A       | authentik     | authentik     | `AUTHENTIK_POSTGRESQL__HOST` (configmap) | ConfigMap has user, ExternalSecret has password                   | `jit=off` param          |
-| vinyl-manager        | C       | vinyl_manager | vinyl_manager | N/A (URL only)                           | ExternalSecret templates `DATABASE_URL`                           | underscore names         |
-| bike-weather         | C       | app           | app           | `DB_HOST` (configmap)                    | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
-| garden               | A       | garden        | garden        | `DB_HOST` (configmap)                    | ExternalSecret `garden-postgres-password`                         | multi-service app        |
-| mealie               | A       | mealie        | mealie        | `POSTGRES_SERVER` (configmap)            | ExternalSecret `mealie-postgres-password`                         | `max_connections=200`    |
-| open-webui           | C       | openwebui     | webui         | N/A (URL only)                           | ExternalSecret templates `database-url` + `pgvector-db-url`       | needs `vector` extension |
+| App               | Pattern | DB Name       | Role          | Host Env Var                             | Credential Source                                                 | Special                  |
+| ----------------- | ------- | ------------- | ------------- | ---------------------------------------- | ----------------------------------------------------------------- | ------------------------ |
+| bike-weather-auth | A       | authentik     | authentik     | `AUTHENTIK_POSTGRESQL__HOST` (configmap) | ConfigMap has user, ExternalSecret has password                   | `jit=off` param          |
+| vinyl-manager     | C       | vinyl_manager | vinyl_manager | N/A (URL only)                           | ExternalSecret templates `DATABASE_URL`                           | underscore names         |
+| bike-weather      | C       | app           | app           | `DB_HOST` (configmap)                    | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
+| garden            | A       | garden        | garden        | `DB_HOST` (configmap)                    | ExternalSecret `garden-postgres-password`                         | multi-service app        |
+| mealie            | A       | mealie        | mealie        | `POSTGRES_SERVER` (configmap)            | ExternalSecret `mealie-postgres-password`                         | `max_connections=200`    |
+| open-webui        | C       | openwebui     | webui         | N/A (URL only)                           | ExternalSecret templates `database-url` + `pgvector-db-url`       | needs `vector` extension |
 
 ### Completed migrations
 
-| App       | Status                 | Commit    |
-| --------- | ---------------------- | --------- |
-| n8n       | Pattern B, scaled to 0 | `aa1c108` |
-| agents    | Pattern D, Helm values | —         |
-| paperless | Pattern A              | —         |
+| App                  | Status                 | Commit    |
+| -------------------- | ---------------------- | --------- |
+| n8n                  | Pattern B, scaled to 0 | `aa1c108` |
+| agents               | Pattern D, Helm values | —         |
+| paperless            | Pattern A              | —         |
+| bike-weather-preview | Pattern C, scaled to 0 | —         |
 
 ---
 
