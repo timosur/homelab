@@ -11,7 +11,7 @@ data:
         targetHost: 192.168.2.47
         targetPort: 11434
         wolMac: "2c:f0:5d:05:9d:80"
-        wolHost: "192.168.2.100"        
+        wolHost: "192.168.2.100"
         wolBroadcast: "192.168.2.255"
         idleTimeoutMinutes: 30
         wakeTimeoutSeconds: 120
@@ -25,3 +25,28 @@ data:
           /api/tags: '{"models":[]}'
           /api/ps: '{"models":[]}'
           /api/version: '{"version":"0.0.0"}'
+
+    nodeGroups:
+      - name: desktop
+        listenPort: 8080
+        wolMac: "30:9c:23:8a:30:e3"
+        wolHost: "192.168.2.100"
+        wolBroadcast: "192.168.2.255"
+        suspendHost: "192.168.2.241"
+        sshUser: timosur
+        sshKeyPath: /secrets/ssh-key
+        idleTimeoutMinutes: 30
+        wakeTimeoutSeconds: 120
+        backends:
+          - hostname: "docs.home.timosur.com"
+            target: "paperless.paperless.svc.cluster.local:8000"
+          - hostname: "docs.timosur.com"
+            target: "paperless.paperless.svc.cluster.local:8000"
+          - hostname: "finance.home.timosur.com"
+            target: "actual.actual.svc.cluster.local:5006"
+          - hostname: "vinyl.home.timosur.com"
+            target: "vinyl-frontend.vinyl-manager.svc.cluster.local:3000"
+          - hostname: "mealie.timosur.com"
+            target: "mealie.mealie.svc.cluster.local:9000"
+          - hostname: "automate.timosur.com"
+            target: "n8n.n8n.svc.cluster.local:80"

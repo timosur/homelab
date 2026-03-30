@@ -40,13 +40,15 @@ spec:
           ports:
             - containerPort: 11434
               name: ollama
+            - containerPort: 8080
+              name: desktop
           resources:
             requests:
               cpu: 10m
-              memory: 32Mi
+              memory: 48Mi
             limits:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 200m
+              memory: 192Mi
           volumeMounts:
             - name: config
               mountPath: /config

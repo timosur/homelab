@@ -1,0 +1,26 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-desktop-httproutes
+  namespace: wol-proxy
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: paperless
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: actual
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: vinyl-manager
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: mealie
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: n8n
+  to:
+    - group: ""
+      kind: Service
+      name: desktop-proxy

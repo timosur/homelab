@@ -1,0 +1,19 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-ingress-from-envoy-gateways
+  namespace: wol-proxy
+spec:
+  endpointSelector:
+    matchLabels:
+      app: wol-proxy
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-internet-system
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
