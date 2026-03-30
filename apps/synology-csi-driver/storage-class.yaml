@@ -6,6 +6,7 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "false"
 parameters:
   dsm: "192.168.1.26"
+  formatOptions: "-K"
   fsType: "btrfs"
   location: "/volume1"
   protocol: iSCSI
