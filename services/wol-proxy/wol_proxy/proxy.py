@@ -5,7 +5,7 @@ import time
 
 from aiohttp import ClientSession, ClientTimeout, web
 
-from .config import BackendConfig
+from .config import BackendConfig, NodeGroupConfig, NodeGroupBackend
 from .wol import send_wol_packet
 
 log = logging.getLogger("wol-proxy")
@@ -234,4 +234,203 @@ class ProxyBackend:
                     await resp.write_eof()
                 except (ConnectionResetError, ConnectionError):
                     log.info("[%s] Client disconnected during streaming", self.cfg.name)
+                return resp
+
+
+class NodeGroupProxy:
+    """Host-based HTTP proxy for a group of apps sharing one physical node."""
+
+    def __init__(self, cfg: NodeGroupConfig) -> None:
+        self.cfg = cfg
+        self._last_activity = time.monotonic()
+        self._state = "sleeping"  # sleeping | waking | ready
+        self._wake_lock = asyncio.Lock()
+        self._host_map: dict[str, NodeGroupBackend] = {
+            b.hostname: b for b in cfg.backends
+        }
+        # Use first backend or explicit health_check_host for node liveness
+        if cfg.health_check_host:
+            h, p = cfg.health_check_host.rsplit(":", 1)
+            self._health_host = h
+            self._health_port = int(p)
+        elif cfg.backends:
+            self._health_host = cfg.backends[0].target_host
+            self._health_port = cfg.backends[0].target_port
+        else:
+            self._health_host = ""
+            self._health_port = 0
+
+    async def check_node_health(self) -> bool:
+        """TCP connect to any backend service to check if node is up."""
+        if not self._health_host:
+            return False
+        try:
+            _, writer = await asyncio.wait_for(
+                asyncio.open_connection(self._health_host, self._health_port),
+                timeout=2,
+            )
+            writer.close()
+            await writer.wait_closed()
+            return True
+        except (OSError, asyncio.TimeoutError):
+            return False
+
+    async def wake_and_wait(self) -> None:
+        async with self._wake_lock:
+            if self._state == "ready":
+                return
+            self._state = "waking"
+            await send_wol_packet(
+                self.cfg.wol_mac,
+                self.cfg.name,
+                self.cfg.wol_host,
+                self.cfg.ssh_user,
+                self.cfg.ssh_key_path,
+                self.cfg.wol_broadcast,
+            )
+            deadline = time.monotonic() + self.cfg.wake_timeout_seconds
+            while time.monotonic() < deadline:
+                await asyncio.sleep(3)
+                if await self.check_node_health():
+                    self._state = "ready"
+                    self.touch()
+                    log.info("[%s] Node is now awake", self.cfg.name)
+                    return
+            log.error(
+                "[%s] Node did not wake within %ds",
+                self.cfg.name,
+                self.cfg.wake_timeout_seconds,
+            )
+            self._state = "sleeping"
+
+    async def suspend(self) -> None:
+        if not self.cfg.ssh_user or not self.cfg.suspend_host:
+            return
+        log.info(
+            "[%s] Suspending node via SSH to %s",
+            self.cfg.name,
+            self.cfg.suspend_host,
+        )
+        proc = await asyncio.create_subprocess_exec(
+            "ssh",
+            "-i",
+            self.cfg.ssh_key_path,
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "ConnectTimeout=10",
+            f"{self.cfg.ssh_user}@{self.cfg.suspend_host}",
+            "sudo",
+            "systemctl",
+            "suspend",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        output, _ = await proc.communicate()
+        if proc.returncode in (0, 255):
+            log.info("[%s] Node suspended", self.cfg.name)
+            self._state = "sleeping"
+        else:
+            log.error(
+                "[%s] Suspend failed (rc=%s): %s",
+                self.cfg.name,
+                proc.returncode,
+                output.decode(errors="replace"),
+            )
+
+    def touch(self) -> None:
+        self._last_activity = time.monotonic()
+
+    @property
+    def idle_seconds(self) -> float:
+        return time.monotonic() - self._last_activity
+
+    async def idle_watcher(self) -> None:
+        timeout = self.cfg.idle_timeout_minutes * 60
+        while True:
+            await asyncio.sleep(60)
+            if self._state != "ready":
+                continue
+            if not await self.check_node_health():
+                log.info("[%s] Node went offline externally", self.cfg.name)
+                self._state = "sleeping"
+                continue
+            log.info(
+                "[%s] Idle %.0fm / %.0fm",
+                self.cfg.name,
+                self.idle_seconds / 60,
+                self.cfg.idle_timeout_minutes,
+            )
+            if self.idle_seconds >= timeout:
+                log.info("[%s] Idle timeout reached, suspending", self.cfg.name)
+                await self.suspend()
+
+    async def handle_request(self, request: web.Request) -> web.StreamResponse:
+        # Status API
+        if request.path == "/wol-proxy/status":
+            return web.json_response({"state": self._state, "node": self.cfg.name})
+
+        # Find backend by Host header
+        host = request.host.split(":")[0]  # strip port
+        backend = self._host_map.get(host)
+        if not backend:
+            return web.Response(status=404, text=f"Unknown host: {host}")
+
+        # Check node health
+        if not await self.check_node_health():
+            if self._state == "ready":
+                self._state = "sleeping"
+            # Start waking in background if not already
+            if self._state == "sleeping":
+                asyncio.create_task(self.wake_and_wait())
+            # Return wake-up page
+            from .wake_page import render_wake_page
+
+            return web.Response(
+                text=render_wake_page(backend.hostname),
+                content_type="text/html",
+            )
+
+        # Node is up — proxy the request
+        self._state = "ready"
+        self.touch()
+        target = f"http://{backend.target_host}:{backend.target_port}{request.path_qs}"
+        timeout = ClientTimeout(total=None, sock_read=300)
+        async with ClientSession(timeout=timeout) as session:
+            async with session.request(
+                method=request.method,
+                url=target,
+                headers={
+                    k: v
+                    for k, v in request.headers.items()
+                    if k.lower() not in ("host", "transfer-encoding")
+                },
+                data=await request.read(),
+            ) as upstream:
+                resp = web.StreamResponse(
+                    status=upstream.status,
+                    headers={
+                        k: v
+                        for k, v in upstream.headers.items()
+                        if k.lower()
+                        not in (
+                            "transfer-encoding",
+                            "content-encoding",
+                            "content-length",
+                        )
+                    },
+                )
+                content_length = upstream.headers.get("content-length")
+                if content_length:
+                    resp.content_length = int(content_length)
+                try:
+                    await resp.prepare(request)
+                    async for chunk in upstream.content.iter_any():
+                        self.touch()
+                        await resp.write(chunk)
+                    await resp.write_eof()
+                except (ConnectionResetError, ConnectionError):
+                    log.info("[%s] Client disconnected", self.cfg.name)
                 return resp
