@@ -4,7 +4,7 @@ metadata:
   name: bike-weather-auth-server
   namespace: bike-weather-auth
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
