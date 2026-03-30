@@ -26,6 +26,15 @@ spec:
               bundled:
                 enabled: false
           controller:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: kubernetes.io/arch
+                          operator: NotIn
+                          values:
+                            - arm64
             volumes:
               - name: db-connection
                 secret:
