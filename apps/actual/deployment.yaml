@@ -13,6 +13,13 @@ spec:
       labels:
         app: actual
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd-desktop
+      tolerations:
+        - key: "availability"
+          operator: "Equal"
+          value: "daytime"
+          effect: "NoSchedule"
       containers:
         - name: actual
           image: docker.io/actualbudget/actual-server:latest
