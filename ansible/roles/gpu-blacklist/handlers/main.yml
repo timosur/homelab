@@ -1,4 +1,9 @@
 ---
+- name: Rebuild initramfs after blacklist change
+  ansible.builtin.command: update-initramfs -u
+  become: true
+  changed_when: false
+
 - name: Reboot required
   ansible.builtin.debug:
     msg: "i915 blacklist changed — a reboot is required for the change to take effect."

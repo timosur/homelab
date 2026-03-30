@@ -18,7 +18,7 @@
 # 1. Kernel / network sysctl hardening (all nodes)
 # ──────────────────────────────────────────────────────
 - name: Apply kernel and network sysctl hardening
-  ansible.builtin.sysctl:
+  ansible.posix.sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
     sysctl_set: true
@@ -33,7 +33,7 @@
 # ──────────────────────────────────────────────────────
 # 2. Disable unnecessary services (hardware-dependent)
 # ──────────────────────────────────────────────────────
-- name: Gather list of enabled services
+- name: Gather list of enabled services  # noqa: command-instead-of-module
   ansible.builtin.command: systemctl list-unit-files --state=enabled --type=service --no-pager
   register: enabled_services
   changed_when: false
@@ -48,7 +48,7 @@
   loop: "{{ common_disabled_services + (extra_disabled_services | default([])) }}"
   loop_control:
     label: "{{ item }}"
-  ignore_errors: true
+  failed_when: false
 
 # ──────────────────────────────────────────────────────
 # 3. Blacklist unused kernel modules (all nodes)
@@ -68,6 +68,7 @@
 - name: Rebuild initramfs after module blacklist change (Debian/Ubuntu)
   ansible.builtin.command: update-initramfs -u
   become: true
+  changed_when: false
   when:
     - module_blacklist.changed
     - ansible_os_family == "Debian"
@@ -107,7 +108,7 @@
     - /etc/cron.hourly
     - /etc/cron.weekly
     - /etc/cron.monthly
-  ignore_errors: true
+  failed_when: false
 
 - name: Set secure permissions on k3s datastore
   ansible.builtin.file:
@@ -131,7 +132,7 @@
   become: true
 
 - name: Disable core dumps via sysctl
-  ansible.builtin.sysctl:
+  ansible.posix.sysctl:
     name: fs.suid_dumpable
     value: "0"
     sysctl_set: true

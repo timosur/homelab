@@ -18,13 +18,11 @@
   tasks:
     - name: Check current k3s version on control plane
       ansible.builtin.shell:
-        cmd: k3s --version | head -n1
+        cmd: set -o pipefail && k3s --version | head -n1
         executable: /bin/bash
       register: current_version
       changed_when: false
       failed_when: false
-      args:
-        _uses_shell: true
 
     - name: Display current version
       ansible.builtin.debug:

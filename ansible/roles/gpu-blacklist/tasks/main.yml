@@ -8,10 +8,6 @@
     content: "blacklist i915\n"
     mode: "0644"
   become: true
-  register: i915_blacklist
-
-- name: Rebuild initramfs after blacklist change
-  ansible.builtin.command: update-initramfs -u
-  become: true
-  when: i915_blacklist.changed
-  notify: Reboot required
+  notify:
+    - Rebuild initramfs after blacklist change
+    - Reboot required

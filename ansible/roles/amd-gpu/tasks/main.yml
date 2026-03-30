@@ -127,9 +127,12 @@
     if [ -d /usr/share/ollama/.ollama/models ] && [ "$(ls -A /usr/share/ollama/.ollama/models 2>/dev/null)" ]; then
       rsync -a --remove-source-files /usr/share/ollama/.ollama/models/ {{ ollama_models_path }}/
       find /usr/share/ollama/.ollama/models -type d -empty -delete
+      echo "CHANGED"
     fi
   args:
     executable: /bin/bash
+  register: move_ollama_models_result
+  changed_when: "'CHANGED' in move_ollama_models_result.stdout"
   become: true
   when: ollama_check.stat.exists and old_ollama_models.stat.exists | default(false) and old_ollama_models.stat.isdir | default(false)
 

@@ -12,5 +12,7 @@
   become: true
 
 - name: Restart auditd
-  ansible.builtin.command: service auditd restart
+  ansible.builtin.service:
+    name: auditd
+    state: restarted
   become: true

@@ -50,7 +50,7 @@
     - name: Validate Azure credentials are provided
       ansible.builtin.fail:
         msg: "Azure client ID and client secret must be provided"
-      when: 
+      when:
         - azure_client_id == "" or azure_client_secret == ""
         - not skip_azure_validation | default(false)
 
@@ -96,12 +96,12 @@
       ansible.builtin.debug:
         msg: |
           GitOps bootstrap completed successfully!
-          
+
           ArgoCD is now connected to your repository: {{ git_repo_url }}
           Root application "{{ root_app_name }}" has been deployed.
           Azure Service Principal secret has been created (if credentials were provided).
-          
+
           External Secrets Operator and related resources will be deployed by ArgoCD applications.
-          
+
           Check ArgoCD UI for application status:
           kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 8080:443

@@ -117,13 +117,13 @@
   ansible.builtin.debug:
     msg: |
       ArgoCD has been installed successfully!
-      
+
       To get the admin password, run:
       kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-      
+
       To access ArgoCD UI:
       kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 8080:443
-      
+
       Then open https://localhost:8080 and login with username 'admin'
 
 - name: Clean up downloaded manifest
