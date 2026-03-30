@@ -7,6 +7,8 @@ resources:
   - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-controller.yaml
   - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-node.yaml
   - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/v1.18.0/deploy/csi-smb-node-windows.yaml
+  - external-secret.yaml
+  - storage-class.yaml
 
 namespace: kube-system
 
