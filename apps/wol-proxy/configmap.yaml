@@ -44,6 +44,8 @@ data:
             target: "paperless.paperless.svc.cluster.local:8000"
           - hostname: "finance.home.timosur.com"
             target: "actual.actual.svc.cluster.local:5006"
+          - hostname: "finance.timosur.com"
+            target: "actual.actual.svc.cluster.local:5006"
           - hostname: "vinyl.home.timosur.com"
             target: "vinyl-frontend.vinyl-manager.svc.cluster.local:3000"
           - hostname: "mealie.timosur.com"
