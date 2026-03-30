@@ -13,6 +13,13 @@ spec:
       labels:
         app: bike-weather-preview-nginx
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd-desktop
+      tolerations:
+        - key: "availability"
+          operator: "Equal"
+          value: "daytime"
+          effect: "NoSchedule"
       initContainers:
         - name: htpasswd-gen
           image: httpd:alpine

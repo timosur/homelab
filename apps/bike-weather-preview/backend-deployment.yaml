@@ -15,6 +15,13 @@ spec:
       labels:
         app: bike-weather-preview-backend
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd-desktop
+      tolerations:
+        - key: "availability"
+          operator: "Equal"
+          value: "daytime"
+          effect: "NoSchedule"
       imagePullSecrets:
         - name: ghcr-io-pull-secret
       initContainers:
