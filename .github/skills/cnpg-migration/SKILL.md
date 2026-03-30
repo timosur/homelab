@@ -238,15 +238,15 @@ kubectl logs -n <app> deployment/<app> | tail -20
 | bike-weather         | C       | app           | app           | `DB_HOST` (configmap)                    | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
 | garden               | A       | garden        | garden        | `DB_HOST` (configmap)                    | ExternalSecret `garden-postgres-password`                         | multi-service app        |
 | mealie               | A       | mealie        | mealie        | `POSTGRES_SERVER` (configmap)            | ExternalSecret `mealie-postgres-password`                         | `max_connections=200`    |
-| paperless            | A       | paperless     | paperless     | `PAPERLESS_DBHOST` (configmap)           | ExternalSecret `paperless-postgres-credentials`                   | has Redis too            |
 | open-webui           | C       | openwebui     | webui         | N/A (URL only)                           | ExternalSecret templates `database-url` + `pgvector-db-url`       | needs `vector` extension |
 
 ### Completed migrations
 
-| App    | Status                 | Commit    |
-| ------ | ---------------------- | --------- |
-| n8n    | Pattern B, scaled to 0 | `aa1c108` |
-| agents | Pattern D, Helm values | —         |
+| App       | Status                 | Commit    |
+| --------- | ---------------------- | --------- |
+| n8n       | Pattern B, scaled to 0 | `aa1c108` |
+| agents    | Pattern D, Helm values | —         |
+| paperless | Pattern A              | —         |
 
 ---
 
