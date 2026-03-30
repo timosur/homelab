@@ -6,32 +6,13 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "false"
 parameters:
   dsm: "192.168.1.26"
-  location: "/volume1"
   fsType: "btrfs"
-  formatOptions: "-K"
+  location: "/volume1"
   protocol: iSCSI
 provisioner: csi.san.synology.com
 reclaimPolicy: Retain
 allowVolumeExpansion: true
 ---
-# DEPRECATED: alias kept for existing PVCs. Remove after all PVCs are migrated to homelab-iscsi.
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: hcloud-volumes
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "false"
-parameters:
-  dsm: "192.168.1.26"
-  location: "/volume1"
-  fsType: "btrfs"
-  formatOptions: "-K"
-  protocol: iSCSI
-provisioner: csi.san.synology.com
-reclaimPolicy: Retain
-allowVolumeExpansion: true
----
-# DEPRECATED: alias kept for existing PVCs. Remove after all PVCs are migrated to homelab-iscsi.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -40,9 +21,23 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "false"
 parameters:
   dsm: "192.168.1.26"
-  location: "/volume1"
   fsType: "btrfs"
-  formatOptions: "-K"
+  location: "/volume1"
+  protocol: iSCSI
+provisioner: csi.san.synology.com
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hcloud-volumes
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+parameters:
+  dsm: "192.168.1.26"
+  fsType: "btrfs"
+  location: "/volume1"
   protocol: iSCSI
 provisioner: csi.san.synology.com
 reclaimPolicy: Retain
