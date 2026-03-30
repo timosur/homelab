@@ -398,7 +398,9 @@ class NodeGroupProxy:
         self.touch()
         target = f"http://{backend.target_host}:{backend.target_port}{request.path_qs}"
         timeout = ClientTimeout(total=None, sock_read=300)
-        async with ClientSession(timeout=timeout) as session:
+        async with ClientSession(
+            timeout=timeout, auto_decompress=False
+        ) as session:
             async with session.request(
                 method=request.method,
                 url=target,
@@ -417,7 +419,6 @@ class NodeGroupProxy:
                         if k.lower()
                         not in (
                             "transfer-encoding",
-                            "content-encoding",
                             "content-length",
                         )
                     },
