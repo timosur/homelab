@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: bike-weather-auth-db
+  namespace: bike-weather-auth
+spec:
+  appName: bike-weather-auth
+  databaseName: authentik
+  roleName: authentik
+  compositionRef:
+    name: appdb-central-postgres

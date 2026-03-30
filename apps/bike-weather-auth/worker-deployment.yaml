@@ -4,7 +4,7 @@ metadata:
   name: bike-weather-auth-worker
   namespace: bike-weather-auth
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:
@@ -26,6 +26,17 @@ spec:
                 name: bike-weather-auth-config
             - secretRef:
                 name: bike-weather-auth-secrets
+          env:
+            - name: AUTHENTIK_POSTGRESQL__USER
+              valueFrom:
+                secretKeyRef:
+                  name: bike-weather-auth-db-connection
+                  key: username
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bike-weather-auth-db-connection
+                  key: password
           volumeMounts:
             - name: media
               mountPath: /media

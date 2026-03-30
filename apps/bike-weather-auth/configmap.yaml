@@ -6,10 +6,9 @@ metadata:
 data:
   TZ: "Europe/Berlin"
   AUTHENTIK_REDIS__HOST: "bike-weather-auth-redis"
-  AUTHENTIK_POSTGRESQL__HOST: "bike-weather-auth-postgres-rw"
+  AUTHENTIK_POSTGRESQL__HOST: "central-postgres-rw.postgres.svc.cluster.local"
   AUTHENTIK_POSTGRESQL__PORT: "5432"
   AUTHENTIK_POSTGRESQL__NAME: "authentik"
-  AUTHENTIK_POSTGRESQL__USER: "authentik"
   AUTHENTIK_EMAIL__HOST: "smtp.gmail.com"
   AUTHENTIK_EMAIL__PORT: "587"
   AUTHENTIK_EMAIL__USE_TLS: "true"
