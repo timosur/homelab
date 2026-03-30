@@ -162,34 +162,79 @@ Steps:
 
 **Skip this phase if the app's database is empty or disposable** (e.g., preview environments).
 
+**Important**: Keep `postgres.yaml` and `postgres-external-secret.yaml` in kustomization during
+this phase. The old CNPG cluster must remain running for pg_dump. Only remove them in Phase 5
+after migration is verified.
+
 For apps with data that must be preserved:
 
-1. **Scale down the app** to prevent writes:
+1. **Scale down the app** to prevent writes (do this in code and push so ArgoCD syncs):
 
    ```bash
-   kubectl scale deployment/<app> -n <app> --replicas=0
+   # In the deployment YAML: set replicas: 0
+   # Then push and sync ArgoCD
    ```
 
-2. **Run pg_dump/pg_restore** from the old cluster to the central cluster:
+2. **Retrieve superuser credentials** for both clusters. CNPG uses peer auth for local socket
+   connections, so you must use `-h localhost` with password auth:
 
    ```bash
-   # From a pod with psql access, or a temporary Job:
-   pg_dump -h <old-cluster>-rw.<namespace>.svc.cluster.local \
-           -U <old-owner> -d <database> --no-owner --no-acl | \
-   psql -h central-postgres-rw.postgres.svc.cluster.local \
-        -U <new-role> -d <database>
+   # Old cluster credentials (the bootstrap secret)
+   OLD_PASS=$(kubectl get secret <old-cluster>-credentials -n <namespace> \
+     -o jsonpath='{.data.password}' | base64 -d)
+
+   # Central cluster superuser credentials
+   CENTRAL_PASS=$(kubectl get secret central-postgres-superuser-credentials -n postgres \
+     -o jsonpath='{.data.password}' | base64 -d)
    ```
 
-   The new role's password is in the `<app>-db-connection` secret (key: `password`).
+3. **Run pg_dump/pg_restore** using `kubectl exec` with PGPASSWORD env var. Use the old
+   cluster's owner for dump and `postgres` superuser for restore (avoids permission issues):
 
-3. **GRANT ownership** if needed — the Crossplane role is the owner of the new database, so
-   tables created by pg_restore may need ownership transfer:
-
-   ```sql
-   REASSIGN OWNED BY <old_owner> TO <new_role>;
+   ```bash
+   kubectl exec -n <namespace> <old-cluster>-1 -- \
+     env PGPASSWORD="$OLD_PASS" pg_dump -h localhost -U <old-owner> -d <database> \
+     --no-owner --no-acl | \
+   kubectl exec -i -n postgres central-postgres-1 -- \
+     env PGPASSWORD="$CENTRAL_PASS" psql -h localhost -U postgres -d <database>
    ```
 
-4. **Scale the app back up** and verify functionality.
+4. **Transfer ownership** of ALL object types to the Crossplane-provisioned role. `REASSIGN
+OWNED BY postgres` fails because it tries to reassign system objects. Instead, transfer
+   each object type explicitly:
+
+   ```bash
+   kubectl exec -n postgres central-postgres-1 -- \
+     env PGPASSWORD="$CENTRAL_PASS" psql -h localhost -U postgres -d <database> -c "
+   DO \$\$
+   DECLARE
+     r RECORD;
+   BEGIN
+     -- Tables
+     FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+       EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' OWNER TO <new-role>';
+     END LOOP;
+     -- Sequences
+     FOR r IN SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public' LOOP
+       EXECUTE 'ALTER SEQUENCE public.' || quote_ident(r.sequence_name) || ' OWNER TO <new-role>';
+     END LOOP;
+     -- Materialized views
+     FOR r IN SELECT matviewname FROM pg_matviews WHERE schemaname = 'public' LOOP
+       EXECUTE 'ALTER MATERIALIZED VIEW public.' || quote_ident(r.matviewname) || ' OWNER TO <new-role>';
+     END LOOP;
+     -- Views
+     FOR r IN SELECT viewname FROM pg_views WHERE schemaname = 'public' LOOP
+       EXECUTE 'ALTER VIEW public.' || quote_ident(r.viewname) || ' OWNER TO <new-role>';
+     END LOOP;
+     -- Functions
+     FOR r IN SELECT routine_name FROM information_schema.routines WHERE routine_schema = 'public' LOOP
+       EXECUTE 'ALTER FUNCTION public.' || quote_ident(r.routine_name) || ' OWNER TO <new-role>';
+     END LOOP;
+   END
+   \$\$;"
+   ```
+
+5. **Scale the app back up** (in code, push, sync ArgoCD) and verify functionality.
 
 ### Phase 5: Cleanup
 
@@ -230,13 +275,13 @@ kubectl logs -n <app> deployment/<app> | tail -20
 
 ### Apps remaining to migrate
 
-| App               | Pattern | DB Name       | Role          | Host Env Var                             | Credential Source                                                 | Special                  |
-| ----------------- | ------- | ------------- | ------------- | ---------------------------------------- | ----------------------------------------------------------------- | ------------------------ |
-| vinyl-manager     | C       | vinyl_manager | vinyl_manager | N/A (URL only)                           | ExternalSecret templates `DATABASE_URL`                           | underscore names         |
-| bike-weather      | C       | app           | app           | `DB_HOST` (configmap)                    | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
-| garden            | A       | garden        | garden        | `DB_HOST` (configmap)                    | ExternalSecret `garden-postgres-password`                         | multi-service app        |
-| mealie            | A       | mealie        | mealie        | `POSTGRES_SERVER` (configmap)            | ExternalSecret `mealie-postgres-password`                         | `max_connections=200`    |
-| open-webui        | C       | openwebui     | webui         | N/A (URL only)                           | ExternalSecret templates `database-url` + `pgvector-db-url`       | needs `vector` extension |
+| App           | Pattern | DB Name       | Role          | Host Env Var                  | Credential Source                                                 | Special                  |
+| ------------- | ------- | ------------- | ------------- | ----------------------------- | ----------------------------------------------------------------- | ------------------------ |
+| vinyl-manager | C       | vinyl_manager | vinyl_manager | N/A (URL only)                | ExternalSecret templates `DATABASE_URL`                           | underscore names         |
+| bike-weather  | C       | app           | app           | `DB_HOST` (configmap)         | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
+| garden        | A       | garden        | garden        | `DB_HOST` (configmap)         | ExternalSecret `garden-postgres-password`                         | multi-service app        |
+| mealie        | A       | mealie        | mealie        | `POSTGRES_SERVER` (configmap) | ExternalSecret `mealie-postgres-password`                         | `max_connections=200`    |
+| open-webui    | C       | openwebui     | webui         | N/A (URL only)                | ExternalSecret templates `database-url` + `pgvector-db-url`       | needs `vector` extension |
 
 ### Completed migrations
 
