@@ -15,5 +15,6 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: actual
-          port: 5006
+        - name: desktop-proxy
+          namespace: wol-proxy
+          port: 8080

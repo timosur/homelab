@@ -10,19 +10,11 @@ spec:
   hostnames:
     - "vinyl.home.timosur.com"
   rules:
-    # API routes go to backend
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /api
-      backendRefs:
-        - name: vinyl-backend
-          port: 8000
-    # Everything else goes to frontend
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: vinyl-frontend
-          port: 3000
+        - name: desktop-proxy
+          namespace: wol-proxy
+          port: 8080
