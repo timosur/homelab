@@ -12,6 +12,6 @@ data:
   PAPERLESS_TIME_ZONE: "Europe/Berlin"
   PAPERLESS_OCR_LANGUAGE: "deu+eng"
   PAPERLESS_URL: "https://docs.timosur.com"
-  PAPERLESS_ALLOWED_HOSTS: "docs.timosur.com,paperless,localhost"
+  PAPERLESS_ALLOWED_HOSTS: "docs.timosur.com,paperless,paperless.paperless.svc.cluster.local,localhost"
   PAPERLESS_CORS_ALLOWED_HOSTS: "https://docs.timosur.com"
   PAPERLESS_TRUSTED_PROXIES: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"

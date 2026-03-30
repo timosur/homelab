@@ -4,7 +4,7 @@
 
 **Goal:** Move all desktop-tier apps (paperless, actual, mealie, vinyl-manager, n8n, bike-weather-preview) to `homelab-amd-desktop` with proper `nodeSelector` and toleration, then verify the entire integration end-to-end.
 
-**Architecture:** Each app deployment gets `nodeSelector: kubernetes.io/hostname: homelab-amd-desktop` and a toleration for the `availability=daytime:NoSchedule` taint. Apps with `local-path` PVCs bound to other nodes (paperless) need PVC recreation with `storage-box-smb`. CNPG postgres instances remain on `homelab-amd` — app pods connect via cluster DNS. HTTPRoutes already point to wol-proxy (from Milestone 3).
+**Architecture:** Each app deployment gets `nodeSelector: kubernetes.io/hostname: homelab-amd-desktop` and a toleration for the `availability=daytime:NoSchedule` taint. Apps with `local-path` PVCs bound to other nodes (paperless) need PVC recreation with `homelab-smb`. CNPG postgres instances remain on `homelab-amd` — app pods connect via cluster DNS. HTTPRoutes already point to wol-proxy (from Milestone 3).
 
 **Tech Stack:** K3s, Kustomize
 
@@ -46,7 +46,7 @@ All desktop app deployments receive this block under `spec.template.spec`:
 ## File Structure
 
 ### Modified files
-- `apps/paperless/pvc.yaml` — Change `local-path` → `storage-box-smb`
+- `apps/paperless/pvc.yaml` — Change `local-path` → `homelab-smb`
 - `apps/paperless/deployment.yaml` — Add nodeSelector + toleration for desktop
 - `apps/actual/deployment.yaml` — Add nodeSelector + toleration for desktop
 - `apps/mealie/deployment.yaml` — Change nodeSelector from homelab-amd → desktop + toleration
@@ -64,7 +64,7 @@ All desktop app deployments receive this block under `spec.template.spec`:
 
 ### Task 19: Migrate paperless to desktop
 
-Paperless PVCs are `local-path` bound to `homelab-arm-large`. Since it's not in use, delete PVCs and change to `storage-box-smb`.
+Paperless PVCs are `local-path` bound to `homelab-arm-large`. Since it's not in use, delete PVCs and change to `homelab-smb`.
 
 **Files:**
 - Modify: `apps/paperless/pvc.yaml`
@@ -78,7 +78,7 @@ kubectl scale deployment paperless-redis -n paperless --replicas=0
 kubectl delete pvc paperless-data paperless-media paperless-export paperless-consume -n paperless
 ```
 
-- [ ] **Step 2: Change PVC storage class to storage-box-smb**
+- [ ] **Step 2: Change PVC storage class to homelab-smb**
 
 ```yaml
 apiVersion: v1
@@ -92,7 +92,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: storage-box-smb
+  storageClassName: homelab-smb
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -105,7 +105,7 @@ spec:
   resources:
     requests:
       storage: 100Gi
-  storageClassName: storage-box-smb
+  storageClassName: homelab-smb
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -118,7 +118,7 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: storage-box-smb
+  storageClassName: homelab-smb
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -131,7 +131,7 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: storage-box-smb
+  storageClassName: homelab-smb
 ```
 
 - [ ] **Step 3: Add nodeSelector + toleration to both deployments**
@@ -156,20 +156,20 @@ Same for `paperless-redis` deployment.
 kubectl get pods -n paperless -o wide
 kubectl get pvc -n paperless
 ```
-Expected: Both pods on `homelab-amd-desktop`, PVCs using `storage-box-smb`.
+Expected: Both pods on `homelab-amd-desktop`, PVCs using `homelab-smb`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add apps/paperless/pvc.yaml apps/paperless/deployment.yaml
-git commit -m "feat: migrate paperless to desktop node with storage-box-smb"
+git commit -m "feat: migrate paperless to desktop node with homelab-smb"
 ```
 
 ---
 
 ### Task 20: Migrate actual to desktop
 
-Actual uses `storage-box-smb` — freely movable.
+Actual uses `homelab-smb` — freely movable.
 
 **Files:**
 - Modify: `apps/actual/deployment.yaml`
@@ -200,7 +200,7 @@ git commit -m "feat: migrate actual to desktop node"
 
 ### Task 21: Migrate mealie to desktop
 
-Mealie has `storage-box-smb` for data (movable) and `local-path` for postgres (bound to `homelab-amd`). The CNPG postgres stays on `homelab-amd` — mealie pods move to desktop and connect via cluster DNS.
+Mealie has `homelab-smb` for data (movable) and `local-path` for postgres (bound to `homelab-amd`). The CNPG postgres stays on `homelab-amd` — mealie pods move to desktop and connect via cluster DNS.
 
 **Files:**
 - Modify: `apps/mealie/deployment.yaml`
@@ -239,7 +239,7 @@ git commit -m "feat: migrate mealie to desktop node"
 
 ### Task 22: Migrate vinyl-manager to desktop
 
-All 3 deployments have no nodeSelector. Postgres uses `storage-box-smb` — freely movable.
+All 3 deployments have no nodeSelector. Postgres uses `homelab-smb` — freely movable.
 
 **Files:**
 - Modify: `apps/vinyl-manager/backend-deployment.yaml`
