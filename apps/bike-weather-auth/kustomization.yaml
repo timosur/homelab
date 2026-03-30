@@ -8,8 +8,6 @@ resources:
   - configmap.yaml
   - external-secret.yaml
   - appdb.yaml
-  - postgres-external-secret.yaml
-  - postgres.yaml
   - redis-deployment.yaml
   - redis-service.yaml
   - server-deployment.yaml
