@@ -13,6 +13,13 @@ spec:
       labels:
         app: paperless-redis
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd-desktop
+      tolerations:
+        - key: "availability"
+          operator: "Equal"
+          value: "daytime"
+          effect: "NoSchedule"
       containers:
         - name: redis
           image: docker.io/library/redis:8
@@ -53,6 +60,13 @@ spec:
       labels:
         app: paperless
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd-desktop
+      tolerations:
+        - key: "availability"
+          operator: "Equal"
+          value: "daytime"
+          effect: "NoSchedule"
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
