@@ -13,6 +13,13 @@ spec:
       labels:
         app: vinyl-audio-analyzer
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd-desktop
+      tolerations:
+        - key: "availability"
+          operator: "Equal"
+          value: "daytime"
+          effect: "NoSchedule"
       containers:
         - name: vinyl-audio-analyzer
           image: ghcr.io/timosur/vinyl-manager/audio-analyzer:sha-c393f61@sha256:90ab7adb4f573fc4a9376a5152343fbe15a4db3eb3d06ed1b46a0ed6c709a477
