@@ -16,7 +16,12 @@ spec:
         app: n8n
     spec:
       nodeSelector:
-        kubernetes.io/hostname: homelab-amd
+        kubernetes.io/hostname: homelab-amd-desktop
+      tolerations:
+        - key: "availability"
+          operator: "Equal"
+          value: "daytime"
+          effect: "NoSchedule"
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
