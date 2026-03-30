@@ -42,6 +42,15 @@
     - amd-gpu
     - k3s-gpu-worker
 
+- name: Setup desktop workers
+  hosts: desktop_workers
+  gather_facts: true
+  become: true
+  roles:
+    - node-hardening
+    - amd-gpu
+    - k3s-desktop-worker
+
 - name: Install and configure Cilium
   hosts: control_plane
   gather_facts: true

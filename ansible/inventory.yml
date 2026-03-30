@@ -37,3 +37,10 @@ all:
               ansible_host: 192.168.2.47
               node_ip: "{{ lookup('pipe', 'ssh homelab-gpu hostname -I | awk \"{print \\$1}\"') }}"
               wol_mac: "2c:f0:5d:05:9d:80"
+
+        desktop_workers:
+          hosts:
+            homelab-amd-desktop:
+              ansible_host: 192.168.2.241
+              node_ip: "{{ lookup('pipe', 'ssh homelab-amd-desktop hostname -I | awk \"{print \\$1}\"') }}"
+              wol_mac: "30:9c:23:8a:30:e3"
