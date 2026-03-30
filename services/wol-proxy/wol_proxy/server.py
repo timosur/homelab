@@ -6,15 +6,15 @@ import sys
 from aiohttp import web
 
 from .config import load_config
-from .proxy import ProxyBackend
+from .proxy import ProxyBackend, NodeGroupProxy
 
 log = logging.getLogger("wol-proxy")
 
 
 async def run(config_path: str) -> None:
     config = load_config(config_path)
-    if not config.backends:
-        log.error("No backends configured")
+    if not config.backends and not config.node_groups:
+        log.error("No backends or node groups configured")
         sys.exit(1)
 
     runners: list[web.AppRunner] = []
@@ -40,6 +40,27 @@ async def run(config_path: str) -> None:
             backend_cfg.listen_port,
             backend_cfg.target_host,
             backend_cfg.target_port,
+        )
+
+    for ng_cfg in config.node_groups:
+        ng_proxy = NodeGroupProxy(ng_cfg)
+        tasks.append(asyncio.create_task(ng_proxy.idle_watcher()))
+
+        app = web.Application()
+        app.router.add_route("*", "/{path_info:.*}", ng_proxy.handle_request)
+
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", ng_cfg.listen_port)
+        await site.start()
+        runners.append(runner)
+
+        hostnames = ", ".join(b.hostname for b in ng_cfg.backends)
+        log.info(
+            "[%s] HTTP node-group proxy listening on :%d for: %s",
+            ng_cfg.name,
+            ng_cfg.listen_port,
+            hostnames,
         )
 
     stop = asyncio.Event()
