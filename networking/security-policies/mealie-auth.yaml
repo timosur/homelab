@@ -9,6 +9,12 @@ spec:
       kind: HTTPRoute
       name: mealie
   extAuth:
+    headersToExtAuth:
+      - cookie
+      - authorization
+      - x-forwarded-for
+      - x-forwarded-proto
+      - x-forwarded-host
     http:
       backendRefs:
         - name: authentik-server
