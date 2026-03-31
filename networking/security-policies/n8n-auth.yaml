@@ -1,0 +1,20 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: wol-auth-n8n
+  namespace: n8n
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: n8n
+  extAuth:
+    http:
+      backendRef:
+        name: authentik-server
+        namespace: authentik
+        port: 9000
+      path: /outpost.goauthentik.io/auth/envoy
+      headersToBackend:
+        - cookie
+        - authorization

@@ -6,3 +6,4 @@ resources:
   - cilium-network-policies
   - gateways
   - httproutes
+  - security-policies
