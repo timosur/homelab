@@ -5,7 +5,7 @@ metadata:
   namespace: authentik
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: homelab-smb
   resources:
     requests:
