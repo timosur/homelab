@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: authentik-db
+  namespace: authentik
+spec:
+  appName: authentik
+  databaseName: authentik_main
+  roleName: authentik_main
+  compositionRef:
+    name: appdb-central-postgres
