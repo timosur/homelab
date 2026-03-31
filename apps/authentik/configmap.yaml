@@ -8,4 +8,4 @@ data:
   AUTHENTIK_REDIS__HOST: "authentik-redis"
   AUTHENTIK_POSTGRESQL__HOST: "central-postgres-rw.postgres.svc.cluster.local"
   AUTHENTIK_POSTGRESQL__PORT: "5432"
-  AUTHENTIK_POSTGRESQL__NAME: "authentik_main"
+  AUTHENTIK_POSTGRESQL__NAME: "authentik-main"

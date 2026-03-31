@@ -5,7 +5,7 @@ metadata:
   namespace: authentik
 spec:
   appName: authentik
-  databaseName: authentik_main
-  roleName: authentik_main
+  databaseName: authentik-main
+  roleName: authentik-main
   compositionRef:
     name: appdb-central-postgres
