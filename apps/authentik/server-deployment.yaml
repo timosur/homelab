@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentik-server
+  namespace: authentik
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: authentik-server
+  template:
+    metadata:
+      labels:
+        app: authentik-server
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd
+      containers:
+        - name: server
+          image: ghcr.io/goauthentik/server:2026.2.1
+          command: ["ak", "server"]
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: authentik-config
+            - secretRef:
+                name: authentik-secrets
+          env:
+            - name: AUTHENTIK_POSTGRESQL__USER
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-db-connection
+                  key: username
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-db-connection
+                  key: password
+          volumeMounts:
+            - name: media
+              mountPath: /media
+          livenessProbe:
+            httpGet:
+              path: /-/health/live/
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /-/health/ready/
+              port: 9000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: authentik-media
