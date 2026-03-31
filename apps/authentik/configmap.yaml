@@ -11,3 +11,4 @@ data:
   AUTHENTIK_POSTGRESQL__NAME: "authentik-main"
   AUTHENTIK_HOST: "https://auth.timosur.com"
   AUTHENTIK_HOST_BROWSER: "https://auth.timosur.com"
+  AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS: "10.0.0.0/8,192.168.0.0/16"
