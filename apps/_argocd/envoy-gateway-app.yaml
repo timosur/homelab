@@ -8,6 +8,10 @@ spec:
   source:
     helm:
       valuesObject:
+        config:
+          envoyGateway:
+            extensionApis:
+              enableEnvoyPatchPolicy: true
         certgen:
           rbac:
             annotations:

@@ -1,0 +1,65 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyPatchPolicy
+metadata:
+  name: extauth-allow-set-cookie
+  namespace: envoy-gateway-internet-system
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: envoy-gateway-internet
+  type: JSONPatch
+  priority: 0
+  jsonPatches:
+    # Patch actual ext_authz filter to allow Set-Cookie on denial responses
+    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
+      name: "envoy-gateway-internet-system/envoy-gateway-internet/https"
+      operation:
+        op: add
+        jsonPath: "$.filter_chains[*].filters[?(@.name=='envoy.filters.network.http_connection_manager')].typed_config.http_filters[?(@.name=='envoy.filters.http.ext_authz/securitypolicy/actual/wol-auth-actual')]"
+        path: "/typed_config/http_service/authorization_response/allowed_client_headers"
+        value:
+          patterns:
+            - exact: "set-cookie"
+              ignore_case: true
+            - exact: "location"
+              ignore_case: true
+    # Patch mealie ext_authz filter
+    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
+      name: "envoy-gateway-internet-system/envoy-gateway-internet/https"
+      operation:
+        op: add
+        jsonPath: "$.filter_chains[*].filters[?(@.name=='envoy.filters.network.http_connection_manager')].typed_config.http_filters[?(@.name=='envoy.filters.http.ext_authz/securitypolicy/mealie/wol-auth-mealie')]"
+        path: "/typed_config/http_service/authorization_response/allowed_client_headers"
+        value:
+          patterns:
+            - exact: "set-cookie"
+              ignore_case: true
+            - exact: "location"
+              ignore_case: true
+    # Patch n8n ext_authz filter
+    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
+      name: "envoy-gateway-internet-system/envoy-gateway-internet/https"
+      operation:
+        op: add
+        jsonPath: "$.filter_chains[*].filters[?(@.name=='envoy.filters.network.http_connection_manager')].typed_config.http_filters[?(@.name=='envoy.filters.http.ext_authz/securitypolicy/n8n/wol-auth-n8n')]"
+        path: "/typed_config/http_service/authorization_response/allowed_client_headers"
+        value:
+          patterns:
+            - exact: "set-cookie"
+              ignore_case: true
+            - exact: "location"
+              ignore_case: true
+    # Patch paperless ext_authz filter
+    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
+      name: "envoy-gateway-internet-system/envoy-gateway-internet/https"
+      operation:
+        op: add
+        jsonPath: "$.filter_chains[*].filters[?(@.name=='envoy.filters.network.http_connection_manager')].typed_config.http_filters[?(@.name=='envoy.filters.http.ext_authz/securitypolicy/paperless/wol-auth-paperless')]"
+        path: "/typed_config/http_service/authorization_response/allowed_client_headers"
+        value:
+          patterns:
+            - exact: "set-cookie"
+              ignore_case: true
+            - exact: "location"
+              ignore_case: true
