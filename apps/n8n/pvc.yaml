@@ -5,8 +5,8 @@ metadata:
   namespace: n8n
 spec:
   accessModes:
-    - ReadWriteOnce
-  storageClassName: hcloud-volumes
+    - ReadWriteMany
+  storageClassName: homelab-smb
   resources:
     requests:
       storage: 10Gi
