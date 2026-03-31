@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - agentgateway-crds-app.yaml
   - agentgateway-app.yaml
-  - amd-gpu-device-plugin-app.yaml
   - authentik-app.yaml
   - bike-weather-app.yaml
   - bike-weather-auth-app.yaml
