@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - actual.yaml
+  - authentik.yaml
   - bike-weather.yaml
   - bike-weather-auth.yaml
   - bike-weather-http-redirect.yaml
