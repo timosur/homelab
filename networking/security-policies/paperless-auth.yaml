@@ -10,10 +10,10 @@ spec:
       name: paperless
   extAuth:
     http:
-      backendRef:
-        name: authentik-server
-        namespace: authentik
-        port: 9000
+      backendRefs:
+        - name: authentik-server
+          namespace: authentik
+          port: 9000
       path: /outpost.goauthentik.io/auth/envoy
       headersToBackend:
         - cookie

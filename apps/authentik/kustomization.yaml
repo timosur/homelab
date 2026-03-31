@@ -14,3 +14,4 @@ resources:
   - server-service.yaml
   - worker-deployment.yaml
   - media-pvc.yaml
+  - reference-grant.yaml

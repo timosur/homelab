@@ -1,0 +1,23 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-extauth-from-wol-services
+  namespace: authentik
+spec:
+  from:
+    - group: gateway.envoyproxy.io
+      kind: SecurityPolicy
+      namespace: paperless
+    - group: gateway.envoyproxy.io
+      kind: SecurityPolicy
+      namespace: actual
+    - group: gateway.envoyproxy.io
+      kind: SecurityPolicy
+      namespace: n8n
+    - group: gateway.envoyproxy.io
+      kind: SecurityPolicy
+      namespace: mealie
+  to:
+    - group: ""
+      kind: Service
+      name: authentik-server
