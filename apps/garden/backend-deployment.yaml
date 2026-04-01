@@ -16,7 +16,7 @@ spec:
         app: garden-backend
     spec:
       nodeSelector:
-        kubernetes.io/hostname: homelab-amd
+        kubernetes.io/arch: arm64
       containers:
         - name: garden-backend
           image: ghcr.io/timosur/life-as-a-garden/backend:1.0.7
