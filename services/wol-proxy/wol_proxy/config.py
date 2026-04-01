@@ -22,10 +22,10 @@ class BackendConfig:
 
 
 @dataclass
-class NodeGroupBackend:
-    """A single app behind a NodeGroup, routed by hostname."""
-    hostname: str
-    target: str  # e.g. "paperless.paperless.svc.cluster.local:8000"
+class PathRoute:
+    """Route a path prefix to a different target."""
+    prefix: str
+    target: str
 
     @property
     def target_host(self) -> str:
@@ -34,6 +34,29 @@ class NodeGroupBackend:
     @property
     def target_port(self) -> int:
         return int(self.target.rsplit(":", 1)[1])
+
+
+@dataclass
+class NodeGroupBackend:
+    """A single app behind a NodeGroup, routed by hostname."""
+    hostname: str
+    target: str  # e.g. "paperless.paperless.svc.cluster.local:8000"
+    path_routes: list[PathRoute] = field(default_factory=list)
+
+    @property
+    def target_host(self) -> str:
+        return self.target.rsplit(":", 1)[0]
+
+    @property
+    def target_port(self) -> int:
+        return int(self.target.rsplit(":", 1)[1])
+
+    def resolve_target(self, path: str) -> tuple[str, int]:
+        """Return (host, port) for the given request path."""
+        for route in self.path_routes:
+            if path.startswith(route.prefix):
+                return route.target_host, route.target_port
+        return self.target_host, self.target_port
 
 
 @dataclass
@@ -87,10 +110,15 @@ def load_config(path: str) -> Config:
     for ng in raw.get("nodeGroups", []):
         ng_backends = []
         for nb in ng.get("backends", []):
+            path_routes = [
+                PathRoute(prefix=pr["prefix"], target=pr["target"])
+                for pr in nb.get("pathRoutes", [])
+            ]
             ng_backends.append(
                 NodeGroupBackend(
                     hostname=nb["hostname"],
                     target=nb["target"],
+                    path_routes=path_routes,
                 )
             )
         node_groups.append(

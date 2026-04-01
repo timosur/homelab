@@ -48,6 +48,9 @@ data:
             target: "actual.actual.svc.cluster.local:5006"
           - hostname: "vinyl.home.timosur.com"
             target: "vinyl-frontend.vinyl-manager.svc.cluster.local:3000"
+            pathRoutes:
+              - prefix: "/api/"
+                target: "vinyl-backend.vinyl-manager.svc.cluster.local:8000"
           - hostname: "mealie.timosur.com"
             target: "mealie.mealie.svc.cluster.local:9000"
           - hostname: "automate.timosur.com"

@@ -398,7 +398,8 @@ class NodeGroupProxy:
         # Node is up — proxy the request
         self._state = "ready"
         self.touch()
-        target = f"http://{backend.target_host}:{backend.target_port}{request.path_qs}"
+        target_host, target_port = backend.resolve_target(request.path)
+        target = f"http://{target_host}:{target_port}{request.path_qs}"
         timeout = ClientTimeout(total=None, sock_read=300)
         async with ClientSession(
             timeout=timeout, auto_decompress=False
