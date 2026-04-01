@@ -11,6 +11,14 @@ spec:
       targetRevision: 0.8.0
       helm:
         valuesObject:
+          global:
+            nodeSelector:
+              kubernetes.io/hostname: homelab-amd-desktop
+            tolerations:
+              - key: availability
+                operator: Equal
+                value: daytime
+                effect: NoSchedule
           providers:
             default: ollama
             ollama:
@@ -26,15 +34,13 @@ spec:
               bundled:
                 enabled: false
           controller:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: kubernetes.io/arch
-                          operator: NotIn
-                          values:
-                            - arm64
+            nodeSelector:
+              kubernetes.io/hostname: homelab-amd-desktop
+            tolerations:
+              - key: availability
+                operator: Equal
+                value: daytime
+                effect: NoSchedule
             volumes:
               - name: db-connection
                 secret:

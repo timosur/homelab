@@ -15,3 +15,6 @@ argocd_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argo
 
 # Wait timeout for ArgoCD readiness (seconds)
 argocd_wait_timeout: 300
+
+# Node to pin ArgoCD workloads to (must have enough memory)
+argocd_node_hostname: "homelab-amd"

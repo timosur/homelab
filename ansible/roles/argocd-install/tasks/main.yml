@@ -22,6 +22,30 @@
     definition: "{{ lookup('file', '/tmp/argocd-install.yaml') | from_yaml_all | list }}"
     namespace: "{{ argocd_namespace }}"
 
+- name: Pin ArgoCD workloads to control plane node
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: "{{ item.api }}"
+      kind: "{{ item.kind }}"
+      metadata:
+        name: "{{ item.name }}"
+        namespace: "{{ argocd_namespace }}"
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: "{{ argocd_node_hostname }}"
+  loop:
+    - { api: "apps/v1", kind: "StatefulSet", name: "argocd-application-controller" }
+    - { api: "apps/v1", kind: "Deployment", name: "argocd-server" }
+    - { api: "apps/v1", kind: "Deployment", name: "argocd-repo-server" }
+    - { api: "apps/v1", kind: "Deployment", name: "argocd-applicationset-controller" }
+    - { api: "apps/v1", kind: "Deployment", name: "argocd-redis" }
+    - { api: "apps/v1", kind: "Deployment", name: "argocd-dex-server" }
+  loop_control:
+    label: "{{ item.name }}"
+
 - name: Configure ArgoCD server to run in insecure mode (no TLS redirect)
   kubernetes.core.k8s:
     state: present

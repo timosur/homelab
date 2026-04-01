@@ -9,6 +9,15 @@ spec:
     - repoURL: oci://cr.agentgateway.dev/charts/agentgateway
       chart: agentgateway
       targetRevision: 1.0.1
+      helm:
+        valuesObject:
+          nodeSelector:
+            kubernetes.io/hostname: homelab-amd-desktop
+          tolerations:
+            - key: availability
+              operator: Equal
+              value: daytime
+              effect: NoSchedule
     - repoURL: https://github.com/timosur/homelab.git
       targetRevision: HEAD
       path: apps/agentgateway
