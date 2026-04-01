@@ -18,6 +18,12 @@ spec:
         - /metadata
         - /spec
         - /status
+    - group: k8s.homelab.timosur.com
+      kind: AppDB
+      jsonPointers:
+        - /metadata
+        - /spec
+        - /status
   syncPolicy:
     automated:
       prune: true
