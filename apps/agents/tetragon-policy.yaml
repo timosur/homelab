@@ -10,11 +10,18 @@ spec:
     # File write access: deny writes outside allowed dirs
     - call: "sys_openat"
       syscall: true
+      return: false
       args:
         - index: 1
           type: "string"
+          resolve: ""
+          maxData: false
+          returnCopy: false
         - index: 2
           type: "int"
+          resolve: ""
+          maxData: false
+          returnCopy: false
       selectors:
         - matchArgs:
             - index: 2

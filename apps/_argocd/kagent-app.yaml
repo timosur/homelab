@@ -69,6 +69,13 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: agents
+  ignoreDifferences:
+    - group: k8s.homelab.timosur.com
+      kind: AppDBClaim
+      jsonPointers:
+        - /metadata
+        - /spec
+        - /status
   syncPolicy:
     automated:
       prune: true
