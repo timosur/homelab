@@ -22,8 +22,10 @@ namespace using Crossplane `AppDBClaim` for self-service database provisioning.
 - **Crossplane self-service**: Apps create an `AppDBClaim` (XRD: `k8s.homelab.timosur.com/v1`).
   Crossplane provisions a Role, Database, optional Extensions, and a connection Secret
   (`<appName>-db-connection`) in the app's namespace
-- **Connection secret keys**: `host`, `port`, `username`, `password`, `dbname`, `sslmode`, `uri`,
-  `uri-asyncpg`
+- **Connection secret keys**: `host`, `port`, `username`, `password`, `dbname`, `sslmode`,
+  `uri` (`postgresql://`), `uri-psycopg2` (`postgresql+psycopg2://`),
+  `uri-psycopg` (`postgresql+psycopg://`), `uri-asyncpg` (`postgresql+asyncpg://`),
+  `uri-postgres` (`postgres://`). All URIs except `uri-asyncpg` include `?sslmode=disable`.
 - **Central host**: `central-postgres-rw.postgres.svc.cluster.local`
 
 ## Workflow
