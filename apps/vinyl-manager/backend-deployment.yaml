@@ -31,11 +31,33 @@ spec:
             - secretRef:
                 name: vinyl-manager-backend-secret
           env:
-            - name: DATABASE_URL
+            - name: DB_USER
               valueFrom:
                 secretKeyRef:
                   name: vinyl-manager-db-connection
-                  key: uri
+                  key: username
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: vinyl-manager-db-connection
+                  key: password
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: vinyl-manager-db-connection
+                  key: host
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: vinyl-manager-db-connection
+                  key: port
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: vinyl-manager-db-connection
+                  key: dbname
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
           resources:
             limits:
               memory: "1Gi"
