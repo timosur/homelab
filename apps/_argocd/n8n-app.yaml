@@ -11,6 +11,19 @@ spec:
     path: apps/n8n
   destination:
     server: https://kubernetes.default.svc
+  ignoreDifferences:
+    - group: k8s.homelab.timosur.com
+      kind: AppDBClaim
+      jsonPointers:
+        - /metadata
+        - /spec
+        - /status
+    - group: k8s.homelab.timosur.com
+      kind: AppDB
+      jsonPointers:
+        - /metadata
+        - /spec
+        - /status
   syncPolicy:
     automated:
       prune: true
