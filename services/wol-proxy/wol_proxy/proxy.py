@@ -122,6 +122,16 @@ class ProxyBackend:
     def idle_seconds(self) -> float:
         return time.monotonic() - self._last_activity
 
+    # -- Initial state check --------------------------------------------------
+
+    async def check_initial_state(self) -> None:
+        if await self.check_health():
+            log.info("[%s] Backend already awake on startup", self.cfg.name)
+            self.mark_awake()
+            self.touch()
+        else:
+            log.info("[%s] Backend not reachable on startup", self.cfg.name)
+
     # -- Idle watcher -------------------------------------------------------
 
     async def idle_watcher(self) -> None:
@@ -348,6 +358,14 @@ class NodeGroupProxy:
     @property
     def idle_seconds(self) -> float:
         return time.monotonic() - self._last_activity
+
+    async def check_initial_state(self) -> None:
+        if await self.check_node_health():
+            log.info("[%s] Node already awake on startup", self.cfg.name)
+            self._state = "ready"
+            self.touch()
+        else:
+            log.info("[%s] Node not reachable on startup", self.cfg.name)
 
     async def idle_watcher(self) -> None:
         timeout = self.cfg.idle_timeout_minutes * 60

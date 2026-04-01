@@ -22,6 +22,7 @@ async def run(config_path: str) -> None:
 
     for backend_cfg in config.backends:
         backend = ProxyBackend(backend_cfg)
+        await backend.check_initial_state()
 
         tasks.append(asyncio.create_task(backend.idle_watcher()))
 
@@ -44,6 +45,7 @@ async def run(config_path: str) -> None:
 
     for ng_cfg in config.node_groups:
         ng_proxy = NodeGroupProxy(ng_cfg)
+        await ng_proxy.check_initial_state()
         tasks.append(asyncio.create_task(ng_proxy.idle_watcher()))
 
         app = web.Application()
