@@ -7,10 +7,10 @@ spec:
   description: "Network policy for kagent engine, controller, and UI pods"
   endpointSelector: {}
   ingress:
-    # kagent UI exposed via envoy-gateway-home
+    # kagent UI exposed via wol-proxy (desktop-proxy forwards from envoy-gateway-home)
     - fromEndpoints:
         - matchLabels:
-            io.kubernetes.pod.namespace: envoy-gateway-system
+            io.kubernetes.pod.namespace: wol-proxy
     # Internal pod-to-pod within agents namespace (engine ↔ postgres)
     - fromEndpoints:
         - matchLabels:
