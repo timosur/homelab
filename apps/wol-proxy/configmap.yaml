@@ -22,9 +22,9 @@ data:
           - /api/ps
           - /api/version
         cachedPathDefaults:
-          /api/tags: '{"models":[]}'
+          /api/tags: '{"models":[{"name":"bge-m3:latest","model":"bge-m3:latest","modified_at":"2026-03-28T11:30:40.526736601Z","size":1157672605,"digest":"7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab","details":{"parent_model":"","format":"gguf","family":"bert","families":["bert"],"parameter_size":"566.70M","quantization_level":"F16"}},{"name":"nemotron-3-nano:4b","model":"nemotron-3-nano:4b","modified_at":"2026-03-22T18:47:59.235599268Z","size":2837597147,"digest":"6cc467f054393a55e98a74098abde0c762ffb6d1d8cd64becf30458f38886197","details":{"parent_model":"","format":"gguf","family":"nemotron_h","families":["nemotron_h"],"parameter_size":"4.0B","quantization_level":"Q4_K_M"}},{"name":"mistral:7b","model":"mistral:7b","modified_at":"2026-03-20T09:24:58.08436782Z","size":4372824384,"digest":"6577803aa9a036369e481d648a2baebb381ebc6e897f2bb9a766a2aa7bfbc1cf","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"7.2B","quantization_level":"Q4_K_M"}},{"name":"devstral:latest","model":"devstral:latest","modified_at":"2026-03-20T09:09:07.081130169Z","size":14333928046,"digest":"9bd74193e93935e9d8564d88607b220a9d341c4a36b748cffcbd9ad4f47a9ca9","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"23.6B","quantization_level":"Q4_K_M"}}]}'
           /api/ps: '{"models":[]}'
-          /api/version: '{"version":"0.0.0"}'
+          /api/version: '{"version":"0.18.2"}'
 
     nodeGroups:
       - name: desktop
