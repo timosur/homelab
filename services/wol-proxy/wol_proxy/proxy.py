@@ -4,6 +4,7 @@ import subprocess
 import time
 
 from aiohttp import ClientSession, ClientTimeout, web
+from multidict import CIMultiDict
 
 from .config import BackendConfig, NodeGroupConfig, NodeGroupBackend
 from .wol import send_wol_packet
@@ -211,8 +212,8 @@ class ProxyBackend:
 
                 resp = web.StreamResponse(
                     status=upstream.status,
-                    headers={
-                        k: v
+                    headers=CIMultiDict(
+                        (k, v)
                         for k, v in upstream.headers.items()
                         if k.lower()
                         not in (
@@ -220,7 +221,7 @@ class ProxyBackend:
                             "content-encoding",
                             "content-length",
                         )
-                    },
+                    ),
                 )
 
                 content_length = upstream.headers.get("content-length")
@@ -415,15 +416,15 @@ class NodeGroupProxy:
             ) as upstream:
                 resp = web.StreamResponse(
                     status=upstream.status,
-                    headers={
-                        k: v
+                    headers=CIMultiDict(
+                        (k, v)
                         for k, v in upstream.headers.items()
                         if k.lower()
                         not in (
                             "transfer-encoding",
                             "content-length",
                         )
-                    },
+                    ),
                 )
                 content_length = upstream.headers.get("content-length")
                 if content_length:
