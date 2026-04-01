@@ -110,3 +110,21 @@ common_blacklisted_modules:
 # Extra modules to blacklist (set per-host in inventory)
 # ──────────────────────────────────────────────────────
 extra_blacklisted_modules: []
+
+# ──────────────────────────────────────────────────────
+# Swap configuration
+# ──────────────────────────────────────────────────────
+# Size of the swap file to create (set to "" to skip swap setup)
+swap_file_path: /swapfile
+swap_file_size_mb: 2048
+swap_swappiness: 10
+
+# ──────────────────────────────────────────────────────
+# Journald configuration
+# ──────────────────────────────────────────────────────
+journald_system_max_use: "200M"
+journald_system_max_file_size: "50M"
+journald_runtime_max_use: "100M"
+journald_compress: "yes"
+journald_rate_limit_interval: "30s"
+journald_rate_limit_burst: "10000"

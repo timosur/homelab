@@ -11,6 +11,27 @@
     enabled: true
   become: true
 
+- name: Ensure k3s config directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Configure k3s agent with kubelet memory management
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      kubelet-arg:
+        - "eviction-hard=memory.available<150Mi,nodefs.available<10%"
+        - "eviction-soft=memory.available<300Mi,nodefs.available<15%"
+        - "eviction-soft-grace-period=memory.available=30s,nodefs.available=1m"
+        - "system-reserved=memory=256Mi"
+        - "kube-reserved=memory=256Mi"
+    mode: "0644"
+  become: true
+  register: k3s_agent_config
+
 - name: Check if k3s is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/k3s
@@ -83,3 +104,12 @@
 - name: Show k3s-agent status
   ansible.builtin.debug:
     var: k3s_agent_status.stdout_lines
+
+- name: Restart k3s-agent if config changed on existing node
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: restarted
+  become: true
+  when:
+    - k3s_agent_config.changed
+    - k3s_binary.stat.exists

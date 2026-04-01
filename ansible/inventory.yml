@@ -23,6 +23,7 @@ all:
               extra_disabled_services:
                 - docker.service
                 - dphys-swapfile.service
+              swap_file_size_mb: 2048
 
             homelab-arm-large:
               ansible_host: homelab-arm-large
@@ -30,6 +31,7 @@ all:
               extra_disabled_services:
                 - docker.service
                 - dphys-swapfile.service
+              swap_file_size_mb: 2048
 
         gpu_workers:
           hosts:

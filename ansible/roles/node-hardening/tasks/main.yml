@@ -318,7 +318,110 @@
   become: true
 
 # ──────────────────────────────────────────────────────
-# 14. NTP time synchronization
+# 14. Swap file configuration
+# ──────────────────────────────────────────────────────
+- name: Check if swap file exists
+  ansible.builtin.stat:
+    path: "{{ swap_file_path }}"
+  register: swap_file_stat
+  when: swap_file_size_mb | int > 0
+
+- name: Create swap file
+  ansible.builtin.command: "dd if=/dev/zero of={{ swap_file_path }} bs=1M count={{ swap_file_size_mb }}"
+  become: true
+  when:
+    - swap_file_size_mb | int > 0
+    - not swap_file_stat.stat.exists
+  changed_when: true
+
+- name: Set swap file permissions
+  ansible.builtin.file:
+    path: "{{ swap_file_path }}"
+    mode: "0600"
+    owner: root
+    group: root
+  become: true
+  when: swap_file_size_mb | int > 0
+
+- name: Format swap file
+  ansible.builtin.command: "mkswap {{ swap_file_path }}"
+  become: true
+  when:
+    - swap_file_size_mb | int > 0
+    - not swap_file_stat.stat.exists
+  changed_when: true
+
+- name: Enable swap file
+  ansible.builtin.command: "swapon {{ swap_file_path }}"
+  become: true
+  when:
+    - swap_file_size_mb | int > 0
+    - not swap_file_stat.stat.exists
+  changed_when: true
+  failed_when: false
+
+- name: Add swap to fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: "^{{ swap_file_path }}"
+    line: "{{ swap_file_path }} none swap sw 0 0"
+    state: present
+  become: true
+  when: swap_file_size_mb | int > 0
+
+- name: Set swappiness
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: "{{ swap_swappiness }}"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/90-hardening.conf
+  become: true
+  when: swap_file_size_mb | int > 0
+
+# ──────────────────────────────────────────────────────
+# 15. Journald configuration
+# ──────────────────────────────────────────────────────
+- name: Configure journald to limit disk usage and prevent crashes
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/00-homelab.conf
+    content: |
+      [Journal]
+      SystemMaxUse={{ journald_system_max_use }}
+      SystemMaxFileSize={{ journald_system_max_file_size }}
+      RuntimeMaxUse={{ journald_runtime_max_use }}
+      Compress={{ journald_compress }}
+      RateLimitIntervalSec={{ journald_rate_limit_interval }}
+      RateLimitBurst={{ journald_rate_limit_burst }}
+      MaxRetentionSec=7day
+      ForwardToSyslog=no
+    mode: "0644"
+  become: true
+  register: journald_config
+
+- name: Ensure journald config directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Vacuum existing journal to reclaim space
+  ansible.builtin.command: journalctl --vacuum-size=200M
+  become: true
+  when: journald_config.changed
+  changed_when: true
+
+- name: Restart journald after configuration change
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
+  become: true
+  when: journald_config.changed
+
+# ──────────────────────────────────────────────────────
+# 16. NTP time synchronization
 # ──────────────────────────────────────────────────────
 - name: Ensure chrony is installed
   ansible.builtin.package:
