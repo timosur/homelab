@@ -5,7 +5,7 @@ metadata:
   namespace: vinyl-manager
 spec:
   appName: vinyl-manager
-  databaseName: vinyl_manager
-  roleName: vinyl_manager
+  databaseName: vinyl-manager
+  roleName: vinyl-manager
   compositionRef:
     name: appdb-central-postgres
