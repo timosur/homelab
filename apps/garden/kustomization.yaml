@@ -10,8 +10,7 @@ resources:
   - backend-pvc.yaml
   - rmapi-external-secret.yaml
   - postgres.yaml
-  - postgres-external-secret.yaml
-  - postgres-password-secret.yaml
+  - appdb.yaml
   - nginx-configmap.yaml
   - backend-deployment.yaml
   - backend-service.yaml

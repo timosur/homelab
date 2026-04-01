@@ -37,8 +37,17 @@ spec:
                 name: garden-backend-config
             - secretRef:
                 name: garden-backend-secrets
-            - secretRef:
-                name: garden-postgres-password
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: garden-db-connection
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: garden-db-connection
+                  key: password
           volumeMounts:
             - name: backend-input
               mountPath: /app/input
