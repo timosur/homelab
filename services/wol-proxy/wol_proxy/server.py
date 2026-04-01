@@ -26,7 +26,7 @@ async def run(config_path: str) -> None:
 
         tasks.append(asyncio.create_task(backend.idle_watcher()))
 
-        app = web.Application()
+        app = web.Application(client_max_size=100 * 1024 * 1024)
         app.router.add_route("*", "/{path_info:.*}", backend.handle_request)
 
         runner = web.AppRunner(app)
@@ -48,7 +48,7 @@ async def run(config_path: str) -> None:
         await ng_proxy.check_initial_state()
         tasks.append(asyncio.create_task(ng_proxy.idle_watcher()))
 
-        app = web.Application()
+        app = web.Application(client_max_size=100 * 1024 * 1024)
         app.router.add_route("*", "/{path_info:.*}", ng_proxy.handle_request)
 
         runner = web.AppRunner(app)
