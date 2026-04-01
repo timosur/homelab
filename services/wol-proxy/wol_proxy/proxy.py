@@ -197,6 +197,7 @@ class ProxyBackend:
                     if k.lower() not in ("host", "transfer-encoding")
                 },
                 data=await request.read(),
+                allow_redirects=False,
             ) as upstream:
                 # For cacheable endpoints, read full body and cache it
                 if is_cacheable and upstream.status == 200:
@@ -410,6 +411,7 @@ class NodeGroupProxy:
                     if k.lower() not in ("host", "transfer-encoding")
                 },
                 data=await request.read(),
+                allow_redirects=False,
             ) as upstream:
                 resp = web.StreamResponse(
                     status=upstream.status,
