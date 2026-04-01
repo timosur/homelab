@@ -12,4 +12,4 @@ spec:
       kind: HTTPRoute
       name: paperless-basic-auth
   requestBuffer:
-    maxRequestBytes: 52428800
+    limit: 50Mi
