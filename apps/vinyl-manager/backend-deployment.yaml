@@ -57,6 +57,8 @@ spec:
                   name: vinyl-manager-db-connection
                   key: dbname
             - name: DATABASE_URL
+              value: "postgresql://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+            - name: ASYNC_DATABASE_URL
               value: "postgresql+asyncpg://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
           resources:
             limits:
