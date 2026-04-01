@@ -106,7 +106,8 @@ spec:
               password: {{ index $roleSecret "password" }}
               dbname: {{ .observed.composite.resource.spec.databaseName | b64enc }}
               sslmode: {{ "disable" | b64enc }}
-              uri: {{ printf "postgresql://%s:%s@central-postgres-rw.postgres.svc.cluster.local:5432/%s?sslmode=disable" .observed.composite.resource.spec.roleName (index $roleSecret "password" | b64dec) .observed.composite.resource.spec.databaseName | b64enc }}
+              uri: {{ printf "postgresql://%s:%s@central-postgres-rw.postgres.svc.cluster.local:5432/%s" .observed.composite.resource.spec.roleName (index $roleSecret "password" | b64dec) .observed.composite.resource.spec.databaseName | b64enc }}
+              uri-asyncpg: {{ printf "postgresql+asyncpg://%s:%s@central-postgres-rw.postgres.svc.cluster.local:5432/%s" .observed.composite.resource.spec.roleName (index $roleSecret "password" | b64dec) .observed.composite.resource.spec.databaseName | b64enc }}
             {{ else }}
             data: {}
             {{ end }}

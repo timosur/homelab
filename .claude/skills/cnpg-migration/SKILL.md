@@ -22,7 +22,8 @@ namespace using Crossplane `AppDBClaim` for self-service database provisioning.
 - **Crossplane self-service**: Apps create an `AppDBClaim` (XRD: `k8s.homelab.timosur.com/v1`).
   Crossplane provisions a Role, Database, optional Extensions, and a connection Secret
   (`<appName>-db-connection`) in the app's namespace
-- **Connection secret keys**: `host`, `port`, `username`, `password`, `dbname`, `sslmode`, `uri`
+- **Connection secret keys**: `host`, `port`, `username`, `password`, `dbname`, `sslmode`, `uri`,
+  `uri-asyncpg`
 - **Central host**: `central-postgres-rw.postgres.svc.cluster.local`
 
 ## Workflow
@@ -135,16 +136,15 @@ Steps:
              name: <app>-db-connection
              key: uri
      ```
-   - **Option 2**: If the URL format differs from standard `postgresql://` (e.g., uses
-     `postgresql+asyncpg://`), keep it in ExternalSecret but source from the connection secret
-     instead of AKV.
+   - **Option 2**: If the app uses `postgresql+asyncpg://` (async driver), use the `uri-asyncpg`
+     key from the Crossplane connection secret instead of `uri`.
 2. **ConfigMap**: If it has a separate `DB_HOST` entry, update to
    `central-postgres-rw.postgres.svc.cluster.local`
 3. Remove AKV-sourced postgres credential entries from ExternalSecret
 
-**IMPORTANT for non-standard URI schemes**: The Crossplane connection secret's `uri` key uses
-`postgresql://` scheme. Apps requiring `postgresql+asyncpg://` (like bike-weather) need the
-deployment to keep a template in the ExternalSecret that reads from the Crossplane secret
+**IMPORTANT for non-standard URI schemes**: The Crossplane connection secret provides both
+`uri` (`postgresql://`) and `uri-asyncpg` (`postgresql+asyncpg://`). Use the appropriate key
+for the app's driver. Neither URI includes `sslmode`.
 
 #### Pattern D: ArgoCD Helm values override
 
@@ -277,7 +277,6 @@ kubectl logs -n <app> deployment/<app> | tail -20
 
 | App           | Pattern | DB Name       | Role          | Host Env Var                  | Credential Source                                                 | Special                  |
 | ------------- | ------- | ------------- | ------------- | ----------------------------- | ----------------------------------------------------------------- | ------------------------ |
-| vinyl-manager | C       | vinyl_manager | vinyl_manager | N/A (URL only)                | ExternalSecret templates `DATABASE_URL`                           | underscore names         |
 | bike-weather  | C       | app           | app           | `DB_HOST` (configmap)         | ExternalSecret templates `DATABASE_URL` (`postgresql+asyncpg://`) | asyncpg scheme           |
 | garden        | A       | garden        | garden        | `DB_HOST` (configmap)         | ExternalSecret `garden-postgres-password`                         | multi-service app        |
 | mealie        | A       | mealie        | mealie        | `POSTGRES_SERVER` (configmap) | ExternalSecret `mealie-postgres-password`                         | `max_connections=200`    |
@@ -292,6 +291,7 @@ kubectl logs -n <app> deployment/<app> | tail -20
 | paperless            | Pattern A              | —         |
 | bike-weather-preview | Pattern C, scaled to 0 | —         |
 | bike-weather-auth    | Pattern A              | —         |
+| vinyl-manager        | Pattern C, data migrated, underscore→hyphen rename | `fa57578` |
 
 ---
 
@@ -358,12 +358,16 @@ DB_POSTGRESDB_HOST: "central-postgres-rw.postgres.svc.cluster.local"
    in the namespace matching `appName`. If these don't match, the secret lands in the wrong
    namespace.
 
-2. **Underscore names** — PostgreSQL role and database names with underscores (e.g.,
-   `vinyl_manager`) are valid. Keep them matching the old cluster's names.
+2. **Underscore names are NOT valid for Crossplane** — Crossplane uses `roleName` and
+   `databaseName` as Kubernetes resource metadata names, which must be RFC 1123 compliant
+   (no underscores). Use hyphens instead (e.g., `vinyl-manager` not `vinyl_manager`). The
+   Crossplane SQL provider will create the PostgreSQL role/database with the hyphenated name.
+   Data migration must account for the rename (dump from `vinyl_manager`, restore to
+   `vinyl-manager`).
 
-3. **`postgresql+asyncpg://` vs `postgresql://`** — The Crossplane `uri` key uses standard
-   `postgresql://` scheme. Apps using async drivers (SQLAlchemy async, etc.) need
-   `postgresql+asyncpg://`. Either use individual keys or adjust the scheme.
+3. **`postgresql+asyncpg://` vs `postgresql://`** — The Crossplane connection secret provides
+   both `uri` (`postgresql://`) and `uri-asyncpg` (`postgresql+asyncpg://`). Use the
+   appropriate key for the app's driver.
 
 4. **ExternalSecret with mixed secrets** — Some ExternalSecrets contain both DB credentials and
    other app secrets (e.g., API keys). Only remove the DB-related entries; keep the rest.
@@ -385,3 +389,25 @@ DB_POSTGRESDB_HOST: "central-postgres-rw.postgres.svc.cluster.local"
 
 9. **Multi-service apps** — Apps like garden have multiple deployments sharing the same database.
    Only create one AppDBClaim. Update all deployments that consume DB credentials.
+
+10. **asyncpg and `sslmode`** — The asyncpg driver does NOT accept `sslmode` as a connection
+    parameter. The Crossplane connection secret's `uri` and `uri-asyncpg` keys do not include
+    `sslmode`, so they are safe to use directly. The `sslmode` key still exists as a standalone
+    secret key for apps that need it separately.
+
+11. **Apps may need both sync and async DATABASE_URL** — Some apps (e.g., vinyl-manager) use
+    Alembic for migrations (sync `postgresql://`) and asyncpg for runtime (async
+    `postgresql+asyncpg://`). Use `uri` for the sync URL and `uri-asyncpg` for the async URL:
+    ```yaml
+    env:
+      - name: DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: <app>-db-connection
+            key: uri
+      - name: ASYNC_DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: <app>-db-connection
+            key: uri-asyncpg
+    ```
