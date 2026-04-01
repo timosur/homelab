@@ -4,7 +4,7 @@ metadata:
   name: garden-rmapi-wrapper
   namespace: garden
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
