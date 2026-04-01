@@ -11,9 +11,16 @@ spec:
     path: apps/garden
   destination:
     server: https://kubernetes.default.svc
+  ignoreDifferences:
+    - group: k8s.homelab.timosur.com
+      kind: AppDBClaim
+      jsonPointers:
+        - /metadata
+        - /spec
+        - /status
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true
+      - CreateNamespace=true
