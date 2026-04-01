@@ -15,4 +15,6 @@ resources:
   - n8n.yaml
   - open-webui.yaml
   - paperless.yaml
+  - paperless-basic-auth.yaml
+  - paperless-backend-policy.yaml
   - portfolio.yaml

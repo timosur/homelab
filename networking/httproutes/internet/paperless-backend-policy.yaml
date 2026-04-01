@@ -1,0 +1,15 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: paperless-request-buffer
+  namespace: paperless
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: paperless
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: paperless-basic-auth
+  requestBuffer:
+    maxRequestBytes: 52428800
