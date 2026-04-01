@@ -13,15 +13,15 @@ spec:
         valuesObject:
           tetragon:
             enabled: true
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: kubernetes.io/arch
-                          operator: NotIn
-                          values:
-                            - arm64
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/arch
+                        operator: NotIn
+                        values:
+                          - arm64
           tetragonOperator:
             enabled: true
     - repoURL: https://github.com/timosur/homelab.git
