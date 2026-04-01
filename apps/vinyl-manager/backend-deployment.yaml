@@ -4,7 +4,7 @@ metadata:
   name: vinyl-backend
   namespace: vinyl-manager
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: vinyl-backend
@@ -30,6 +30,12 @@ spec:
                 name: vinyl-manager-config
             - secretRef:
                 name: vinyl-manager-backend-secret
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vinyl-manager-db-connection
+                  key: uri
           resources:
             limits:
               memory: "1Gi"

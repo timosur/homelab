@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: vinyl-manager-db
+  namespace: vinyl-manager
+spec:
+  appName: vinyl-manager
+  databaseName: vinyl_manager
+  roleName: vinyl_manager
+  compositionRef:
+    name: appdb-central-postgres
