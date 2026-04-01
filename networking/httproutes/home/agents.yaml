@@ -15,5 +15,6 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: kagent-ui
+        - name: desktop-proxy
+          namespace: wol-proxy
           port: 8080

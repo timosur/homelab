@@ -52,3 +52,5 @@ data:
             target: "mealie.mealie.svc.cluster.local:9000"
           - hostname: "automate.timosur.com"
             target: "n8n.n8n.svc.cluster.local:80"
+          - hostname: "agents.home.timosur.com"
+            target: "kagent-ui.agents.svc.cluster.local:8080"

@@ -20,6 +20,9 @@ spec:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
       namespace: n8n
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: agents
   to:
     - group: ""
       kind: Service
