@@ -1,0 +1,85 @@
+# Ollama — OpenAI-compatible API, no auth, in-cluster ExternalName service
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: ollama
+  namespace: agentgateway-system
+spec:
+  ai:
+    provider:
+      openai:
+        model: devstral:latest
+      host: ollama.agentgateway-system.svc.cluster.local
+      port: 11434
+---
+# OpenAI — raw key in secret, framework adds Bearer prefix automatically
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: openai
+  namespace: agentgateway-system
+spec:
+  ai:
+    provider:
+      openai:
+        model: gpt-4o-mini
+  policies:
+    auth:
+      secretRef:
+        name: agentgateway-openai-secret
+---
+# Anthropic — raw key in secret, framework sends as x-api-key automatically
+# agentgateway translates /v1/chat/completions -> /v1/messages internally
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: anthropic
+  namespace: agentgateway-system
+spec:
+  ai:
+    provider:
+      anthropic:
+        model: claude-sonnet-4-6
+  policies:
+    auth:
+      secretRef:
+        name: agentgateway-anthropic-secret
+---
+# Single HTTPRoute with path-based rules — attaches to agentgateway-proxy (NOT Envoy)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: llm-inference
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /ollama
+      backendRefs:
+        - name: ollama
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /openai
+      backendRefs:
+        - name: openai
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /anthropic
+      backendRefs:
+        - name: anthropic
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
