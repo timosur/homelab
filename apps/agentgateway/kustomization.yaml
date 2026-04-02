@@ -3,6 +3,8 @@ kind: Kustomization
 
 resources:
   - admin-ui-service.yaml
+  - ai-backends.yaml
+  - ai-secrets.yaml
   - gateway.yaml
   - network-policy.yaml
   - ollama-backend.yaml
