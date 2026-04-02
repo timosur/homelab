@@ -1,0 +1,7 @@
+---
+# Kernel sysctls required by kubelet when protect-kernel-defaults=true.
+# Without these, k3s crashes on every boot (ContainerManager fails to start).
+k3s_sysctl_params:
+  vm.overcommit_memory: "1"
+  kernel.panic: "10"
+  kernel.panic_on_oops: "1"

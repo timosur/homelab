@@ -93,6 +93,17 @@
   become: true
   notify: Restart k3s
 
+- name: Apply k3s-required kernel sysctls (needed by protect-kernel-defaults=true)
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    sysctl_file: /etc/sysctl.d/90-k3s.conf
+    reload: true
+    state: present
+  become: true
+  loop: "{{ k3s_sysctl_params | dict2items }}"
+
 - name: Check if k3s is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/k3s
