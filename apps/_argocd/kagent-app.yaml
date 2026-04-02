@@ -59,53 +59,17 @@ spec:
             helm-agent:
               enabled: false
             k8s-agent:
-              nodeSelector:
-                kubernetes.io/hostname: homelab-amd-desktop
-              tolerations:
-                - key: availability
-                  operator: Equal
-                  value: daytime
-                  effect: NoSchedule
+              enabled: false
             cilium-debug-agent:
-              nodeSelector:
-                kubernetes.io/hostname: homelab-amd-desktop
-              tolerations:
-                - key: availability
-                  operator: Equal
-                  value: daytime
-                  effect: NoSchedule
+              enabled: false
             cilium-manager-agent:
-              nodeSelector:
-                kubernetes.io/hostname: homelab-amd-desktop
-              tolerations:
-                - key: availability
-                  operator: Equal
-                  value: daytime
-                  effect: NoSchedule
+              enabled: false
             cilium-policy-agent:
-              nodeSelector:
-                kubernetes.io/hostname: homelab-amd-desktop
-              tolerations:
-                - key: availability
-                  operator: Equal
-                  value: daytime
-                  effect: NoSchedule
+              enabled: false
             kgateway-agent:
-              nodeSelector:
-                kubernetes.io/hostname: homelab-amd-desktop
-              tolerations:
-                - key: availability
-                  operator: Equal
-                  value: daytime
-                  effect: NoSchedule
+              enabled: false
             observability-agent:
-              nodeSelector:
-                kubernetes.io/hostname: homelab-amd-desktop
-              tolerations:
-                - key: availability
-                  operator: Equal
-                  value: daytime
-                  effect: NoSchedule
+              enabled: false
           tools:
             grafana-mcp:
               enabled: false
