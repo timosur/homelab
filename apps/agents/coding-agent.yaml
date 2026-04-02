@@ -58,6 +58,14 @@ spec:
             - gh_pr_create
             - fetch_url
             - workspace_cleanup
+    deployment:
+      nodeSelector:
+        kubernetes.io/hostname: homelab-amd-desktop
+      tolerations:
+        - key: availability
+          operator: Equal
+          value: daytime
+          effect: NoSchedule
     context:
       compaction:
         compactionInterval: 5

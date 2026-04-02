@@ -58,6 +58,54 @@ spec:
               enabled: false
             helm-agent:
               enabled: false
+            k8s-agent:
+              nodeSelector:
+                kubernetes.io/hostname: homelab-amd-desktop
+              tolerations:
+                - key: availability
+                  operator: Equal
+                  value: daytime
+                  effect: NoSchedule
+            cilium-debug-agent:
+              nodeSelector:
+                kubernetes.io/hostname: homelab-amd-desktop
+              tolerations:
+                - key: availability
+                  operator: Equal
+                  value: daytime
+                  effect: NoSchedule
+            cilium-manager-agent:
+              nodeSelector:
+                kubernetes.io/hostname: homelab-amd-desktop
+              tolerations:
+                - key: availability
+                  operator: Equal
+                  value: daytime
+                  effect: NoSchedule
+            cilium-policy-agent:
+              nodeSelector:
+                kubernetes.io/hostname: homelab-amd-desktop
+              tolerations:
+                - key: availability
+                  operator: Equal
+                  value: daytime
+                  effect: NoSchedule
+            kgateway-agent:
+              nodeSelector:
+                kubernetes.io/hostname: homelab-amd-desktop
+              tolerations:
+                - key: availability
+                  operator: Equal
+                  value: daytime
+                  effect: NoSchedule
+            observability-agent:
+              nodeSelector:
+                kubernetes.io/hostname: homelab-amd-desktop
+              tolerations:
+                - key: availability
+                  operator: Equal
+                  value: daytime
+                  effect: NoSchedule
           tools:
             grafana-mcp:
               enabled: false
