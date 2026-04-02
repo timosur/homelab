@@ -127,6 +127,13 @@ spec:
                 - monitoring-smtp-secret
           nodeExporter:
             enabled: true
+            resources:
+              requests:
+                cpu: 20m
+                memory: 32Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
           kubeStateMetrics:
             enabled: true
           prometheusOperator:
@@ -235,6 +242,13 @@ spec:
       helm:
         valuesObject:
           alloy:
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
             configMap:
               content: |
                 // Faro receiver — browser telemetry from Grafana Faro SDK
