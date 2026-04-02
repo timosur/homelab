@@ -53,7 +53,9 @@ metadata:
   namespace: agentgateway-system
 spec:
   parentRefs:
-    - name: agentgateway-proxy
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-proxy
       namespace: agentgateway-system
   rules:
     - matches:
@@ -65,6 +67,7 @@ spec:
           namespace: agentgateway-system
           group: agentgateway.dev
           kind: AgentgatewayBackend
+          weight: 1
     - matches:
         - path:
             type: PathPrefix
@@ -74,6 +77,7 @@ spec:
           namespace: agentgateway-system
           group: agentgateway.dev
           kind: AgentgatewayBackend
+          weight: 1
     - matches:
         - path:
             type: PathPrefix
@@ -83,3 +87,4 @@ spec:
           namespace: agentgateway-system
           group: agentgateway.dev
           kind: AgentgatewayBackend
+          weight: 1
