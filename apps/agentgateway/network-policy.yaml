@@ -11,6 +11,8 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: wol-proxy
       toPorts:
         - ports:
             - port: "15000"

@@ -57,3 +57,5 @@ data:
             target: "n8n.n8n.svc.cluster.local:80"
           - hostname: "agents.home.timosur.com"
             target: "kagent-ui.agents.svc.cluster.local:8080"
+          - hostname: "agent-gateway.home.timosur.com"
+            target: "agentgateway-proxy-admin.agentgateway-system.svc.cluster.local:15000"
