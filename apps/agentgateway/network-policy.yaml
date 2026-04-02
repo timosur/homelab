@@ -15,3 +15,9 @@ spec:
         - ports:
             - port: "15000"
               protocol: TCP
+    - fromCIDR:
+        - 0.0.0.0/0
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
