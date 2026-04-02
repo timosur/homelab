@@ -15,6 +15,6 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: agentgateway-proxy
+        - name: agentgateway-proxy-admin
           namespace: agentgateway-system
           port: 15000
