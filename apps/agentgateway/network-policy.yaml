@@ -1,0 +1,17 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-ingress-from-envoy-gateways
+  namespace: agentgateway-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: agentgateway-proxy
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+      toPorts:
+        - ports:
+            - port: "15000"
+              protocol: TCP
