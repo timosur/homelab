@@ -7,6 +7,8 @@ metadata:
     app: home-assistant
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: home-assistant
@@ -60,6 +62,18 @@ spec:
             - name: localtime
               mountPath: /etc/localtime
               readOnly: true
+          livenessProbe:
+            tcpSocket:
+              port: 8123
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 8123
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
           resources:
             limits:
               memory: "2Gi"
