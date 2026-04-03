@@ -13,22 +13,7 @@ spec:
         valuesObject:
           fullnameOverride: monitoring
           defaultRules:
-            create: true
-            rules:
-              kubernetesApps: true
-              kubernetesResources: true
-              kubernetesStorage: true
-              kubernetesSystem: true
-              kubeApiserver: true
-              kubeApiserverAvailability: true
-              kubeApiserverSlos: true
-              kubelet: true
-              kubeProxy: true
-              kubePrometheusGeneral: true
-              kubePrometheusNodeRecording: true
-              nodeExporterAlerting: true
-              nodeExporterRecording: true
-              prometheus: true
+            create: false
           grafana:
             enabled: true
             initChownData:
@@ -92,7 +77,7 @@ spec:
                 resolve_timeout: 5m
                 smtp_smarthost: "smtp.gmail.com:587"
                 smtp_from: "timo.surmann@googlemail.com"
-                smtp_auth_username_file: /etc/alertmanager/secrets/monitoring-smtp-secret/SMTP_USERNAME
+                smtp_auth_username: "timo.surmann@googlemail.com"
                 smtp_auth_password_file: /etc/alertmanager/secrets/monitoring-smtp-secret/SMTP_PASSWORD
                 smtp_require_tls: true
               route:

@@ -5,3 +5,4 @@ resources:
   - namespace.yaml
   - external-secret.yaml
   - alloy-ingress-policy.yaml
+  - temperature-alert.yaml

@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: node-temperature-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: node.temperature
+      interval: 1m
+      rules:
+        - alert: NodeTemperatureWarning
+          expr: >
+            (node_hwmon_temp_celsius * on(instance) group_left(nodename) node_uname_info) > 70
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High temperature on {{ $labels.nodename }}"
+            description: "Sensor {{ $labels.chip }}/{{ $labels.sensor }} on node {{ $labels.nodename }} is {{ $value | humanize }}°C (threshold: 70°C)."
+        - alert: NodeTemperatureCritical
+          expr: >
+            (node_hwmon_temp_celsius * on(instance) group_left(nodename) node_uname_info) > 85
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Dangerous temperature on {{ $labels.nodename }}"
+            description: "Sensor {{ $labels.chip }}/{{ $labels.sensor }} on node {{ $labels.nodename }} is {{ $value | humanize }}°C (threshold: 85°C)."
