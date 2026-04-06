@@ -1,5 +1,5 @@
 apiVersion: cilium.io/v1alpha1
-kind: TracingPolicy
+kind: TracingPolicyNamespaced
 metadata:
   name: mcp-process-policy
   namespace: mcp
@@ -49,6 +49,8 @@ spec:
                 - "/workspace"
                 - "/tmp"
                 - "/dev/null"
+                - "/dev/ptmx"
+                - "/dev/pts"
                 - "/proc/self"
           matchActions:
             - action: Sigkill
