@@ -7,4 +7,3 @@ resources:
   - service.yaml
   - external-secret.yaml
   - cilium-network-policy.yaml
-  - tetragon-policy.yaml

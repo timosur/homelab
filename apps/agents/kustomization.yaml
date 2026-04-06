@@ -8,4 +8,3 @@ resources:
   - remote-mcp-server.yaml
   - coding-agent.yaml
   - cilium-network-policy.yaml
-  - tetragon-policy.yaml
