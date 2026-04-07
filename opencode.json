@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "ssh *": "allow",
+      "kubectl get *": "allow",
+      "kubectl explain *": "allow",
+      "kubectl describe *": "allow",
+      "kubectl logs *": "allow",
+      "kubectl exec *": "allow",
+      "kubectl port-forward *": "allow",
+      "kubectl config *": "allow",
+      "kubectl top *": "allow",
+      "helm show *": "allow",
+      "helm search *": "allow",
+      "python3 -m json.tool *": "allow",
+      "python3 -c *": "allow",
+      "npx ctx7@latest *": "allow",
+      "git add *": "allow",
+      "git commit *": "allow",
+      "git push *": "allow",
+      "git status *": "allow",
+      "git diff *": "allow",
+      "git log *": "allow",
+      "base64 *": "allow",
+      "awk *": "allow",
+      "kill %1": "allow"
+    },
+  }
+}
