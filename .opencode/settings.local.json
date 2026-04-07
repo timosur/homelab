@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh *)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl explain:*)",
+      "Bash(helm show:*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(npx ctx7@latest *)",
+      "Bash(npx ctx7@latest docs *)",
+      "Bash(kubectl exec:*)",
+      "Bash(kubectl port-forward:*)",
+      "Bash(helm search:*)",
+      "Bash(kill %1)",
+      "WebFetch(domain:agentgateway.dev)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(python3 -c ':*)",
+      "Bash(python3 -c \"import sys,json; [print\\(c['type'], c['status'], c.get\\('message',''\\)\\) for c in json.load\\(sys.stdin\\)]\")"
+    ]
+  }
+}

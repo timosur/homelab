@@ -1,4 +1,4 @@
-# Copilot Instructions
+# AGENTS.md
 
 ## Agent Behavior
 
@@ -33,7 +33,6 @@ K3s homelab cluster managed via GitOps. All infrastructure changes happen throug
 **App of Apps pattern**: `apps/root.yaml` points to `apps/_argocd/`, which contains ArgoCD Application CRDs that each point to an app's manifests in `apps/<app-name>/`. All app manifests use Kustomize.
 
 **Two ArgoCD app types**:
-
 - **Kustomize apps** (most apps): ArgoCD Application points to `apps/<app-name>/` containing raw K8s manifests with a `kustomization.yaml`
 - **Helm + overlay apps** (cert-manager, envoy-gateway): ArgoCD Application uses `sources:` with a Helm chart plus a local overlay path from this repo
 
@@ -41,22 +40,20 @@ K3s homelab cluster managed via GitOps. All infrastructure changes happen throug
 
 **Secrets**: All secrets live in Azure Key Vault and are synced via External Secrets Operator using `ClusterSecretStore` named `azure-keyvault-store`.
 
-**Storage**: Two storage classes — `homelab-iscsi` (Synology iSCSI via `csi.san.synology.com`) and `homelab-smb` (SMB via `smb.csi.k8s.io`, default).
+**Storage**: Two storage classes — `homelab-iscsi` (Synology iSCSI via `csi.san.synology.com`) and `homelab-smb` (SMB via `smb.csi.k8s.io`, default). Default for PVCs is `homelab-smb`.
 
 **Databases**: PostgreSQL via CloudNative-PG operator. Each app gets its own `Cluster` CRD in `postgres.yaml`.
 
-## Key Conventions
+## Adding a New Application
 
-### Adding a new application
-
-Follow `ONBOARDING_GUIDE.md` for the complete checklist. The critical steps:
+Follow `ONBOARDING_GUIDE.md` for the complete checklist. Critical steps:
 
 1. Create `apps/<app-name>/` with Kustomize manifests (namespace.yaml, deployment.yaml, service.yaml, kustomization.yaml at minimum)
 2. Create `apps/_argocd/<app-name>-app.yaml` and add it to `apps/_argocd/kustomization.yaml`
 3. Create HTTPRoute in `networking/httproutes/home/<app-name>.yaml` or `networking/httproutes/internet/<app-name>.yaml` and register in the corresponding `kustomization.yaml`
 4. If internet-facing, label namespace with `exposure=internet`
 
-### Manifest conventions
+## Manifest Conventions
 
 - Pin container images with SHA digest: `image: ghcr.io/timosur/<repo>/<service>:sha-<commit>@sha256:<digest>`
 - Each app gets its own namespace (same name as the app)
@@ -65,15 +62,16 @@ Follow `ONBOARDING_GUIDE.md` for the complete checklist. The critical steps:
 - Set resource `requests` and `limits` on all containers
 - ConfigMaps for non-secret env vars, ExternalSecrets for secrets
 - Timezone is `Europe/Berlin` in ConfigMaps
+- Before creating anything new, search the codebase for pre-existing patterns and match them exactly
 
-### Networking conventions
+## Networking Conventions
 
 - Home HTTPRoutes reference gateway `envoy-gateway-home` in namespace `envoy-gateway-system`
 - Internet HTTPRoutes reference gateway `envoy-gateway-internet` in namespace `envoy-gateway-internet-system` with `sectionName: https`
 - A cluster-wide `default-deny-ingress` Cilium policy blocks all ingress by default; traffic from envoy gateway namespaces is already allowed
 - Custom domains (not `*.timosur.com`) need dedicated listeners and certificates added to `networking/gateways/internet/gateway.yaml`
 
-### ExternalSecret pattern
+## ExternalSecret Pattern
 
 ```yaml
 secretStoreRef:
@@ -83,7 +81,7 @@ secretStoreRef:
 
 Azure Key Vault key naming: `<app-name>-<secret-key>` (e.g., `garden-database-password`). For PostgreSQL credentials, use `kubernetes.io/basic-auth` type with templated secrets.
 
-### ArgoCD Application template
+## ArgoCD Application Template
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
