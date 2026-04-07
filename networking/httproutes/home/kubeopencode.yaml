@@ -1,20 +1,19 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: agents
-  namespace: agents
+  name: kubeopencode
+  namespace: kubeopencode-system
 spec:
   parentRefs:
     - name: envoy-gateway-home
       namespace: envoy-gateway-system
   hostnames:
-    - agents.home.timosur.com
+    - "code.home.timosur.com"
   rules:
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: desktop-proxy
-          namespace: wol-proxy
-          port: 8080
+        - name: kubeopencode-server
+          port: 2746

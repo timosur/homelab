@@ -2,8 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - agentgateway-crds-app.yaml
-  - agentgateway-app.yaml
   - authentik-app.yaml
   - bike-weather-app.yaml
   - bike-weather-auth-app.yaml
@@ -31,7 +29,5 @@ resources:
   - postgres-app.yaml
   - wol-proxy-app.yaml
   - kured-app.yaml
-  - kagent-crds-app.yaml
-  - kagent-app.yaml
-  - mcp-app.yaml
+  - kubeopencode-app.yaml
   - tetragon-app.yaml
