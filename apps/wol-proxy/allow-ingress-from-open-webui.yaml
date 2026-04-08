@@ -12,8 +12,6 @@ spec:
     - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: open-webui
-        - matchLabels:
-            io.kubernetes.pod.namespace: agentgateway-system
       toPorts:
         - ports:
             - port: "11434"
