@@ -1,11 +1,16 @@
 # Cilium L2 Announcement Policy
 # Makes Cilium respond to ARP requests for LoadBalancer IPs on the LAN,
 # so the Unifi router (and any LAN client) can route to them.
+# Pinned to control-plane node to ensure stable ARP responses that the
+# UDR can reliably route to (both inter-VLAN and port-forwarding).
 apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
 metadata:
   name: l2-announcement-policy
 spec:
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/control-plane: "true"
   # Announce on all interfaces
   interfaces:
     - ^eth[0-9]+
