@@ -8,6 +8,7 @@
     "kubectl describe": true,
     "kubectl config": true,
     "ssh": true,
-    "npx ctx7@latest": true
+    "npx ctx7@latest": true,
+    "kubectl run": true
   }
 }
