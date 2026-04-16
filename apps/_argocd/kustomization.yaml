@@ -30,5 +30,4 @@ resources:
   - postgres-app.yaml
   - wol-proxy-app.yaml
   - kured-app.yaml
-  - kubeopencode-app.yaml
   - tetragon-app.yaml
