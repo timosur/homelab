@@ -11,6 +11,7 @@ resources:
   - crossplane-app.yaml
   - envoy-gateway-app.yaml
   - external-secrets-app.yaml
+  - ferienhof-wiesengrund-app.yaml
   - garden-app.yaml
   - monitoring-app.yaml
   - n8n-app.yaml

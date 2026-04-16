@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ferienhof-wiesengrund
+  namespace: ferienhof-wiesengrund
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ferienhof-wiesengrund
+  template:
+    metadata:
+      labels:
+        app: ferienhof-wiesengrund
+    spec:
+      containers:
+        - name: ferienhof-wiesengrund
+          image: ghcr.io/timosur/ferienhof-wiesengrund:latest # TODO: Pin with SHA after first build
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

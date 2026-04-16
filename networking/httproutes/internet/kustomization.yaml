@@ -10,6 +10,7 @@ resources:
   - bike-weather-www-redirect.yaml
   - fahrrad-wetter.yaml
   - fahrrad-wetter-http-redirect.yaml
+  - ferienhof-wiesengrund.yaml
   - givgroov.yaml
   - mealie.yaml
   - n8n.yaml
