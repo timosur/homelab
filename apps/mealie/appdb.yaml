@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: mealie-db
+  namespace: mealie
+spec:
+  appName: mealie
+  databaseName: mealie
+  roleName: mealie
+  compositionRef:
+    name: appdb-central-postgres
