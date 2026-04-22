@@ -16,10 +16,10 @@ data:
   AUTHENTIK_AUTH_FLOW_SLUG: "default-authentication-flow"
   AUTHENTIK_RECOVERY_FLOW_SLUG: "bike-weather-recovery"
   # Database
-  DB_HOST: "bike-weather-postgres-rw"
+  DB_HOST: "central-postgres-rw.postgres.svc.cluster.local"
   DB_PORT: "5432"
-  DB_NAME: "app"
-  DB_USER: "app"
+  DB_NAME: "bike-weather"
+  DB_USER: "bike-weather"
   # Turnstile (disabled until real key provisioned)
   TURNSTILE_ENABLED: "true"
   # Agent

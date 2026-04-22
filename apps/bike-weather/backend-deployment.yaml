@@ -4,7 +4,7 @@ metadata:
   name: bike-weather-backend
   namespace: bike-weather
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -29,8 +29,8 @@ spec:
             - sh
             - -c
             - |
-              echo "Waiting for database at bike-weather-postgres-rw:5432..."
-              until nc -z bike-weather-postgres-rw 5432; do
+              echo "Waiting for database at central-postgres-rw.postgres.svc.cluster.local:5432..."
+              until nc -z central-postgres-rw.postgres.svc.cluster.local 5432; do
                 echo "Database not ready, retrying in 3s..."
                 sleep 3
               done
@@ -40,6 +40,12 @@ spec:
           image: ghcr.io/timosur/bike-weather/backend:0.1.1
           ports:
             - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bike-weather-db-connection
+                  key: uri-asyncpg
           envFrom:
             - configMapRef:
                 name: bike-weather-config
