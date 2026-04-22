@@ -5,7 +5,7 @@ metadata:
   namespace: bike-weather
 spec:
   appName: bike-weather
-  databaseName: app
-  roleName: app
+  databaseName: bike-weather
+  roleName: bike-weather
   compositionRef:
     name: appdb-central-postgres
