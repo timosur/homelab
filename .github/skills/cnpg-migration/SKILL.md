@@ -280,7 +280,6 @@ kubectl logs -n <app> deployment/<app> | tail -20
 | App           | Pattern | DB Name       | Role          | Host Env Var                  | Credential Source                                                 | Special                  |
 | ------------- | ------- | ------------- | ------------- | ----------------------------- | ----------------------------------------------------------------- | ------------------------ |
 | mealie        | A       | mealie        | mealie        | `POSTGRES_SERVER` (configmap) | ExternalSecret `mealie-postgres-password`                         | `max_connections=200`    |
-| open-webui    | C       | openwebui     | webui         | N/A (URL only)                | ExternalSecret templates `database-url` + `pgvector-db-url`       | needs `vector` extension |
 
 ### Completed migrations
 
@@ -294,6 +293,7 @@ kubectl logs -n <app> deployment/<app> | tail -20
 | vinyl-manager        | Pattern C, data migrated, underscore→hyphen rename | `fa57578` |
 | garden               | Pattern A, data migrated, peer auth for dump (bootstrap secret pruned) | `6899692` |
 | bike-weather         | Pattern C, data migrated, db/role rename app→bike-weather (conflict with preview) | `2829a6c` |
+| open-webui           | Pattern C, data migrated, pgvector extension, composition readiness fix | `5f5bb61` |
 
 ---
 

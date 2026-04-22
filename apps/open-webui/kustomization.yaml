@@ -9,7 +9,6 @@ resources:
   - redis-pvc.yaml
   - redis-deployment.yaml
   - redis-service.yaml
-  - postgres.yaml
   - external-secret.yaml
   - appdb.yaml
   # Ollama runs natively on GPU node (systemd), not as a K8s pod
