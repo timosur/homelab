@@ -277,9 +277,7 @@ kubectl logs -n <app> deployment/<app> | tail -20
 
 ### Apps remaining to migrate
 
-| App           | Pattern | DB Name       | Role          | Host Env Var                  | Credential Source                                                 | Special                  |
-| ------------- | ------- | ------------- | ------------- | ----------------------------- | ----------------------------------------------------------------- | ------------------------ |
-| mealie        | A       | mealie        | mealie        | `POSTGRES_SERVER` (configmap) | ExternalSecret `mealie-postgres-password`                         | `max_connections=200`    |
+All apps have been migrated to the central postgres cluster.
 
 ### Completed migrations
 
@@ -294,6 +292,7 @@ kubectl logs -n <app> deployment/<app> | tail -20
 | garden               | Pattern A, data migrated, peer auth for dump (bootstrap secret pruned) | `6899692` |
 | bike-weather         | Pattern C, data migrated, db/role rename app→bike-weather (conflict with preview) | `2829a6c` |
 | open-webui           | Pattern C, data migrated, pgvector extension, composition readiness fix | `5f5bb61` |
+| mealie               | Pattern A, data migrated | — |
 
 ---
 
