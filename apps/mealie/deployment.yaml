@@ -4,7 +4,7 @@ metadata:
   name: mealie
   namespace: mealie
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: mealie
@@ -28,8 +28,12 @@ spec:
           envFrom:
             - configMapRef:
                 name: mealie-config
-            - secretRef:
-                name: mealie-postgres-password
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-db-connection
+                  key: password
           volumeMounts:
             - name: mealie-data
               mountPath: /app/data

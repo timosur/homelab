@@ -11,6 +11,6 @@ data:
   BASE_URL: "https://mealie.timosur.com"
   DB_ENGINE: "postgres"
   POSTGRES_USER: "mealie"
-  POSTGRES_SERVER: "mealie-postgres-rw"
+  POSTGRES_SERVER: "central-postgres-rw.postgres.svc.cluster.local"
   POSTGRES_PORT: "5432"
   POSTGRES_DB: "mealie"
