@@ -76,6 +76,11 @@ spec:
               name: {{ $.observed.composite.resource.spec.databaseName }}-{{ .name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: extension-{{ .name }}
+                {{ if index $.observed.resources (printf "extension-%s" .name) }}
+                {{ if eq (index $.observed.resources (printf "extension-%s" .name) | getResourceCondition "Ready").Status "True" }}
+                gotemplating.fn.crossplane.io/ready: "True"
+                {{ end }}
+                {{ end }}
               labels:
                 k8s.homelab.timosur.com/app: {{ $.observed.composite.resource.spec.appName }}
             spec:
