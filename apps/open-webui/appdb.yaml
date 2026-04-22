@@ -1,0 +1,13 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: open-webui-db
+  namespace: open-webui
+spec:
+  appName: open-webui
+  databaseName: openwebui
+  roleName: webui
+  compositionRef:
+    name: appdb-central-postgres
+  extensions:
+    - name: vector
