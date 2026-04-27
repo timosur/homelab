@@ -16,9 +16,6 @@ spec:
       namespace: vinyl-manager
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      namespace: mealie
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
       namespace: n8n
   to:
     - group: ""

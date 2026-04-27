@@ -14,12 +14,7 @@ spec:
         app: mealie
     spec:
       nodeSelector:
-        kubernetes.io/hostname: homelab-amd-desktop
-      tolerations:
-        - key: "availability"
-          operator: "Equal"
-          value: "daytime"
-          effect: "NoSchedule"
+        kubernetes.io/hostname: homelab-amd
       containers:
         - name: mealie
           image: ghcr.io/mealie-recipes/mealie:v3.13.1
