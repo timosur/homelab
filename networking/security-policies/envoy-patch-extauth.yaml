@@ -24,19 +24,6 @@ spec:
               ignore_case: true
             - exact: "location"
               ignore_case: true
-    # Patch mealie ext_authz filter
-    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
-      name: "envoy-gateway-internet-system/envoy-gateway-internet/https"
-      operation:
-        op: add
-        jsonPath: "$.filter_chains[*].filters[?(@.name=='envoy.filters.network.http_connection_manager')].typed_config.http_filters[?(@.name=='envoy.filters.http.ext_authz/securitypolicy/mealie/wol-auth-mealie')]"
-        path: "/typed_config/http_service/authorization_response/allowed_client_headers"
-        value:
-          patterns:
-            - exact: "set-cookie"
-              ignore_case: true
-            - exact: "location"
-              ignore_case: true
     # Patch n8n ext_authz filter
     - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
       name: "envoy-gateway-internet-system/envoy-gateway-internet/https"
