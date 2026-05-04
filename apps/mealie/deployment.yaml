@@ -19,7 +19,7 @@ spec:
         kubernetes.io/hostname: homelab-amd
       containers:
         - name: mealie
-          image: ghcr.io/mealie-recipes/mealie:v3.13.1
+          image: ghcr.io/mealie-recipes/mealie:v3.16.0
           ports:
             - containerPort: 9000
           envFrom:
