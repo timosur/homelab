@@ -71,7 +71,7 @@
         var: node_status.stdout_lines
 
 - name: Update k3s worker nodes
-  hosts: workers
+  hosts: workers:gpu_workers:desktop_workers
   gather_facts: true
   become: true
   serial: 1
@@ -79,26 +79,42 @@
     - role: k3s-update
 
   pre_tasks:
-    - name: Cordon node before update
-      ansible.builtin.command: kubectl cordon {{ ansible_hostname }}
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      delegate_to: "{{ groups['control_plane'][0] }}"
-      changed_when: true
+    - name: Prepare worker node for update
+      block:
+        - name: Cordon node before update
+          ansible.builtin.command: kubectl cordon {{ ansible_hostname }}
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+          delegate_to: "{{ groups['control_plane'][0] }}"
+          changed_when: true
 
-    - name: Drain node before update
-      ansible.builtin.command:
-        cmd: >
-          kubectl drain {{ ansible_hostname }}
-          --ignore-daemonsets
-          --delete-emptydir-data
-          --timeout=300s
-          --force
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      delegate_to: "{{ groups['control_plane'][0] }}"
-      changed_when: true
-      failed_when: false
+        - name: Drain node before update
+          ansible.builtin.command:
+            cmd: >
+              kubectl drain {{ ansible_hostname }}
+              --ignore-daemonsets
+              --delete-emptydir-data
+              --timeout=300s
+              --force
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+          delegate_to: "{{ groups['control_plane'][0] }}"
+          register: drain_result
+          changed_when: true
+      rescue:
+        - name: Uncordon node after failed drain
+          ansible.builtin.command: kubectl uncordon {{ ansible_hostname }}
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+          delegate_to: "{{ groups['control_plane'][0] }}"
+          changed_when: true
+          failed_when: false
+
+        - name: Abort update when drain fails
+          ansible.builtin.fail:
+            msg: >-
+              Failed to drain {{ ansible_hostname }} before update.
+              Review PodDisruptionBudgets or non-evictable workloads, then rerun the playbook.
 
   post_tasks:
     - name: Wait for node to be ready

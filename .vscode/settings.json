@@ -9,6 +9,8 @@
     "kubectl config": true,
     "ssh": true,
     "npx ctx7@latest": true,
-    "kubectl run": true
+    "kubectl run": true,
+    "git add": true,
+    "kubectl -n mealie": true
   }
 }
