@@ -19,7 +19,7 @@ spec:
         kubernetes.io/arch: arm64
       initContainers:
         - name: setup-rmapi-config
-          image: busybox:1.37
+          image: busybox:1.38
           command: ["sh", "-c"]
           args:
             - |

@@ -74,7 +74,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       initContainers:
         - name: init-directories
-          image: busybox:1.37
+          image: busybox:1.38
           securityContext:
             runAsUser: 0
             runAsGroup: 0
