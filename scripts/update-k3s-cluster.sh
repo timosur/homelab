@@ -18,6 +18,7 @@ usage() {
 Usage: ./scripts/update-k3s-cluster.sh [options]
 
 Options:
+  --backup-only  Run only the backup playbook
   --yes          Run non-interactively where possible
   --skip-backup  Skip the backup playbook
   --preflight    Only run preflight checks
@@ -53,8 +54,38 @@ ANSIBLE_DIR="${REPO_ROOT}/ansible"
 INVENTORY_FILE="${ANSIBLE_DIR}/inventory.yml"
 UPDATE_PLAYBOOK="${ANSIBLE_DIR}/playbooks/k3s-update.yml"
 BACKUP_PLAYBOOK="${ANSIBLE_DIR}/playbooks/cluster-backup.yml"
+CONTROL_PLANE_HOST="homelab-amd"
+CONTROL_PLANE_IP="192.168.2.100"
+CONTROL_PLANE_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+REMOTE_STAGE_BASE="/home/timosur/.cache/homelab-ops"
+REMOTE_REPO_ROOT="${REMOTE_STAGE_BASE}/homelab"
+REMOTE_ANSIBLE_DIR="${REMOTE_REPO_ROOT}/ansible"
+CURRENT_HOST=$(hostname -s 2>/dev/null || hostname)
+RUNNING_ON_CONTROL_PLANE="false"
+SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes"
+WOL_WAIT_SECONDS=120
+WOL_POLL_INTERVAL=10
 TMP_FILES=()
 
+WOL_NODES=(homelab-gpu homelab-amd-desktop)
+WOL_MACS=(
+  "homelab-gpu:2c:f0:5d:05:9d:80"
+  "homelab-amd-desktop:30:9c:23:8a:30:e3"
+)
+
+declare -A SSH_TARGETS=(
+  [homelab-amd]="homelab-amd"
+  [homelab-arm-small]="homelab-arm-small"
+  [homelab-arm-large]="homelab-arm-large"
+  [homelab-gpu]="192.168.2.47"
+  [homelab-amd-desktop]="192.168.2.241"
+)
+
+if [[ "$CURRENT_HOST" == "$CONTROL_PLANE_HOST" ]]; then
+  RUNNING_ON_CONTROL_PLANE="true"
+fi
+
+BACKUP_ONLY="false"
 AUTO_YES="false"
 SKIP_BACKUP="false"
 PREFLIGHT_ONLY="false"
@@ -78,6 +109,9 @@ trap cleanup EXIT
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --backup-only)
+      BACKUP_ONLY="true"
+      ;;
     --yes)
       AUTO_YES="true"
       ;;
@@ -106,9 +140,19 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-check_dep ansible-playbook
-check_dep kubectl
 check_dep awk
+
+if [[ "$RUNNING_ON_CONTROL_PLANE" == "true" ]]; then
+  check_dep ansible-playbook
+  check_dep kubectl
+else
+  check_dep ssh
+  check_dep rsync
+fi
+
+if [[ "$RUNNING_ON_CONTROL_PLANE" == "true" ]]; then
+  check_dep wakeonlan
+fi
 
 if [[ "$LIST_UPDATES" == "true" ]]; then
   check_dep curl
@@ -131,6 +175,108 @@ if [[ ! -f "$INVENTORY_FILE" ]]; then
   exit 1
 fi
 
+sync_repo_to_control_plane() {
+  if [[ "$RUNNING_ON_CONTROL_PLANE" == "true" ]]; then
+    return
+  fi
+
+  log_info "Syncing current repo to ${CONTROL_PLANE_HOST}:${REMOTE_REPO_ROOT}"
+  ssh $SSH_OPTS "$CONTROL_PLANE_HOST" "mkdir -p '$REMOTE_STAGE_BASE'"
+  rsync -az --delete \
+    -e "ssh $SSH_OPTS" \
+    --exclude '.git/' \
+    --exclude '.DS_Store' \
+    "$REPO_ROOT/" "$CONTROL_PLANE_HOST:$REMOTE_REPO_ROOT/"
+}
+
+run_ansible_playbook() {
+  local playbook="$1"
+  shift
+  local extra_args=("$@")
+  local quoted_args=""
+  local arg
+
+  if [[ "$RUNNING_ON_CONTROL_PLANE" == "true" ]]; then
+    (
+      cd "$ANSIBLE_DIR"
+      ansible-playbook -i inventory.yml "$playbook" "${extra_args[@]}"
+    )
+    return
+  fi
+
+  sync_repo_to_control_plane
+
+  for arg in "${extra_args[@]}"; do
+    printf -v quoted_args '%s %q' "$quoted_args" "$arg"
+  done
+
+  ssh $SSH_OPTS "$CONTROL_PLANE_HOST" \
+    "cd '$REMOTE_ANSIBLE_DIR' && ansible-playbook -i inventory.yml $(printf '%q' "$playbook")$quoted_args"
+}
+
+run_control_plane_cmd() {
+  local command="$1"
+
+  if [[ "$RUNNING_ON_CONTROL_PLANE" == "true" ]]; then
+    bash -lc "export KUBECONFIG='$CONTROL_PLANE_KUBECONFIG'; $command"
+  else
+    ssh -o BatchMode=yes -o ConnectTimeout=10 "$CONTROL_PLANE_HOST" "export KUBECONFIG='$CONTROL_PLANE_KUBECONFIG'; $command"
+  fi
+}
+
+run_via_control_plane() {
+  local host="$1"
+  shift
+  local command="$*"
+  local target="${SSH_TARGETS[$host]:-$host}"
+
+  if [[ "$RUNNING_ON_CONTROL_PLANE" == "true" ]]; then
+    ssh $SSH_OPTS "$target" "$command"
+  else
+    ssh $SSH_OPTS "$CONTROL_PLANE_HOST" "ssh $SSH_OPTS $target $(printf '%q' "$command")"
+  fi
+}
+
+wake_wol_nodes() {
+  local entry node mac
+
+  log_info "Sending Wake-on-LAN packets for nodes that may be powered off"
+  for entry in "${WOL_MACS[@]}"; do
+    node="${entry%%:*}"
+    mac="${entry#*:}"
+    log_info "Waking ${node} (${mac})"
+    run_control_plane_cmd "wakeonlan ${mac}" >/dev/null
+  done
+}
+
+wait_for_wol_nodes() {
+  local node target deadline
+
+  for node in "${WOL_NODES[@]}"; do
+    target="${SSH_TARGETS[$node]:-$node}"
+    deadline=$(( $(date +%s) + WOL_WAIT_SECONDS ))
+    log_info "Waiting for ${node} to become reachable"
+
+    while (( $(date +%s) < deadline )); do
+      if run_via_control_plane "$node" true >/dev/null 2>&1; then
+        log_success "${node} is reachable"
+        break
+      fi
+      sleep "$WOL_POLL_INTERVAL"
+    done
+
+    if ! run_via_control_plane "$node" true >/dev/null 2>&1; then
+      log_error "Timed out waiting for ${node} (${target}) after ${WOL_WAIT_SECONDS}s"
+      exit 1
+    fi
+  done
+}
+
+ensure_wol_nodes_ready() {
+  wake_wol_nodes
+  wait_for_wol_nodes
+}
+
 TARGET_VERSION=$(awk '/k3s_version:/ {print $2; exit}' "$INVENTORY_FILE")
 
 if [[ -z "$TARGET_VERSION" ]]; then
@@ -145,6 +291,11 @@ print_intro() {
   echo "  Repo root:       ${REPO_ROOT}"
   echo "  Inventory:       ${INVENTORY_FILE}"
   echo "  Target version:  ${TARGET_VERSION}"
+  if [[ "$RUNNING_ON_CONTROL_PLANE" == "true" ]]; then
+    echo "  Execution mode:  direct on ${CONTROL_PLANE_HOST}"
+  else
+    echo "  Execution mode:  local via SSH to ${CONTROL_PLANE_HOST}"
+  fi
   echo ""
   echo "This wrapper will:"
   echo "  1. Run an Ansible syntax check for the update playbook"
@@ -160,38 +311,31 @@ print_intro() {
 }
 
 run_preflight() {
+  ensure_wol_nodes_ready
+
   log_info "Running syntax check for the update playbook"
-  (
-    cd "$ANSIBLE_DIR"
-    ansible-playbook -i inventory.yml playbooks/k3s-update.yml --syntax-check
-  )
+  run_ansible_playbook playbooks/k3s-update.yml --syntax-check
 
   log_info "Current cluster nodes"
-  kubectl get nodes -o wide
+  run_control_plane_cmd "kubectl get nodes -o wide"
 }
 
 run_backup() {
   log_info "Running backup playbook before the update"
-  (
-    cd "$ANSIBLE_DIR"
-    ansible-playbook -i inventory.yml playbooks/cluster-backup.yml
-  )
+  run_ansible_playbook playbooks/cluster-backup.yml
 }
 
 run_update() {
   log_info "Starting rolling k3s update to ${TARGET_VERSION}"
-  (
-    cd "$ANSIBLE_DIR"
-    ansible-playbook -i inventory.yml playbooks/k3s-update.yml
-  )
+  run_ansible_playbook playbooks/k3s-update.yml
 }
 
 build_upgrade_plan() {
   local node_versions control_plane_version distinct_version_count release_file node_file plan_file
 
   log_info "Collecting current cluster versions" >&2
-  node_versions=$(kubectl get nodes -o custom-columns=NAME:.metadata.name,VERSION:.status.nodeInfo.kubeletVersion --no-headers)
-  control_plane_version=$(kubectl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[0].status.nodeInfo.kubeletVersion}')
+  node_versions=$(run_control_plane_cmd "kubectl get nodes -o custom-columns=NAME:.metadata.name,VERSION:.status.nodeInfo.kubeletVersion --no-headers")
+  control_plane_version=$(run_control_plane_cmd "kubectl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[0].status.nodeInfo.kubeletVersion}'")
 
   if [[ -z "$control_plane_version" ]]; then
     control_plane_version=$(printf '%s\n' "$node_versions" | awk 'NR == 1 { print $2 }')
@@ -550,7 +694,7 @@ PY
     log_info "Updated inventory target to ${step_version}"
     run_update
     log_info "Cluster nodes after step $((step_index + 1))"
-    kubectl get nodes -o wide
+    run_control_plane_cmd "kubectl get nodes -o wide"
   done
 }
 
@@ -570,6 +714,17 @@ print_intro
 
 if [[ "$LIST_UPDATES" == "true" ]]; then
   list_updates
+  exit 0
+fi
+
+if [[ "$BACKUP_ONLY" == "true" ]]; then
+  ensure_wol_nodes_ready
+  if ! confirm "Run the backup playbook now?"; then
+    log_warning "Aborted before running the backup playbook"
+    exit 0
+  fi
+  run_backup
+  log_success "Backup playbook finished"
   exit 0
 fi
 

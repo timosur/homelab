@@ -9,7 +9,6 @@
       ansible.builtin.debug:
         msg: "Updating k3s to version {{ k3s_version }}"
       run_once: true
-      when: strategy != 'free'
 
 - name: Get current cluster status
   hosts: control_plane
