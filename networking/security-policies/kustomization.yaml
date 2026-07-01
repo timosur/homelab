@@ -4,5 +4,4 @@ kind: Kustomization
 resources:
   - actual-auth.yaml
   - n8n-auth.yaml
-  - paperless-auth.yaml
   - envoy-patch-extauth.yaml
