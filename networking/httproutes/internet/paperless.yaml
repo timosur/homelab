@@ -16,6 +16,6 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: desktop-proxy
-          namespace: wol-proxy
-          port: 8080
+        - name: paperless
+          namespace: paperless
+          port: 8000

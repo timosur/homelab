@@ -38,10 +38,6 @@ data:
         idleTimeoutMinutes: 30
         wakeTimeoutSeconds: 120
         backends:
-          - hostname: "docs.home.timosur.com"
-            target: "paperless.paperless.svc.cluster.local:8000"
-          - hostname: "docs.timosur.com"
-            target: "paperless.paperless.svc.cluster.local:8000"
           - hostname: "finance.home.timosur.com"
             target: "actual.actual.svc.cluster.local:5006"
           - hostname: "finance.timosur.com"
