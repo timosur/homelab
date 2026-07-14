@@ -19,7 +19,7 @@ spec:
         kubernetes.io/arch: arm64
       containers:
         - name: garden-frontend
-          image: ghcr.io/timosur/life-as-a-garden/frontend:1.0.1
+          image: ghcr.io/timosur/life-as-a-garden/frontend:1.0.2@sha256:0a6d19d2ac2d43a4b2ba24294c8d08e60d0816d86e4a9d7e92c27b1e37295fda
           ports:
             - containerPort: 80
           resources:
