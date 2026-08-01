@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Validate Kubernetes manifests
         run: |
@@ -71,7 +71,7 @@ jobs:
 
       - name: Comment on PR with validation results
         if: always()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const validationStatus = '${{ job.status }}' === 'success' ? '✅ Validation passed' : '❌ Validation failed';
