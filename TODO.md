@@ -1,5 +1,9 @@
 # TODOs
 
+## Things to be checked out
+
+- https://github.com/stakater/Reloader
+
 ## Apps to be installed
 
 1. Navidrome
