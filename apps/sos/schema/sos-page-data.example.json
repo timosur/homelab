@@ -1,0 +1,36 @@
+{
+  "updatedAt": "2026-08-10T12:00:00Z",
+  "address": {
+    "street": "Example Street 12",
+    "postalCode": "12345",
+    "city": "Example City",
+    "country": "Germany",
+    "googleMapsQuery": "Example Street 12, 12345 Example City, Germany"
+  },
+  "contacts": [
+    {
+      "name": "Alex M.",
+      "relationship": "Sibling",
+      "phone": "+49 170 0000000"
+    },
+    {
+      "name": "Sam K.",
+      "relationship": "Partner",
+      "phone": "+49 171 0000000"
+    }
+  ],
+  "householdMembers": [
+    {
+      "displayName": "Timo S.",
+      "allergies": {
+        "de": "Keine bekannten Allergien",
+        "en": "No known allergies"
+      },
+      "bloodType": "0+",
+      "physician": {
+        "name": "Dr. Example",
+        "phone": "+49 30 000000"
+      }
+    }
+  ]
+}

@@ -2,7 +2,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: monitoring
 resources:
-  - namespace.yaml
-  - external-secret.yaml
   - alloy-ingress-policy.yaml
+  - external-secret.yaml
+  - namespace.yaml
+  - sos-alert.yaml
+  - sos-probe.yaml
   - temperature-alert.yaml

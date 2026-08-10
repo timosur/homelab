@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  - actual-app.yaml
   - authentik-app.yaml
   - bike-weather-app.yaml
   - bike-weather-auth-app.yaml
@@ -13,21 +14,22 @@ resources:
   - external-secrets-app.yaml
   - ferienhof-wiesengrund-app.yaml
   - garden-app.yaml
+  - givgroov-app.yaml
+  - home-assistant-app.yaml
+  - kured-app.yaml
+  - mealie-app.yaml
   - monitoring-app.yaml
   - n8n-app.yaml
   - networking-app.yaml
   - open-webui-app.yaml
-  - smb-csi-driver-app.yaml
-  - synology-csi-driver-app.yaml
-  - vinyl-manager-app.yaml
-  - actual-app.yaml
-  - givgroov-app.yaml
-  - home-assistant-app.yaml
-  - mealie-app.yaml
   - paperless-app.yaml
   - pi-hole-app.yaml
   - portfolio-app.yaml
   - postgres-app.yaml
-  - wol-proxy-app.yaml
-  - kured-app.yaml
+  - reloader-app.yaml
+  - smb-csi-driver-app.yaml
+  - sos-app.yaml
+  - synology-csi-driver-app.yaml
   - tetragon-app.yaml
+  - vinyl-manager-app.yaml
+  - wol-proxy-app.yaml

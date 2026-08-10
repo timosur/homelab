@@ -1,0 +1,12 @@
+{
+  "updatedAt": "2026-08-10T12:00:00Z",
+  "address": {
+    "street": "Invalid Street 2",
+    "postalCode": "10115",
+    "city": "Berlin",
+    "country": "Germany",
+    "googleMapsQuery": "Invalid Street 2, 10115 Berlin, Germany"
+  },
+  "contacts": [],
+  "householdMembers": []
+}

@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sos-availability-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: sos.availability
+      interval: 30s
+      rules:
+        - alert: SosEndpointDown
+          expr: probe_success{job="probe/monitoring/sos-public-https", target="sos"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "SOS endpoint unavailable"
+            description: "https://sos.timosur.com has been unreachable for more than 2 minutes."

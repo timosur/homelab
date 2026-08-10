@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: sos-public-https
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  interval: 30s
+  module: http_2xx
+  prober:
+    url: monitoring-prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+    path: /probe
+    scheme: http
+  targets:
+    staticConfig:
+      labels:
+        target: sos
+      static:
+        - https://sos.timosur.com/

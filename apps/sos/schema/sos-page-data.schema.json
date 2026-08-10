@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://timosur.com/schemas/sos-page-data.schema.json",
+  "title": "SOS Page Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "updatedAt",
+    "address",
+    "contacts",
+    "householdMembers"
+  ],
+  "properties": {
+    "updatedAt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Timestamp shown on page, e.g. 2026-08-10T12:00:00Z"
+    },
+    "address": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "street",
+        "postalCode",
+        "city",
+        "country",
+        "googleMapsQuery"
+      ],
+      "properties": {
+        "street": {
+          "type": "string",
+          "minLength": 1
+        },
+        "postalCode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1
+        },
+        "country": {
+          "type": "string",
+          "minLength": 1
+        },
+        "googleMapsQuery": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "contacts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "relationship",
+          "phone"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "relationship": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "householdMembers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "displayName"
+        ],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Use first name plus initial"
+          },
+          "allergies": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "de": {
+                "type": "string"
+              },
+              "en": {
+                "type": "string"
+              }
+            }
+          },
+          "bloodType": {
+            "type": "string"
+          },
+          "physician": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

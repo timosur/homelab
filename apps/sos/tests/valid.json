@@ -1,0 +1,31 @@
+{
+  "updatedAt": "2026-08-10T12:00:00Z",
+  "address": {
+    "street": "Valid Street 1",
+    "postalCode": "10115",
+    "city": "Berlin",
+    "country": "Germany",
+    "googleMapsQuery": "Valid Street 1, 10115 Berlin, Germany"
+  },
+  "contacts": [
+    {
+      "name": "Pat H.",
+      "relationship": "Partner",
+      "phone": "+49 171 1234567"
+    }
+  ],
+  "householdMembers": [
+    {
+      "displayName": "Lee P.",
+      "allergies": {
+        "de": "Penicillin",
+        "en": "Penicillin"
+      },
+      "bloodType": "A+",
+      "physician": {
+        "name": "Dr. Valid",
+        "phone": "+49 30 123456"
+      }
+    }
+  ]
+}

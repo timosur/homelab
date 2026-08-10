@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sos
+
+resources:
+  - namespace.yaml
+  - external-secret.yaml
+  - nginx-configmap.yaml
+  - deployment.yaml
+  - service.yaml
+
+configMapGenerator:
+  - name: sos-renderer
+    files:
+      - render.sh=render/render.sh
+      - unavailable.html=render/unavailable.html
+
+generatorOptions:
+  disableNameSuffixHash: true

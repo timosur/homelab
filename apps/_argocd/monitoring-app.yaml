@@ -347,6 +347,24 @@ spec:
               limits:
                 cpu: 200m
                 memory: 128Mi
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: prometheus-blackbox-exporter
+      targetRevision: 11.17.1
+      helm:
+        valuesObject:
+          releaseLabel: true
+          serviceMonitor:
+            selfMonitor:
+              enabled: true
+              labels:
+                release: monitoring
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
     - repoURL: https://github.com/timosur/homelab.git
       targetRevision: HEAD
       path: apps/monitoring
