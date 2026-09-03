@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: atuin-ai-config
+  namespace: atuin-ai
+data:
+  config.toml: |
+    port = 8080
+    endpoint = "https://inference.ai.home.timosur.com/v1"
+    default_model = "bonsai-27b"
+
+    [api_key]
+    env = "CHAT_API_KEY"
+
+    [request.body]
+    stream_options = { include_usage = true }
+
+    [[models]]
+    alias = "bonsai-27b"
+    name = "Bonsai 27B"
+    description = "Bonsai 27B via AgentGateway"
+    model = "bonsai-27b"

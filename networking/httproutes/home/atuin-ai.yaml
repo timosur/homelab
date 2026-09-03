@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: atuin-ai-home
+  namespace: atuin-ai
+spec:
+  parentRefs:
+    - name: envoy-gateway-home
+      namespace: envoy-gateway-system
+      sectionName: https
+  hostnames:
+    - "atuin-ai.home.timosur.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: atuin-ai
+          port: 80

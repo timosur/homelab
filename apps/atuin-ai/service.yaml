@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: atuin-ai
+  namespace: atuin-ai
+spec:
+  selector:
+    app: atuin-ai
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http

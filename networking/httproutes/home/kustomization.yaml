@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - agent-gateway.yaml
   - argocd.yaml
+  - atuin-ai.yaml
   - atuin.yaml
   - garden.yaml
   - grafana.yaml
