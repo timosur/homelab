@@ -3,13 +3,112 @@ import logging
 import subprocess
 import time
 
-from aiohttp import ClientSession, ClientTimeout, web
+from aiohttp import (
+    ClientError,
+    ClientSession,
+    ClientTimeout,
+    ClientWSTimeout,
+    WSMsgType,
+    web,
+)
 from multidict import CIMultiDict
 
-from .config import BackendConfig, NodeGroupConfig, NodeGroupBackend
+from .config import BackendConfig, NodeGroupBackend, NodeGroupConfig
 from .wol import send_wol_packet
 
 log = logging.getLogger("wol-proxy")
+
+HOP_BY_HOP_HEADERS = frozenset(
+    {
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "proxy-connection",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade",
+    }
+)
+
+
+def proxy_headers(
+    headers: CIMultiDict[str],
+    *,
+    strip_content_encoding: bool = False,
+    strip_content_length: bool = False,
+) -> CIMultiDict[str]:
+    """Drop connection-scoped headers before forwarding across a new connection."""
+    connection_headers = {
+        token.strip().lower()
+        for value in headers.getall("Connection", [])
+        for token in value.split(",")
+    }
+    excluded = HOP_BY_HOP_HEADERS | connection_headers | {"host"}
+    if strip_content_encoding:
+        excluded.add("content-encoding")
+    if strip_content_length:
+        excluded.add("content-length")
+    return CIMultiDict(
+        (key, value) for key, value in headers.items() if key.lower() not in excluded
+    )
+
+
+def is_websocket_request(request: web.Request) -> bool:
+    return request.headers.get("Upgrade", "").lower() == "websocket"
+
+
+async def relay_websocket(source, destination, touch) -> None:
+    async for message in source:
+        touch()
+        if message.type is WSMsgType.TEXT:
+            await destination.send_str(message.data)
+        elif message.type is WSMsgType.BINARY:
+            await destination.send_bytes(message.data)
+        elif message.type in (WSMsgType.CLOSE, WSMsgType.CLOSED, WSMsgType.ERROR):
+            break
+
+
+async def proxy_websocket(
+    request: web.Request, target: str, timeout: ClientTimeout, touch
+) -> web.WebSocketResponse:
+    protocols = request.headers.getall("Sec-WebSocket-Protocol", [])
+    requested_protocols = [
+        protocol.strip() for value in protocols for protocol in value.split(",")
+    ]
+    headers = proxy_headers(request.headers)
+    for header in (
+        "Sec-WebSocket-Extensions",
+        "Sec-WebSocket-Key",
+        "Sec-WebSocket-Protocol",
+        "Sec-WebSocket-Version",
+    ):
+        headers.popall(header, None)
+    async with ClientSession(timeout=timeout) as session, session.ws_connect(
+        target,
+        headers=headers,
+        protocols=requested_protocols,
+        timeout=ClientWSTimeout(ws_receive=None),
+        compress=0,
+        max_msg_size=100 * 1024 * 1024,
+    ) as upstream:
+        downstream = web.WebSocketResponse(
+            protocols=[upstream.protocol] if upstream.protocol else (),
+            compress=False,
+            max_msg_size=100 * 1024 * 1024,
+        )
+        await downstream.prepare(request)
+        relays = (
+            asyncio.create_task(relay_websocket(downstream, upstream, touch)),
+            asyncio.create_task(relay_websocket(upstream, downstream, touch)),
+        )
+        done, pending = await asyncio.wait(relays, return_when=asyncio.FIRST_COMPLETED)
+        for relay in pending:
+            relay.cancel()
+        await asyncio.gather(*done, *pending, return_exceptions=True)
+        await downstream.close()
+        return downstream
 
 
 class ProxyBackend:
@@ -18,6 +117,7 @@ class ProxyBackend:
         self._last_activity = time.monotonic()
         self._is_awake = False
         self._wake_lock = asyncio.Lock()
+        self._active_requests = 0
         self._cache: dict[str, str] = dict(cfg.cached_path_defaults)
         self._cached_paths: set[str] = set(cfg.cached_paths)
 
@@ -32,7 +132,7 @@ class ProxyBackend:
             writer.close()
             await writer.wait_closed()
             return True
-        except (OSError, asyncio.TimeoutError):
+        except (OSError, TimeoutError):
             return False
 
     # -- Wake and wait ------------------------------------------------------
@@ -142,7 +242,7 @@ class ProxyBackend:
         timeout = self.cfg.idle_timeout_minutes * 60
         while True:
             await asyncio.sleep(60)
-            if not self._is_awake:
+            if not self._is_awake or self._active_requests:
                 continue
 
             log.info(
@@ -167,15 +267,14 @@ class ProxyBackend:
 
         if not await self.check_health():
             # Serve cached response for lightweight polling endpoints
-            if is_cacheable:
-                if path in self._cache:
-                    log.info(
-                        "[%s] Serving cached %s (backend asleep)", self.cfg.name, path
-                    )
-                    return web.Response(
-                        text=self._cache[path],
-                        content_type="application/json",
-                    )
+            if is_cacheable and path in self._cache:
+                log.info(
+                    "[%s] Serving cached %s (backend asleep)", self.cfg.name, path
+                )
+                return web.Response(
+                    text=self._cache[path],
+                    content_type="application/json",
+                )
 
             # Non-cacheable request: wake the backend
             self.touch()
@@ -187,7 +286,7 @@ class ProxyBackend:
             )
             try:
                 await self.wake_and_wait()
-            except RuntimeError as exc:
+            except (OSError, RuntimeError, TimeoutError) as exc:
                 return web.Response(status=503, text=f"Failed to wake GPU node: {exc}")
         else:
             self.mark_awake()
@@ -197,56 +296,63 @@ class ProxyBackend:
             f"http://{self.cfg.target_host}:{self.cfg.target_port}{request.path_qs}"
         )
 
-        timeout = ClientTimeout(total=None, sock_read=300)
+        timeout = ClientTimeout(total=None, sock_connect=10, sock_read=None)
+        self._active_requests += 1
         async with ClientSession(timeout=timeout) as session:
-            async with session.request(
-                method=request.method,
-                url=target,
-                headers={
-                    k: v
-                    for k, v in request.headers.items()
-                    if k.lower() not in ("host", "transfer-encoding")
-                },
-                data=await request.read(),
-                allow_redirects=False,
-            ) as upstream:
-                # For cacheable endpoints, read full body and cache it
-                if is_cacheable and upstream.status == 200:
-                    body = await upstream.read()
-                    self._cache[path] = body.decode(errors="replace")
-                    return web.Response(
+            try:
+                if is_websocket_request(request):
+                    return await proxy_websocket(request, target, timeout, self.touch)
+                async with session.request(
+                    method=request.method,
+                    url=target,
+                    headers=proxy_headers(request.headers),
+                    data=request.content,
+                    allow_redirects=False,
+                ) as upstream:
+                    # For cacheable endpoints, read full body and cache it
+                    if is_cacheable and upstream.status == 200:
+                        body = await upstream.read()
+                        self._cache[path] = body.decode(errors="replace")
+                        return web.Response(
+                            status=upstream.status,
+                            body=body,
+                            content_type="application/json",
+                        )
+
+                    resp = web.StreamResponse(
                         status=upstream.status,
-                        body=body,
-                        content_type="application/json",
+                        headers=proxy_headers(
+                            upstream.headers,
+                            strip_content_encoding=True,
+                            strip_content_length=True,
+                        ),
                     )
 
-                resp = web.StreamResponse(
-                    status=upstream.status,
-                    headers=CIMultiDict(
-                        (k, v)
-                        for k, v in upstream.headers.items()
-                        if k.lower()
-                        not in (
-                            "transfer-encoding",
-                            "content-encoding",
-                            "content-length",
+                    content_length = upstream.headers.get("content-length")
+                    if content_length:
+                        resp.content_length = int(content_length)
+
+                    try:
+                        await resp.prepare(request)
+                        async for chunk in upstream.content.iter_any():
+                            self.touch()
+                            await resp.write(chunk)
+                        await resp.write_eof()
+                    except (ConnectionResetError, ConnectionError):
+                        log.info("[%s] Client disconnected during streaming", self.cfg.name)
+                    except (ClientError, TimeoutError) as exc:
+                        log.warning(
+                            "[%s] Upstream disconnected during streaming: %s",
+                            self.cfg.name,
+                            exc,
                         )
-                    ),
-                )
-
-                content_length = upstream.headers.get("content-length")
-                if content_length:
-                    resp.content_length = int(content_length)
-
-                try:
-                    await resp.prepare(request)
-                    async for chunk in upstream.content.iter_any():
-                        self.touch()
-                        await resp.write(chunk)
-                    await resp.write_eof()
-                except (ConnectionResetError, ConnectionError):
-                    log.info("[%s] Client disconnected during streaming", self.cfg.name)
-                return resp
+                    return resp
+            except (ClientError, TimeoutError) as exc:
+                log.warning("[%s] Upstream request failed: %s", self.cfg.name, exc)
+                return web.Response(status=502, text="Upstream service unavailable")
+            finally:
+                self._active_requests -= 1
+                self.touch()
 
 
 class NodeGroupProxy:
@@ -257,6 +363,7 @@ class NodeGroupProxy:
         self._last_activity = time.monotonic()
         self._state = "sleeping"  # sleeping | waking | ready
         self._wake_lock = asyncio.Lock()
+        self._active_requests = 0
         self._host_map: dict[str, NodeGroupBackend] = {
             b.hostname: b for b in cfg.backends
         }
@@ -284,7 +391,19 @@ class NodeGroupProxy:
             writer.close()
             await writer.wait_closed()
             return True
-        except (OSError, asyncio.TimeoutError):
+        except (OSError, TimeoutError):
+            return False
+
+    async def check_backend_health(self, host: str, port: int) -> bool:
+        try:
+            _, writer = await asyncio.wait_for(
+                asyncio.open_connection(host, port),
+                timeout=2,
+            )
+            writer.close()
+            await writer.wait_closed()
+            return True
+        except (OSError, TimeoutError):
             return False
 
     async def wake_and_wait(self) -> None:
@@ -292,27 +411,30 @@ class NodeGroupProxy:
             if self._state == "ready":
                 return
             self._state = "waking"
-            await send_wol_packet(
-                self.cfg.wol_mac,
-                self.cfg.name,
-                self.cfg.wol_host,
-                self.cfg.ssh_user,
-                self.cfg.ssh_key_path,
-                self.cfg.wol_broadcast,
-            )
-            deadline = time.monotonic() + self.cfg.wake_timeout_seconds
-            while time.monotonic() < deadline:
-                await asyncio.sleep(3)
-                if await self.check_node_health():
-                    self._state = "ready"
-                    self.touch()
-                    log.info("[%s] Node is now awake", self.cfg.name)
-                    return
-            log.error(
-                "[%s] Node did not wake within %ds",
-                self.cfg.name,
-                self.cfg.wake_timeout_seconds,
-            )
+            try:
+                await send_wol_packet(
+                    self.cfg.wol_mac,
+                    self.cfg.name,
+                    self.cfg.wol_host,
+                    self.cfg.ssh_user,
+                    self.cfg.ssh_key_path,
+                    self.cfg.wol_broadcast,
+                )
+                deadline = time.monotonic() + self.cfg.wake_timeout_seconds
+                while time.monotonic() < deadline:
+                    await asyncio.sleep(3)
+                    if await self.check_node_health():
+                        self._state = "ready"
+                        self.touch()
+                        log.info("[%s] Node is now awake", self.cfg.name)
+                        return
+                log.error(
+                    "[%s] Node did not wake within %ds",
+                    self.cfg.name,
+                    self.cfg.wake_timeout_seconds,
+                )
+            except (OSError, RuntimeError, TimeoutError) as exc:
+                log.error("[%s] Failed to wake node: %s", self.cfg.name, exc)
             self._state = "sleeping"
 
     async def suspend(self) -> None:
@@ -371,7 +493,7 @@ class NodeGroupProxy:
         timeout = self.cfg.idle_timeout_minutes * 60
         while True:
             await asyncio.sleep(60)
-            if self._state != "ready":
+            if self._state != "ready" or self._active_requests:
                 continue
             if not await self.check_node_health():
                 log.info("[%s] Node went offline externally", self.cfg.name)
@@ -404,7 +526,14 @@ class NodeGroupProxy:
                 self._state = "sleeping"
             # Start waking in background if not already
             if self._state == "sleeping":
+                self._state = "waking"
                 asyncio.create_task(self.wake_and_wait())
+            if request.method != "GET" or is_websocket_request(request):
+                return web.Response(
+                    status=503,
+                    text="Backend is starting; retry this request shortly",
+                    headers={"Retry-After": "5"},
+                )
             # Return wake-up page
             from .wake_page import render_wake_page
 
@@ -413,47 +542,61 @@ class NodeGroupProxy:
                 content_type="text/html",
             )
 
-        # Node is up — proxy the request
+        target_host, target_port = backend.resolve_target(request.path)
+        if not await self.check_backend_health(target_host, target_port):
+            self.touch()
+            return web.Response(
+                status=503,
+                text="Backend is starting; retry this request shortly",
+                headers={"Retry-After": "5"},
+            )
+
+        # Node and requested backend are up — proxy the request
         self._state = "ready"
         self.touch()
-        target_host, target_port = backend.resolve_target(request.path)
         target = f"http://{target_host}:{target_port}{request.path_qs}"
-        timeout = ClientTimeout(total=None, sock_read=300)
+        timeout = ClientTimeout(total=None, sock_connect=10, sock_read=None)
+        self._active_requests += 1
         async with ClientSession(
             timeout=timeout, auto_decompress=False
         ) as session:
-            async with session.request(
-                method=request.method,
-                url=target,
-                headers={
-                    k: v
-                    for k, v in request.headers.items()
-                    if k.lower() not in ("host", "transfer-encoding")
-                },
-                data=await request.read(),
-                allow_redirects=False,
-            ) as upstream:
-                resp = web.StreamResponse(
-                    status=upstream.status,
-                    headers=CIMultiDict(
-                        (k, v)
-                        for k, v in upstream.headers.items()
-                        if k.lower()
-                        not in (
-                            "transfer-encoding",
-                            "content-length",
+            try:
+                if is_websocket_request(request):
+                    return await proxy_websocket(request, target, timeout, self.touch)
+                async with session.request(
+                    method=request.method,
+                    url=target,
+                    headers=proxy_headers(request.headers),
+                    data=request.content,
+                    allow_redirects=False,
+                ) as upstream:
+                    resp = web.StreamResponse(
+                        status=upstream.status,
+                        headers=proxy_headers(
+                            upstream.headers, strip_content_length=True
+                        ),
+                    )
+                    content_length = upstream.headers.get("content-length")
+                    if content_length:
+                        resp.content_length = int(content_length)
+                    try:
+                        await resp.prepare(request)
+                        async for chunk in upstream.content.iter_any():
+                            self.touch()
+                            await resp.write(chunk)
+                        await resp.write_eof()
+                    except (ConnectionResetError, ConnectionError):
+                        log.info("[%s] Client disconnected", self.cfg.name)
+                    except (ClientError, TimeoutError) as exc:
+                        log.warning(
+                            "[%s] Upstream disconnected during streaming: %s",
+                            self.cfg.name,
+                            exc,
                         )
-                    ),
-                )
-                content_length = upstream.headers.get("content-length")
-                if content_length:
-                    resp.content_length = int(content_length)
-                try:
-                    await resp.prepare(request)
-                    async for chunk in upstream.content.iter_any():
-                        self.touch()
-                        await resp.write(chunk)
-                    await resp.write_eof()
-                except (ConnectionResetError, ConnectionError):
-                    log.info("[%s] Client disconnected", self.cfg.name)
-                return resp
+                    return resp
+            except (ClientError, TimeoutError) as exc:
+                log.warning("[%s] Upstream request failed: %s", self.cfg.name, exc)
+                return web.Response(status=502, text="Upstream service unavailable")
+            finally:
+                self._active_requests -= 1
+                self.touch()

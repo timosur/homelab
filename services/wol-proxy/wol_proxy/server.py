@@ -6,7 +6,7 @@ import sys
 from aiohttp import web
 
 from .config import load_config
-from .proxy import ProxyBackend, NodeGroupProxy
+from .proxy import NodeGroupProxy, ProxyBackend
 
 log = logging.getLogger("wol-proxy")
 

@@ -3,6 +3,7 @@ import logging
 import subprocess
 
 log = logging.getLogger("wol-proxy")
+SSH_COMMAND_TIMEOUT_SECONDS = 15
 
 
 async def send_wol_packet(
@@ -33,13 +34,19 @@ async def send_wol_packet(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-    output, _ = await proc.communicate()
+    try:
+        output, _ = await asyncio.wait_for(
+            proc.communicate(), timeout=SSH_COMMAND_TIMEOUT_SECONDS
+        )
+    except TimeoutError as exc:
+        if proc.returncode is None:
+            proc.kill()
+        await proc.wait()
+        raise RuntimeError("Wake-on-LAN SSH command timed out") from exc
     if proc.returncode == 0:
         log.info("[%s] Sent WoL packet to %s", name, mac)
     else:
-        log.error(
-            "[%s] WoL failed (rc=%s): %s",
-            name,
-            proc.returncode,
-            output.decode(errors="replace"),
+        raise RuntimeError(
+            f"Wake-on-LAN command failed (rc={proc.returncode}): "
+            f"{output.decode(errors='replace')}"
         )
