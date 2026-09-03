@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: atuin-config
+  namespace: atuin
+data:
+  TZ: "Europe/Berlin"
+  ATUIN_HOST: "0.0.0.0"
+  ATUIN_PORT: "8888"
+  # Set false after registering all intended clients.
+  ATUIN_OPEN_REGISTRATION: "true"
