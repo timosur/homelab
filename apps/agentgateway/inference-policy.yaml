@@ -18,7 +18,3 @@ spec:
       mode: Strict
       secretRef:
         name: agentgateway-inference-api-key
-      location:
-        header:
-          name: Authorization
-          prefix: Bearer
