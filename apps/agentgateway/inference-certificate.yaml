@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: agentgateway-inference-tls
+  namespace: agentgateway-system
+spec:
+  secretName: agentgateway-inference-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - inference.home.timosur.com
+    - mcp.home.timosur.com

@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: obscura-mcp
+  namespace: agentgateway-system
+spec:
+  hostnames:
+    - mcp.home.timosur.com
+  parentRefs:
+    - name: agentgateway-proxy
+      sectionName: mcp-https
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp/obscura
+      backendRefs:
+        - name: obscura-mcp
+          group: agentgateway.dev
+          kind: AgentgatewayBackend

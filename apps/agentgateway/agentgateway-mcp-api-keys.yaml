@@ -1,0 +1,20 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: agentgateway-mcp-api-keys
+  namespace: agentgateway-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: azure-keyvault-store
+    kind: ClusterSecretStore
+  target:
+    name: agentgateway-mcp-api-keys
+    creationPolicy: Owner
+  data:
+    - secretKey: kagi-api-key
+      remoteRef:
+        key: agentgateway-kagi-api-key
+    - secretKey: context7-api-key
+      remoteRef:
+        key: agentgateway-context7-api-key

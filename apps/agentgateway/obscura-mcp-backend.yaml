@@ -1,0 +1,14 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: obscura-mcp
+  namespace: agentgateway-system
+spec:
+  mcp:
+    targets:
+      - name: obscura
+        static:
+          host: obscura.agentgateway-system.svc.cluster.local
+          port: 8080
+          path: /mcp
+          protocol: StreamableHTTP

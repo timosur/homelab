@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: context7-mcp
+  namespace: agentgateway-system
+spec:
+  hostnames:
+    - mcp.home.timosur.com
+  parentRefs:
+    - name: agentgateway-proxy
+      sectionName: mcp-https
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp/context7
+      backendRefs:
+        - name: context7-mcp
+          group: agentgateway.dev
+          kind: AgentgatewayBackend

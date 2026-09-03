@@ -1,0 +1,26 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: context7-mcp
+  namespace: agentgateway-system
+spec:
+  mcp:
+    targets:
+      - name: context7
+        static:
+          host: mcp.context7.com
+          port: 443
+          path: /mcp
+          protocol: StreamableHTTP
+          policies:
+            tls:
+              sni: mcp.context7.com
+            auth:
+              credentials:
+                - secretRef:
+                    name: agentgateway-mcp-api-keys
+                    key: context7-api-key
+                  location:
+                    header:
+                      name: Authorization
+                      prefix: Bearer

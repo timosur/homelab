@@ -1,0 +1,17 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: agentgateway-inference-api-key
+  namespace: agentgateway-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: azure-keyvault-store
+    kind: ClusterSecretStore
+  target:
+    name: agentgateway-inference-api-key
+    creationPolicy: Owner
+  data:
+    - secretKey: inference-api-key
+      remoteRef:
+        key: agentgateway-inference-api-key

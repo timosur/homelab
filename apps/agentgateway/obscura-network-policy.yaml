@@ -1,0 +1,17 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-agentgateway-to-obscura
+  namespace: agentgateway-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: obscura
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: agentgateway-proxy
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
