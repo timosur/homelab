@@ -49,4 +49,3 @@ data:
                 target: "vinyl-backend.vinyl-manager.svc.cluster.local:8000"
           - hostname: "automate.timosur.com"
             target: "n8n.n8n.svc.cluster.local:80"
-

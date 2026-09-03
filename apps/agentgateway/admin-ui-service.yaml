@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway-proxy-admin
+  namespace: agentgateway-system
+spec:
+  selector:
+    app.kubernetes.io/instance: agentgateway-proxy
+    app.kubernetes.io/name: agentgateway-proxy
+    gateway.networking.k8s.io/gateway-name: agentgateway-proxy
+  ports:
+    - name: admin-ui
+      port: 15000
+      targetPort: 15000
+      protocol: TCP
