@@ -13,3 +13,4 @@ data:
   SMTP_SECURITY: "starttls"
   SMTP_FROM: "mail@timosur.com"
   SMTP_FROM_NAME: "Timo Surmann"
+  SMTP_USERNAME: "mail@timosur.com"
