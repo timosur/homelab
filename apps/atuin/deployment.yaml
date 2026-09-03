@@ -39,7 +39,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-            runAsNonRoot: true
           startupProbe:
             httpGet:
               path: /healthz
