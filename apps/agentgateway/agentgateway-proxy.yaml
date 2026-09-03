@@ -19,6 +19,11 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: HTTPRoute
+          - group: agentgateway.dev
+            kind: AgentgatewayModel
     - name: https
       protocol: HTTPS
       port: 443
@@ -32,6 +37,9 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+        kinds:
+          - group: agentgateway.dev
+            kind: AgentgatewayModel
     - name: mcp-https
       protocol: HTTPS
       port: 443
@@ -45,3 +53,6 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: HTTPRoute

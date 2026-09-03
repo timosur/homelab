@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: oci://cr.agentgateway.dev/charts/agentgateway-crds
     chart: agentgateway-crds
-    targetRevision: v1.4.0
+    targetRevision: v1.5.0
   destination:
     server: https://kubernetes.default.svc
     namespace: agentgateway-system

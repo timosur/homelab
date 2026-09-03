@@ -9,10 +9,8 @@ resources:
   - agentgateway-openai-secret.yaml
   - agentgateway-parameters.yaml
   - agentgateway-proxy.yaml
-  - anthropic-ai-backend.yaml
   - inference-certificate.yaml
   - inference-policy.yaml
-  - llm-inference-route.yaml
   - mcp-backends.yaml
   - mcp-route.yaml
   - mcp-tool-policy.yaml
@@ -20,6 +18,8 @@ resources:
   - obscura-deployment.yaml
   - obscura-network-policy.yaml
   - obscura-service.yaml
-  - ollama-ai-backend.yaml
   - ollama-backend.yaml
-  - openai-ai-backend.yaml
+  - models/bonsai-27b.yaml
+  - models/claude-fable-5-1.yaml
+  - models/gpt-5-6-luna.yaml
+  - models/gpt-5-6-sol-terra.yaml
