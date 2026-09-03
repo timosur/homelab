@@ -24,8 +24,9 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: agentgateway-inference-tls
+          - group: ""
             kind: Secret
+            name: agentgateway-inference-tls
       allowedRoutes:
         namespaces:
           from: All
@@ -36,8 +37,9 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: agentgateway-inference-tls
+          - group: ""
             kind: Secret
+            name: agentgateway-inference-tls
       allowedRoutes:
         namespaces:
           from: All
