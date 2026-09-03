@@ -52,11 +52,11 @@ spec:
               kubernetes.io/hostname: homelab-amd
             grafana.ini:
               server:
-                protocol: http
+                protocol: https
                 enforce_domain: false
-                root_url: http://grafana.home.timosur.com
+                root_url: https://grafana.home.timosur.com
               security:
-                cookie_secure: false
+                cookie_secure: true
                 cookie_samesite: lax
           prometheus:
             prometheusSpec:

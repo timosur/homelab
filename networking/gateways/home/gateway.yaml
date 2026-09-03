@@ -34,14 +34,6 @@ metadata:
 spec:
   gatewayClassName: envoy-home
   listeners:
-    # Central HTTP listener for all home services
-    - name: http
-      port: 80
-      protocol: HTTP
-      hostname: "*.home.timosur.com"
-      allowedRoutes:
-        namespaces:
-          from: All
     - name: https
       port: 443
       protocol: HTTPS

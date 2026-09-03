@@ -7,6 +7,7 @@ spec:
   parentRefs:
     - name: envoy-gateway-home
       namespace: envoy-gateway-system
+      sectionName: https
   hostnames:
     - "vinyl.home.timosur.com"
   rules:
