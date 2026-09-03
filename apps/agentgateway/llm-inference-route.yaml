@@ -5,7 +5,7 @@ metadata:
   namespace: agentgateway-system
 spec:
   hostnames:
-    - inference.home.timosur.com
+    - inference.ai.home.timosur.com
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway

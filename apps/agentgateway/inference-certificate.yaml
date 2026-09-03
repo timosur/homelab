@@ -9,5 +9,5 @@ spec:
     name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
-    - inference.home.timosur.com
-    - mcp.home.timosur.com
+    - inference.ai.home.timosur.com
+    - mcp.ai.home.timosur.com

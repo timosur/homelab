@@ -20,7 +20,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: inference.home.timosur.com
+      hostname: inference.ai.home.timosur.com
       tls:
         mode: Terminate
         certificateRefs:
@@ -33,7 +33,7 @@ spec:
     - name: mcp-https
       protocol: HTTPS
       port: 443
-      hostname: mcp.home.timosur.com
+      hostname: mcp.ai.home.timosur.com
       tls:
         mode: Terminate
         certificateRefs:
