@@ -8,4 +8,5 @@ resources:
   - grafana.yaml
   - home-assistant.yaml
   - pi-hole.yaml
+  - vaultwarden.yaml
   - vinyl-manager.yaml

@@ -75,9 +75,9 @@ spec:
             config:
               global:
                 resolve_timeout: 5m
-                smtp_smarthost: "smtp.gmail.com:587"
-                smtp_from: "timo.surmann@googlemail.com"
-                smtp_auth_username: "timo.surmann@googlemail.com"
+                smtp_smarthost: "smtp.mail.me.com:587"
+                smtp_from: "mail@timosur.com"
+                smtp_auth_username: "mail@timosur.com"
                 smtp_auth_password_file: /etc/alertmanager/secrets/monitoring-smtp-secret/SMTP_PASSWORD
                 smtp_require_tls: true
               route:

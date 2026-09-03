@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: vaultwarden-db
+  namespace: vaultwarden
+spec:
+  appName: vaultwarden
+  databaseName: vaultwarden
+  roleName: vaultwarden
+  compositionRef:
+    name: appdb-central-postgres

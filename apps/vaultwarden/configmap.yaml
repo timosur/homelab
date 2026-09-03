@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vaultwarden-config
+  namespace: vaultwarden
+data:
+  TZ: "Europe/Berlin"
+  DOMAIN: "https://vault.home.timosur.com"
+  SIGNUPS_ALLOWED: "false"
+  ENABLE_WEBSOCKET: "true"
+  SMTP_HOST: "smtp.mail.me.com"
+  SMTP_PORT: "587"
+  SMTP_SECURITY: "starttls"
+  SMTP_FROM: "mail@timosur.com"
+  SMTP_FROM_NAME: "Timo Surmann"

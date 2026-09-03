@@ -4,7 +4,8 @@ metadata:
   name: vuln-reporter-config
   namespace: trivy-system
 data:
-  SMTP_HOST: smtp.gmail.com
+  SMTP_HOST: smtp.mail.me.com
   SMTP_PORT: "587"
-  EMAIL_FROM: timo.surmann@googlemail.com
+  SMTP_USERNAME: mail@timosur.com
+  EMAIL_FROM: mail@timosur.com
   EMAIL_TO: homelab@timosur.com

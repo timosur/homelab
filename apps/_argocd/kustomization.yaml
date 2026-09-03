@@ -33,3 +33,4 @@ resources:
   - wol-proxy-app.yaml
   - kured-app.yaml
   - tetragon-app.yaml
+  - vaultwarden-app.yaml

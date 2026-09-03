@@ -1,0 +1,13 @@
+# Wildcard certificate for home services, issued through Cloudflare DNS-01.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-home-timosur-com
+  namespace: envoy-gateway-system
+spec:
+  secretName: wildcard-home-timosur-com
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.home.timosur.com"
