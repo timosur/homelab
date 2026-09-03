@@ -45,7 +45,7 @@ def proxy_headers(
         for value in headers.getall("Connection", [])
         for token in value.split(",")
     }
-    excluded = HOP_BY_HOP_HEADERS | connection_headers | {"host"}
+    excluded = set(HOP_BY_HOP_HEADERS | connection_headers | {"host"})
     if strip_content_encoding:
         excluded.add("content-encoding")
     if strip_content_length:
