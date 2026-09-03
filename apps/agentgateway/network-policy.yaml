@@ -21,3 +21,5 @@ spec:
         - ports:
             - port: "8080"
               protocol: TCP
+            - port: "443"
+              protocol: TCP
