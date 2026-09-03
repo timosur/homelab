@@ -6,6 +6,6 @@ metadata:
 data:
   SMTP_HOST: smtp.mail.me.com
   SMTP_PORT: "587"
-  SMTP_USERNAME: mail@timosur.com
+  SMTP_USERNAME: myappleid@timosur.com
   EMAIL_FROM: mail@timosur.com
   EMAIL_TO: homelab@timosur.com

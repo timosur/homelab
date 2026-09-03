@@ -13,5 +13,5 @@ data:
   AUTHENTIK_EMAIL__PORT: "587"
   AUTHENTIK_EMAIL__USE_TLS: "true"
   AUTHENTIK_EMAIL__FROM: "mail@timosur.com"
-  AUTHENTIK_EMAIL__USERNAME: "mail@timosur.com"
+  AUTHENTIK_EMAIL__USERNAME: "myappleid@timosur.com"
   AUTHENTIK_EMAIL__TIMEOUT: "10"
