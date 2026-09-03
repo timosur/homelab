@@ -1,0 +1,49 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: mcp-backends
+  namespace: agentgateway-system
+spec:
+  mcp:
+    prefixMode: Never
+    targets:
+      - name: obscura
+        static:
+          backendRef:
+            name: obscura
+          port: 8080
+          protocol: StreamableHTTP
+      - name: context7
+        static:
+          host: mcp.context7.com
+          port: 443
+          protocol: StreamableHTTP
+          policies:
+            tls:
+              sni: mcp.context7.com
+            auth:
+              credentials:
+                - secretRef:
+                    name: agentgateway-mcp-api-keys
+                    key: context7-api-key
+                  location:
+                    header:
+                      name: Authorization
+                      prefix: "Bearer "
+      - name: kagi
+        static:
+          host: mcp.kagi.com
+          port: 443
+          protocol: StreamableHTTP
+          policies:
+            tls:
+              sni: mcp.kagi.com
+            auth:
+              credentials:
+                - secretRef:
+                    name: agentgateway-mcp-api-keys
+                    key: kagi-api-key
+                  location:
+                    header:
+                      name: Authorization
+                      prefix: "Bearer "

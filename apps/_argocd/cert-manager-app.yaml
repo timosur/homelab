@@ -13,6 +13,10 @@ spec:
         valuesObject:
           crds:
             enabled: true
+          config:
+            apiVersion: controller.config.cert-manager.io/v1alpha1
+            kind: ControllerConfiguration
+            enableGatewayAPI: true
     - repoURL: https://github.com/timosur/homelab.git
       targetRevision: HEAD
       path: apps/cert-manager

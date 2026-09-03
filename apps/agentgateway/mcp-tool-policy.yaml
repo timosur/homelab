@@ -1,0 +1,17 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: mcp-tool-allowlist
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: agentgateway.dev
+      kind: AgentgatewayBackend
+      name: mcp-backends
+  backend:
+    mcp:
+      authorization:
+        action: Deny
+        policy:
+          matchExpressions:
+            - '!(mcp.tool.name in ["kagi_search_fetch", "resolve-library-id", "query-docs", "browser_navigate", "browser_snapshot", "browser_markdown", "browser_links", "browser_extract", "browser_screenshot"])'

@@ -10,17 +10,14 @@ resources:
   - agentgateway-parameters.yaml
   - agentgateway-proxy.yaml
   - anthropic-ai-backend.yaml
-  - context7-mcp-backend.yaml
-  - context7-mcp-route.yaml
   - inference-certificate.yaml
   - inference-policy.yaml
-  - kagi-mcp-backend.yaml
-  - kagi-mcp-route.yaml
   - llm-inference-route.yaml
+  - mcp-backends.yaml
+  - mcp-route.yaml
+  - mcp-tool-policy.yaml
   - network-policy.yaml
   - obscura-deployment.yaml
-  - obscura-mcp-backend.yaml
-  - obscura-mcp-route.yaml
   - obscura-network-policy.yaml
   - obscura-service.yaml
   - ollama-ai-backend.yaml
