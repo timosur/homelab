@@ -6,7 +6,7 @@ metadata:
 data:
   TZ: "Europe/Berlin"
   DOMAIN: "https://vault.home.timosur.com"
-  SIGNUPS_ALLOWED: "false"
+  SIGNUPS_ALLOWED: "true"
   ENABLE_WEBSOCKET: "true"
   SMTP_HOST: "smtp.mail.me.com"
   SMTP_PORT: "587"
