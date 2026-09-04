@@ -20,7 +20,7 @@ ollama_models_path: /home/timosur/.ollama/models
 
 # RX 5700 XT has 8 GiB VRAM. Serialize requests and limit model residency so
 # OpenWebUI background work cannot overcommit VRAM beside an interactive chat.
-ollama_context_length: 8192
+ollama_context_length: 40960
 ollama_num_parallel: 1
 ollama_max_loaded_models: 1
 ollama_max_queue: 4
