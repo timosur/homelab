@@ -185,6 +185,23 @@
   become_user: ollama
   when: ollama_check.stat.exists
 
+- name: Configure Bonsai local agent context length
+  ansible.builtin.copy:
+    content: |
+      FROM {{ ollama_bonsai_model }}:latest
+      PARAMETER num_ctx {{ ollama_bonsai_local_agent_context_length }}
+    dest: /etc/ollama/bonsai-27b-opencode-local.Modelfile
+    mode: "0644"
+  become: true
+  when: ollama_check.stat.exists
+
+- name: Create Bonsai local agent model
+  ansible.builtin.command:
+    cmd: ollama create {{ ollama_bonsai_local_agent_model }} -f /etc/ollama/bonsai-27b-opencode-local.Modelfile
+  become: true
+  become_user: ollama
+  when: ollama_check.stat.exists
+
 - name: Configure title model context length
   ansible.builtin.copy:
     content: |
