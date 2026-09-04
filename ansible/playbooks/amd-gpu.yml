@@ -1,0 +1,7 @@
+---
+- name: Configure AMD GPU node
+  hosts: gpu_workers
+  gather_facts: true
+  become: true
+  roles:
+    - amd-gpu

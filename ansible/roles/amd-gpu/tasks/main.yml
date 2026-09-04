@@ -145,6 +145,31 @@
   notify: Reload systemd and restart ollama
   when: ollama_check.stat.exists
 
+- name: Create Ollama configuration directory
+  ansible.builtin.file:
+    path: /etc/ollama
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  when: ollama_check.stat.exists
+
+- name: Configure Bonsai context length for GPU VRAM
+  ansible.builtin.template:
+    src: bonsai-27b-local.Modelfile.j2
+    dest: /etc/ollama/bonsai-27b-local.Modelfile
+    mode: "0644"
+  become: true
+  when: ollama_check.stat.exists
+
+- name: Create Bonsai model with configured context length
+  ansible.builtin.command:
+    cmd: ollama create {{ ollama_bonsai_model }} -f /etc/ollama/bonsai-27b-local.Modelfile
+  become: true
+  become_user: ollama
+  when: ollama_check.stat.exists
+
 - name: Verify GPU detection with rocm-smi
   ansible.builtin.command: rocm-smi --showproductname
   register: rocm_smi_output

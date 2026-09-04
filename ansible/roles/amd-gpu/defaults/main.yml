@@ -16,3 +16,14 @@ ollama_vulkan: true
 
 # Ollama model storage - use secondary disk to free NVMe SSD for swap
 ollama_models_path: /home/timosur/.ollama/models
+
+# RX 5700 XT has 8 GiB VRAM. Serialize requests and limit model residency so
+# OpenWebUI background work cannot overcommit VRAM beside an interactive chat.
+ollama_context_length: 8192
+ollama_num_parallel: 1
+ollama_max_loaded_models: 1
+ollama_max_queue: 4
+ollama_gpu_overhead: 1073741824
+
+# OpenWebUI's large chat model must stay small enough for GPU VRAM.
+ollama_bonsai_model: bonsai-27b-local
