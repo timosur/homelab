@@ -74,6 +74,21 @@
     mode: "0644"
   become: true
 
+- name: Keep AMD GPU powered for Vulkan inference
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/99-amdgpu-runtime-pm.rules
+    content: |
+      # Prevent runtime suspend/resume churn while Ollama uses Vulkan.
+      ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x1002", ATTR{class}=="0x030000", ATTR{power/control}="on"
+    mode: "0644"
+  become: true
+
+- name: Disable AMD GPU runtime autosuspend now
+  ansible.builtin.command:
+    cmd: "tee /sys/bus/pci/devices/{{ amdgpu_pci_address }}/power/control"
+    stdin: "on"
+  become: true
+
 - name: Check if Ollama is installed
   ansible.builtin.stat:
     path: /usr/local/bin/ollama
@@ -166,6 +181,23 @@
 - name: Create Bonsai model with configured context length
   ansible.builtin.command:
     cmd: ollama create {{ ollama_bonsai_model }} -f /etc/ollama/bonsai-27b-local.Modelfile
+  become: true
+  become_user: ollama
+  when: ollama_check.stat.exists
+
+- name: Configure title model context length
+  ansible.builtin.copy:
+    content: |
+      FROM qwen2.5:0.5b
+      PARAMETER num_ctx {{ ollama_title_context_length }}
+    dest: /etc/ollama/qwen2.5-title-local.Modelfile
+    mode: "0644"
+  become: true
+  when: ollama_check.stat.exists
+
+- name: Create title model with configured context length
+  ansible.builtin.command:
+    cmd: ollama create {{ ollama_title_model }} -f /etc/ollama/qwen2.5-title-local.Modelfile
   become: true
   become_user: ollama
   when: ollama_check.stat.exists

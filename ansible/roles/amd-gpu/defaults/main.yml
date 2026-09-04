@@ -9,6 +9,7 @@ ubuntu_codename: "noble" # Ubuntu 24.04
 
 # User to add to render/video groups
 gpu_user: timosur
+amdgpu_pci_address: "0000:2b:00.0"
 
 # Ollama configuration - use Vulkan backend for RX 5700 XT
 # ROCm/HIP causes "illegal memory access" errors on gfx1010
@@ -27,3 +28,5 @@ ollama_gpu_overhead: 1073741824
 
 # OpenWebUI's large chat model must stay small enough for GPU VRAM.
 ollama_bonsai_model: bonsai-27b-local
+ollama_title_model: qwen2.5-title-local
+ollama_title_context_length: 40960
