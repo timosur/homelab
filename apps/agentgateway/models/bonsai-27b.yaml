@@ -14,4 +14,4 @@ spec:
   policies:
     transformations:
       - field: model
-        expression: '"hf.co/prism-ml/Bonsai-27B-gguf:F16"'
+        expression: '"bonsai-27b-local"'
