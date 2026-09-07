@@ -242,7 +242,11 @@ class ProxyBackend:
         timeout = self.cfg.idle_timeout_minutes * 60
         while True:
             await asyncio.sleep(60)
-            if not self._is_awake or self._active_requests:
+            if not await self.check_health():
+                self._is_awake = False
+                continue
+            self.mark_awake()
+            if self._active_requests:
                 continue
 
             log.info(
@@ -493,11 +497,12 @@ class NodeGroupProxy:
         timeout = self.cfg.idle_timeout_minutes * 60
         while True:
             await asyncio.sleep(60)
-            if self._state != "ready" or self._active_requests:
-                continue
             if not await self.check_node_health():
                 log.info("[%s] Node went offline externally", self.cfg.name)
                 self._state = "sleeping"
+                continue
+            self._state = "ready"
+            if self._active_requests:
                 continue
             log.info(
                 "[%s] Idle %.0fm / %.0fm",
