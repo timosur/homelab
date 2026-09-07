@@ -23,9 +23,9 @@ models:
     local: true
     context: 8192
     max_output: 512
-  - id: qwythos-9b-abliterated
-    name: Qwythos 9B Abliterated
-    source: richardyoung/qwythos-9b-abliterated:latest
+  - id: mythos-9b-unhinged
+    name: Mythos 9B Unhinged
+    source: hf.co/King3Djbl/mythos-9b-unhinged:Q4_K_M
     provider: Ollama
     local: true
     context: 8192

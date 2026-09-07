@@ -1,7 +1,7 @@
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayModel
 metadata:
-  name: qwythos-9b-abliterated
+  name: mythos-9b-unhinged
   namespace: agentgateway-system
 spec:
   parentRefs:
@@ -14,4 +14,4 @@ spec:
   policies:
     transformations:
       - field: model
-        expression: '"qwythos-9b-abliterated"'
+        expression: '"mythos-9b-unhinged"'

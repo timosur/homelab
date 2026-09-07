@@ -34,10 +34,10 @@ data:
     model = "qwen3-8-27b"
 
     [[models]]
-    alias = "qwythos-9b-abliterated"
-    name = "Qwythos 9B Abliterated"
-    description = "Qwythos 9B Abliterated via AgentGateway"
-    model = "qwythos-9b-abliterated"
+    alias = "mythos-9b-unhinged"
+    name = "Mythos 9B Unhinged"
+    description = "Mythos 9B Unhinged via AgentGateway"
+    model = "mythos-9b-unhinged"
 
     [[models]]
     alias = "claude-fable-5-1"
