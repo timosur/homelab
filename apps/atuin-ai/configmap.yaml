@@ -7,7 +7,7 @@ data:
   config.toml: |
     port = 8080
     endpoint = "https://inference.ai.home.timosur.com/v1"
-    default_model = "bonsai-27b"
+    default_model = "qwen3-5-9b"
 
     [api_key]
     env = "CHAT_API_KEY"
@@ -16,7 +16,43 @@ data:
     stream_options = { include_usage = true }
 
     [[models]]
-    alias = "bonsai-27b"
-    name = "Bonsai 27B"
-    description = "Bonsai 27B via AgentGateway"
-    model = "bonsai-27b"
+    alias = "qwen3-5-9b"
+    name = "Qwen 3.5 9B"
+    description = "Qwen 3.5 9B via AgentGateway"
+    model = "qwen3-5-9b"
+
+    [[models]]
+    alias = "qwen3-5-0-8b"
+    name = "Qwen 3.5 0.8B"
+    description = "Qwen 3.5 0.8B via AgentGateway"
+    model = "qwen3-5-0-8b"
+
+    [[models]]
+    alias = "qwen3-8-27b"
+    name = "Qwen 3.8 27B"
+    description = "Qwen 3.8 27B via AgentGateway"
+    model = "qwen3-8-27b"
+
+    [[models]]
+    alias = "qwythos-9b-abliterated"
+    name = "Qwythos 9B Abliterated"
+    description = "Qwythos 9B Abliterated via AgentGateway"
+    model = "qwythos-9b-abliterated"
+
+    [[models]]
+    alias = "claude-fable-5-1"
+    name = "Claude Fable 5.1"
+    description = "Claude Fable 5.1 via AgentGateway"
+    model = "claude-fable-5-1"
+
+    [[models]]
+    alias = "gpt-5-6-luna"
+    name = "GPT-5.6 Luna"
+    description = "GPT-5.6 Luna via AgentGateway"
+    model = "gpt-5-6-luna"
+
+    [[models]]
+    alias = "gpt-5-6-sol-terra"
+    name = "GPT-5.6 Sol Terra"
+    description = "GPT-5.6 Sol Terra via AgentGateway"
+    model = "gpt-5-6-sol-terra"
