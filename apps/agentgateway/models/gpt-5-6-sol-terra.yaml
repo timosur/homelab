@@ -1,4 +1,4 @@
-apiVersion: agentgateway.dev/v1alpha1
+apiVersion: agentgateway.dev/v1
 kind: AgentgatewayModel
 metadata:
   name: gpt-5-6-sol-terra

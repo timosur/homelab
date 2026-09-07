@@ -1,4 +1,13 @@
 ---
+- name: Load model onboarding inventory
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/../../../models.yaml"
+    name: model_inventory
+
+- name: Select local models from onboarding inventory
+  ansible.builtin.set_fact:
+    ollama_local_models: "{{ model_inventory.models | selectattr('local', 'equalto', true) | list }}"
+
 - name: Gather OS facts
   ansible.builtin.setup:
     filter: ansible_distribution*
@@ -170,53 +179,25 @@
   become: true
   when: ollama_check.stat.exists
 
-- name: Configure Bonsai context length for GPU VRAM
-  ansible.builtin.template:
-    src: bonsai-27b-local.Modelfile.j2
-    dest: /etc/ollama/bonsai-27b-local.Modelfile
-    mode: "0644"
-  become: true
-  when: ollama_check.stat.exists
-
-- name: Create Bonsai model with configured context length
-  ansible.builtin.command:
-    cmd: ollama create {{ ollama_bonsai_model }} -f /etc/ollama/bonsai-27b-local.Modelfile
-  become: true
-  become_user: ollama
-  when: ollama_check.stat.exists
-
-- name: Configure Bonsai local agent context length
+- name: Configure local Qwen model limits
   ansible.builtin.copy:
     content: |
-      FROM {{ ollama_bonsai_model }}:latest
-      PARAMETER num_ctx {{ ollama_bonsai_local_agent_context_length }}
-    dest: /etc/ollama/bonsai-27b-opencode-local.Modelfile
+      FROM {{ item.source }}
+      PARAMETER num_ctx {{ ollama_model_context_length }}
+      PARAMETER num_predict {{ ollama_model_max_tokens }}
+    dest: "/etc/ollama/{{ item.id }}.Modelfile"
     mode: "0644"
+  loop:
+    "{{ ollama_local_models }}"
   become: true
   when: ollama_check.stat.exists
 
-- name: Create Bonsai local agent model
+- name: Create local Qwen models
   ansible.builtin.command:
-    cmd: ollama create {{ ollama_bonsai_local_agent_model }} -f /etc/ollama/bonsai-27b-opencode-local.Modelfile
+    cmd: "runuser -u ollama -- ollama create {{ item.id }} -f /etc/ollama/{{ item.id }}.Modelfile"
+  loop:
+    "{{ ollama_local_models }}"
   become: true
-  become_user: ollama
-  when: ollama_check.stat.exists
-
-- name: Configure title model context length
-  ansible.builtin.copy:
-    content: |
-      FROM qwen2.5:0.5b
-      PARAMETER num_ctx {{ ollama_title_context_length }}
-    dest: /etc/ollama/qwen2.5-title-local.Modelfile
-    mode: "0644"
-  become: true
-  when: ollama_check.stat.exists
-
-- name: Create title model with configured context length
-  ansible.builtin.command:
-    cmd: ollama create {{ ollama_title_model }} -f /etc/ollama/qwen2.5-title-local.Modelfile
-  become: true
-  become_user: ollama
   when: ollama_check.stat.exists
 
 - name: Verify GPU detection with rocm-smi

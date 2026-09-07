@@ -1,0 +1,44 @@
+# Model onboarding inventory.
+# Local entries are pulled/aliased by the amd-gpu Ansible role.
+# Agent Gateway and client model IDs use `id`; Ollama uses `source`.
+models:
+  - id: qwen3-5-0-8b
+    name: Qwen 3.5 0.8B
+    source: qwen3.5:0.8b
+    provider: Ollama
+    local: true
+    context: 8192
+    max_output: 512
+  - id: qwen3-5-9b
+    name: Qwen 3.5 9B
+    source: qwen3.5:9b
+    provider: Ollama
+    local: true
+    context: 8192
+    max_output: 512
+  - id: qwen3-8-27b
+    name: Qwen 3.8 27B
+    source: qwen3.8:27b
+    provider: Ollama
+    local: true
+    context: 8192
+    max_output: 512
+  - id: qwythos-9b-abliterated
+    name: Qwythos 9B Abliterated
+    source: richardyoung/qwythos-9b-abliterated:latest
+    provider: Ollama
+    local: true
+    context: 8192
+    max_output: 512
+  - id: claude-fable-5-1
+    name: Claude Fable 5.1
+    provider: Anthropic
+    local: false
+  - id: gpt-5-6-luna
+    name: GPT-5.6 Luna
+    provider: OpenAI
+    local: false
+  - id: gpt-5-6-sol-terra
+    name: GPT-5.6 Sol Terra
+    provider: OpenAI
+    local: false

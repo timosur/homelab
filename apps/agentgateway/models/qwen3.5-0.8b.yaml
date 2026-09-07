@@ -1,7 +1,7 @@
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayModel
 metadata:
-  name: bonsai-27b
+  name: qwen3-5-0-8b
   namespace: agentgateway-system
 spec:
   parentRefs:
@@ -14,4 +14,4 @@ spec:
   policies:
     transformations:
       - field: model
-        expression: '"bonsai-27b-local"'
+        expression: '"qwen3-5-0-8b"'
