@@ -15,6 +15,16 @@ spec:
       labels:
         app: affine
     spec:
+      initContainers:
+        - name: copy-config
+          image: docker.io/library/busybox:1.37
+          command: ["sh", "-c", "mkdir -p /config && test -f /config/config.json || cp /defaults/config.json /config/config.json"]
+          volumeMounts:
+            - name: config-data
+              mountPath: /config
+            - name: config-defaults
+              mountPath: /defaults
+              readOnly: true
       containers:
         - name: affine
           image: ghcr.io/toeverything/affine:stable
@@ -39,9 +49,8 @@ spec:
           volumeMounts:
             - name: storage
               mountPath: /root/.affine/storage
-            - name: config
+            - name: config-data
               mountPath: /root/.affine/config
-              readOnly: true
           resources:
             requests:
               memory: 512Mi
@@ -65,7 +74,10 @@ spec:
         - name: storage
           persistentVolumeClaim:
             claimName: affine-storage
-        - name: config
+        - name: config-data
+          persistentVolumeClaim:
+            claimName: affine-storage
+        - name: config-defaults
           configMap:
             name: affine-config
 ---
