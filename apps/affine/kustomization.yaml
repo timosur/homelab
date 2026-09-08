@@ -5,8 +5,10 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - appdb.yaml
+  - pvc.yaml
   - redis-pvc.yaml
   - redis.yaml
+  - migration.yaml
   - deployment.yaml
 
 namespace: affine

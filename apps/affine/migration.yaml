@@ -1,30 +1,20 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: affine
+  name: affine-migration
   namespace: affine
 spec:
-  replicas: 1
-  strategy:
-    type: Recreate
-  selector:
-    matchLabels:
-      app: affine
+  backoffLimit: 6
   template:
-    metadata:
-      labels:
-        app: affine
     spec:
+      restartPolicy: OnFailure
       containers:
-        - name: affine
+        - name: migration
           image: ghcr.io/toeverything/affine:stable
-          ports:
-            - containerPort: 3010
+          command: ["sh", "-c", "node ./scripts/self-host-predeploy.js"]
           env:
             - name: DEPLOYMENT_TYPE
               value: selfhosted
-            - name: AFFINE_SERVER_EXTERNAL_URL
-              value: https://affine.home.timosur.com
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -49,18 +39,6 @@ spec:
             limits:
               memory: 2Gi
               cpu: 1
-          readinessProbe:
-            httpGet:
-              path: /api/server/info
-              port: 3010
-            initialDelaySeconds: 15
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /api/server/info
-              port: 3010
-            initialDelaySeconds: 60
-            periodSeconds: 30
       volumes:
         - name: storage
           persistentVolumeClaim:
@@ -68,15 +46,3 @@ spec:
         - name: config
           configMap:
             name: affine-config
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: affine
-  namespace: affine
-spec:
-  selector:
-    app: affine
-  ports:
-    - port: 3010
-      targetPort: 3010
