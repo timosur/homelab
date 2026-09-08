@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - agent-gateway.yaml
+  - affine.yaml
   - argocd.yaml
   - atuin-ai.yaml
   - atuin.yaml

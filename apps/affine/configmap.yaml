@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: affine-config
+  namespace: affine
+data:
+  config.json: |
+    {
+      "$schema": "https://github.com/toeverything/affine/releases/latest/download/config.schema.json",
+      "server": {
+        "name": "AFFiNE timosur",
+        "externalUrl": "https://affine.home.timosur.com"
+      },
+      "copilot": {
+        "enabled": true,
+        "byok": {
+          "enabled": true
+        }
+      }
+    }

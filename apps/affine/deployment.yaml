@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: affine
+  namespace: affine
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: affine
+  template:
+    metadata:
+      labels:
+        app: affine
+    spec:
+      containers:
+        - name: affine
+          image: ghcr.io/toeverything/affine-graphql:stable
+          ports:
+            - containerPort: 3010
+          env:
+            - name: DEPLOYMENT_TYPE
+              value: selfhosted
+            - name: AFFINE_SERVER_EXTERNAL_URL
+              value: https://affine.home.timosur.com
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: affine-db-connection
+                  key: uri
+            - name: REDIS_SERVER_HOST
+              value: affine-redis
+            - name: REDIS_SERVER_PORT
+              value: "6379"
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 200m
+            limits:
+              memory: 2Gi
+              cpu: 1
+          readinessProbe:
+            httpGet:
+              path: /api/server/info
+              port: 3010
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/server/info
+              port: 3010
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: config
+          configMap:
+            name: affine-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: affine
+  namespace: affine
+spec:
+  selector:
+    app: affine
+  ports:
+    - port: 3010
+      targetPort: 3010

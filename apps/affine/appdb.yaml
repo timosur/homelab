@@ -1,0 +1,13 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: affine-db
+  namespace: affine
+spec:
+  appName: affine
+  databaseName: affine
+  roleName: affine
+  compositionRef:
+    name: appdb-central-postgres
+  extensions:
+    - name: vector
