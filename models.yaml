@@ -38,7 +38,7 @@ models:
     name: GPT-5.6 Luna
     provider: OpenAI
     local: false
-  - id: gpt-5-6-sol-terra
-    name: GPT-5.6 Sol Terra
+  - id: gpt-5-6-terra
+    name: GPT-5.6 Terra
     provider: OpenAI
     local: false
