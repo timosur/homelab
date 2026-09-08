@@ -9,3 +9,5 @@ spec:
   roleName: affine
   compositionRef:
     name: appdb-central-postgres
+  extensions:
+    - name: vector
