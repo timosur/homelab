@@ -18,7 +18,12 @@ spec:
       initContainers:
         - name: copy-config
           image: docker.io/library/busybox:1.37
-          command: ["sh", "-c", "mkdir -p /config && test -f /config/config.json || cp /defaults/config.json /config/config.json"]
+          command:
+            [
+              'sh',
+              '-c',
+              'mkdir -p /config && test -f /config/config.json || cp /defaults/config.json /config/config.json',
+            ]
           volumeMounts:
             - name: config-data
               mountPath: /config
@@ -35,6 +40,8 @@ spec:
               value: selfhosted
             - name: AFFINE_SERVER_EXTERNAL_URL
               value: https://affine.home.timosur.com
+            - name: AFFINE_BACKEND_RUNTIME_CONFIG_PATH
+              value: /root/.affine/config/config.json
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -43,9 +50,9 @@ spec:
             - name: REDIS_SERVER_HOST
               value: affine-redis
             - name: REDIS_SERVER_PORT
-              value: "6379"
+              value: '6379'
             - name: AFFINE_INDEXER_ENABLED
-              value: "false"
+              value: 'false'
           volumeMounts:
             - name: storage
               mountPath: /root/.affine/storage
