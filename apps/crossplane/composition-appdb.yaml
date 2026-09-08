@@ -19,6 +19,7 @@ spec:
         source: Inline
         inline:
           template: |
+            {{ $resources := .observed.resources | default dict }}
             ---
             apiVersion: postgresql.sql.crossplane.io/v1alpha1
             kind: Role
@@ -26,8 +27,8 @@ spec:
               name: {{ .observed.composite.resource.spec.roleName }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: role
-                {{ if .observed.resources.role }}
-                {{ if eq (.observed.resources.role | getResourceCondition "Ready").Status "True" }}
+                {{ if $resources.role }}
+                {{ if eq ($resources.role | getResourceCondition "Ready").Status "True" }}
                 gotemplating.fn.crossplane.io/ready: "True"
                 {{ end }}
                 {{ end }}
@@ -55,8 +56,8 @@ spec:
               name: {{ .observed.composite.resource.spec.databaseName }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: database
-                {{ if .observed.resources.database }}
-                {{ if eq (.observed.resources.database | getResourceCondition "Ready").Status "True" }}
+                {{ if $resources.database }}
+                {{ if eq ($resources.database | getResourceCondition "Ready").Status "True" }}
                 gotemplating.fn.crossplane.io/ready: "True"
                 {{ end }}
                 {{ end }}
@@ -76,8 +77,9 @@ spec:
               name: {{ $.observed.composite.resource.spec.databaseName }}-{{ .name }}
               annotations:
                 gotemplating.fn.crossplane.io/composition-resource-name: extension-{{ .name }}
-                {{ if index $.observed.resources (printf "extension-%s" .name) }}
-                {{ if eq (index $.observed.resources (printf "extension-%s" .name) | getResourceCondition "Ready").Status "True" }}
+                {{ $extension := index $resources (printf "extension-%s" .name) }}
+                {{ if $extension }}
+                {{ if eq ($extension | getResourceCondition "Ready").Status "True" }}
                 gotemplating.fn.crossplane.io/ready: "True"
                 {{ end }}
                 {{ end }}
@@ -99,11 +101,11 @@ spec:
               namespace: {{ .observed.composite.resource.spec.appName }}
               annotations:
                 {{ setResourceNameAnnotation "connection-secret" }}
-                {{ if and .observed.resources.role .observed.resources.role.connectionDetails }}
+                {{ if and $resources.role $resources.role.connectionDetails }}
                 gotemplating.fn.crossplane.io/ready: "True"
                 {{ end }}
-            {{ if and .observed.resources.role .observed.resources.role.connectionDetails }}
-            {{ $roleSecret := .observed.resources.role.connectionDetails }}
+            {{ if and $resources.role $resources.role.connectionDetails }}
+            {{ $roleSecret := $resources.role.connectionDetails }}
             data:
               host: {{ "central-postgres-rw.postgres.svc.cluster.local" | b64enc }}
               port: {{ "5432" | b64enc }}
