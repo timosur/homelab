@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: house-builder
+  namespace: house-builder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: house-builder
+  template:
+    metadata:
+      labels:
+        app: house-builder
+    spec:
+      imagePullSecrets:
+        - name: ghcr-io-pull-secret
+      containers:
+        - name: house-builder
+          image: ghcr.io/timosur/house-builder:latest # TODO: Pin with SHA after first build
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

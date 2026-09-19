@@ -9,6 +9,7 @@ resources:
   - atuin.yaml
   - garden.yaml
   - grafana.yaml
+  - house-builder.yaml
   - home-assistant.yaml
   - pi-hole.yaml
   - vaultwarden.yaml

@@ -18,6 +18,7 @@ resources:
   - external-secrets-app.yaml
   - ferienhof-wiesengrund-app.yaml
   - garden-app.yaml
+  - house-builder-app.yaml
   - monitoring-app.yaml
   - n8n-app.yaml
   - networking-app.yaml

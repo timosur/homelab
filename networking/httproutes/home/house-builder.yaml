@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: house-builder-home
+  namespace: house-builder
+spec:
+  parentRefs:
+    - name: envoy-gateway-home
+      namespace: envoy-gateway-system
+      sectionName: https
+  hostnames:
+    - house.home.timosur.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: house-builder
+          port: 80
