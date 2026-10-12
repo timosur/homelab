@@ -34,18 +34,6 @@ models:
     name: Claude Fable 5.1
     provider: Anthropic
     local: false
-  - id: claude-sonnet-5-5
-    name: Claude Sonnet 5.5
-    provider: Claude Bridge
-    local: false
-  - id: claude-opus-5-5
-    name: Claude Opus 5.5
-    provider: Claude Bridge
-    local: false
-  - id: claude-haiku-5-5
-    name: Claude Haiku 5.5
-    provider: Claude Bridge
-    local: false
   - id: gpt-5-6-luna
     name: GPT-5.6 Luna
     provider: OpenAI
