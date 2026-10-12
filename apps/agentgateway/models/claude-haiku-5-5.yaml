@@ -10,11 +10,9 @@ spec:
       name: agentgateway-proxy
       sectionName: https
   provider: Custom
+  baseURL: http://claude-bridge.claude-bridge.svc.cluster.local:8000
   custom:
     providerOverride: Anthropic
-    backendRef:
-      name: claude-bridge
-      port: 8000
     formats:
       - type: Messages
         path: /anthropic/v1/messages

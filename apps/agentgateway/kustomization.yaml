@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - admin-ui-service.yaml
   - agentgateway-anthropic-secret.yaml
-  - claude-bridge-backend.yaml
   - agentgateway-inference-api-key.yaml
   - agentgateway-mcp-api-keys.yaml
   - agentgateway-openai-secret.yaml
