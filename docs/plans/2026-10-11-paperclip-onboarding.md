@@ -1,26 +1,26 @@
-# Paperclip Coding-Agent Platform Implementation Plan
+# Paperclip Onboarding Plan
 
 **Goal:** Run Paperclip coding, review, and platform-engineering agents across the selected GitHub repositories. Paperclip issues start work through its UI/API; each repository has its own project workspace and produces its own pull request. Humans remain the only merge authority.
 
-**Architecture:** One Paperclip Company, `timosur`, runs in the homelab cluster with central CNPG and a home-only UI. Its native Kubernetes sandbox provider creates ephemeral Agent Sandbox workloads. Workloads run as Kata microVMs only on `homelab-amd` and `homelab-amd-desktop`, call models through the internal `agentgateway`, and use Cilium allow-list egress. Paperclip's managed GitHub connection is enrolled through the Paperclip Cloud Connector; the Paperclip server makes the required outbound Cloud connection and brokers task-scoped GitHub credentials to sandboxes. Neither the UI nor a GitHub webhook is public.
+**Architecture:** One Paperclip Company, `timosur`, runs in the homelab cluster with central CNPG and a home-only UI. Its native Kubernetes sandbox provider creates ephemeral Agent Sandbox workloads. Workloads run as Kata microVMs only on `homelab-amd` and `homelab-amd-desktop`, run Claude Code with a shared subscription OAuth token, and reach Anthropic only through the internal `agentgateway`. Cilium allow-lists sandbox egress. Paperclip's managed GitHub connection is enrolled through the Paperclip Cloud Connector; the Paperclip server makes the required outbound Cloud connection and brokers task-scoped GitHub credentials to sandboxes. Neither the UI nor a GitHub webhook is public.
 
 **Decisions:**
 
 - Use Paperclip's native Kubernetes sandbox provider; do **not** install `paperclip-operator`.
-- Use `sandbox-cr`, not the Job backend, because OpenCode requires multi-command execution.
+- Use `sandbox-cr`, not the Job backend, because Claude Code requires multi-command execution.
 - Use Kata and Cilium. Do not schedule agents on `homelab-gpu`, `homelab-arm-large`, or `homelab-arm-small`.
 - Start with at most two concurrent agents, one per eligible node, enforced through required hostname pod anti-affinity.
 - Create one Company named `timosur`. Create one Paperclip project per Git repository, each with an isolated workspace and its own upstream URL/base branch; use goals and linked issues for product work that spans repositories.
 - Use three shared company agents: `coder`, `reviewer`, and `platform-engineer`. The coder delegates a review task after opening a PR. The platform engineer is assigned only to the `homelab` project and makes deployment-manifest changes only after the source change is merged and its immutable image digest is published.
 - Use the existing Paperclip-managed GitHub App connection, installed on every repository explicitly approved by the owner. This is an intentional shared-trust boundary: every GitHub-enabled agent run can act with the App's selected-repository authority. Humans merge all pull requests.
 - Start work only through the Paperclip UI/API. Do not receive GitHub mentions, issue events, review events, or webhooks in the pilot.
-- Keep Paperclip logs/artifacts for 30 days on a best-effort basis. Sandboxes, workspaces, and run secrets are ephemeral.
+- Keep Paperclip logs/artifacts for 30 days on a best-effort basis. Sandboxes, workspaces, and the per-run copy of the shared OAuth token are ephemeral; its Azure Key Vault secret is the durable revocation boundary.
 - Store each Paperclip environment payload as versioned JSON and reconcile it with `paperclipai environment create/update`. The Cloud Connector enrollment and managed GitHub connection/grants are documented manual prerequisites until their self-hosted APIs are stable.
 - Use Paperclip local authentication, with bootstrap/admin secret material from ExternalSecrets.
-- Run the pilot only after a smoke test proves AgentGateway returns OpenCode-compatible cost data: enforce a 30-minute and $5 per-task cap, with no automatic retry.
+- Run the pilot only after a smoke test proves Claude Code can use the shared subscription OAuth token through AgentGateway. Enforce a 30-minute and maximum-turn cap, with no automatic retry; subscription usage is not an API-dollar budget.
 - GitOps pre-creates one fixed tenant namespace and its base RBAC/quota/policies. Paperclip may create/delete only its per-run Cilium policies in that namespace for human-approved extra egress.
 - The Kubernetes provider has no `nodeSelector`, affinity, toleration, or pod-template configuration. `runtimeClassName: kata-paperclip` supplies the two-node selector and desktop toleration. A narrowly scoped mutating webhook supplies only the required hostname anti-affinity so the second sandbox must wait for the desktop node.
-- Build and digest-pin the OpenCode runtime image in this repository. The provider's built-in `ghcr.io/paperclipai/agent-runtime-opencode:v1` reference currently does not exist.
+- Build and digest-pin the Claude Code runtime image in this repository. Do not rely on an undocumented upstream runtime tag.
 
 ---
 
@@ -28,20 +28,21 @@
 
 - The current Kubernetes plugin schema accepts `runtimeClassName`, but not `nodeSelector`, `affinity`, `tolerations`, or a generic `podTemplate`. Its Sandbox builder emits only its fixed pod template plus `runtimeClassName` and `imagePullSecrets`. This proves that node selectors are unsupported **in Paperclip's environment JSON**.
 - Kubernetes RuntimeClass scheduling supplies `nodeSelector` and `tolerations` to every Pod using that class. `kata-paperclip` therefore confines every provider-created sandbox to the two labelled AMD nodes. RuntimeClass cannot express the required one-sandbox-per-host anti-affinity. Mutate the `Sandbox` CR's `spec.podTemplate.spec.affinity` before the Agent Sandbox controller creates its Pod; then the second sandbox stays Pending while the desktop is asleep and triggers wake-on-LAN.
-- The upstream provider defaults `opencode_local` to `ghcr.io/paperclipai/agent-runtime-opencode:v1`. An anonymous OCI manifest request for that tag returned HTTP 404 on 2026-10-12. Upstream's image workflow publishes `git-<sha>` on relevant `master` changes (or an explicit dispatch tag), not `v1`; do not rely on an undocumented upstream tag.
+- Do not rely on an undocumented `claude_local` runtime tag. Build the Claude Code runtime from the exact Paperclip source selected in Task 1 and deploy it only by digest.
 - `imageAllowList` does not select the adapter runtime image: it permits an agent-supplied `target.imageOverride`. Keep it empty/omitted. Set the custom image in the authoritative `adapters[].runtimeImage` entry instead.
 - Provider bootstrap is create-if-absent, not reconciliation. It still reads the cluster-scoped tenant Namespace and reads the fixed tenant resources. GitOps must create them before the first run; Paperclip needs cluster-scoped `get namespaces`, but no cluster-scoped create/update/delete permission.
 - `adapters[].envKeys` copies named Paperclip-server process variables into every run for that environment. Do not put a GitHub App key, installation token, `GH_TOKEN`, or `GITHUB_TOKEN` there. The managed GitHub runtime broker resolves task-scoped credentials for `git`/`gh`; grant the connection to the three company agents through Paperclip.
+- `claude_local` supports subscription authentication through `CLAUDE_CODE_OAUTH_TOKEN`. It is intentionally shared by the pilot agents and is their Anthropic authority; never expose it in logs or repository content.
 
 References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master/packages/plugins/sandbox-providers/kubernetes/src/types.ts), [Sandbox builder](https://github.com/paperclipai/paperclip/blob/master/packages/plugins/sandbox-providers/kubernetes/src/sandbox-cr-builder.ts), [adapter defaults](https://github.com/paperclipai/paperclip/blob/master/packages/plugins/sandbox-providers/kubernetes/src/adapter-defaults.ts), [image workflow](https://github.com/paperclipai/paperclip/blob/master/.github/workflows/agent-runtime-images.yml), and [Kubernetes RuntimeClass scheduling](https://kubernetes.io/docs/concepts/containers/runtime-class/#scheduling).
 
 ### Environment payload shape
 
-`apps/paperclip/environment.json` is the source of truth. Replace placeholders only in the GitOps change that pins a built image and chosen AgentGateway model; it contains no secret value.
+`apps/paperclip/environment.json` is the source of truth. Replace image placeholders only in the GitOps change that pins a built image; it contains no secret value.
 
 ```json
 {
-  "name": "timosur-opencode",
+  "name": "timosur-claude",
   "driver": "sandbox",
   "config": {
     "provider": "kubernetes",
@@ -52,7 +53,7 @@ References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master
     "runtimeClassName": "kata-paperclip",
     "egressMode": "cilium",
     "egressAllowFqdns": ["github.com", "api.github.com"],
-    "adapterType": "opencode_local",
+    "adapterType": "claude_local",
     "podActivityDeadlineSec": 1800,
     "defaultResources": {
       "requests": { "cpu": "250m", "memory": "512Mi" },
@@ -60,14 +61,13 @@ References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master
     },
     "adapters": [
       {
-        "adapterType": "opencode_local",
-        "runtimeImage": "ghcr.io/timosur/homelab/paperclip/agent-runtime-opencode:<source-sha>@sha256:<digest>",
-        "envKeys": ["AGENTGATEWAY_API_KEY"],
-        "allowFqdns": ["inference.ai.home.timosur.com"],
-        "probeCommand": ["opencode", "--version"],
+        "adapterType": "claude_local",
+        "runtimeImage": "ghcr.io/timosur/homelab/paperclip/agent-runtime-claude:<source-sha>@sha256:<digest>",
+        "envKeys": ["CLAUDE_CODE_OAUTH_TOKEN"],
+        "allowFqdns": ["claude.ai.home.timosur.com"],
+        "probeCommand": ["claude", "--version"],
         "defaultEnv": {
-          "PAPERCLIP_OPENCODE_SMALL_MODEL": "agentgateway/<model>",
-          "PAPERCLIP_OPENCODE_PROVIDERS": "{\"agentgateway\":{\"npm\":\"@ai-sdk/openai-compatible\",\"name\":\"AgentGateway\",\"options\":{\"baseURL\":\"https://inference.ai.home.timosur.com/v1\",\"apiKey\":\"{env:AGENTGATEWAY_API_KEY}\"},\"models\":{\"<model>\":{}}}}"
+          "ANTHROPIC_BASE_URL": "https://claude.ai.home.timosur.com"
         }
       }
     ]
@@ -75,7 +75,7 @@ References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master
 }
 ```
 
-`podActivityDeadlineSec` is applied to the Job backend, not the current Sandbox CR template. For the selected `sandbox-cr` backend, Paperclip's explicit 1800-second OpenCode timeout is the run-time ceiling; GitOps `LimitRange`/`ResourceQuota` enforce CPU, memory, and ephemeral-storage limits. The provider's `defaultResources` only supports CPU and memory.
+`podActivityDeadlineSec` is applied to the Job backend, not the current Sandbox CR template. For the selected `sandbox-cr` backend, Paperclip's explicit 1800-second Claude Code timeout is the run-time ceiling; GitOps `LimitRange`/`ResourceQuota` enforce CPU, memory, and ephemeral-storage limits. The provider's `defaultResources` only supports CPU and memory.
 
 ---
 
@@ -87,10 +87,10 @@ References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master
 - [ ] **Block implementation until Paperclip PR [#13734](https://github.com/paperclipai/paperclip/pull/13734) is merged and released.** It discovers the served Agent Sandbox API version and supports current `agents.x-k8s.io/v1beta1`; do not pin a deprecated `v1alpha1` controller merely to work around the provider.
 - [ ] Pin the Paperclip release containing #13734 and a non-`latest` Agent Sandbox v1.x release. Record the exact image digests and verify the generated Sandbox uses `agents.x-k8s.io/v1beta1`.
 - [ ] Pin a Paperclip release at or newer than `v2026.1005.0`, which contains the self-hosted Paperclip Cloud Connector's managed GitHub `github.code` profile and the task-scoped `git`/`gh` credential broker. Verify the selected release retains both before relying on the managed App.
-- [ ] Verify the provider supports `runtimeClassName`, `egressMode: cilium`, in-cluster authentication, and `opencode_local` at the selected versions.
+- [ ] Verify the provider supports `runtimeClassName`, `egressMode: cilium`, in-cluster authentication, and `claude_local` at the selected versions.
 - [ ] Validate the committed environment JSON with `paperclipai environment probe-config` before applying it. Confirm that its only placement field is `runtimeClassName`; reject any configuration that purports to set a node selector or pod template.
 - [ ] Prove that the self-hosted instance can enroll its Cloud Connector, exposes the managed GitHub connection, and brokers a task-scoped credential to an assigned sandbox. Verify `git`/`gh` can clone a selected private repository, push a disposable branch, and open a draft PR; confirm the credential is unavailable after the run.
-- [ ] Prove AgentGateway's OpenCode response reports per-part cost that Paperclip can use to enforce the $5 cap; implementation is blocked until this passes.
+- [ ] Prove a `claude_local` sandbox sends its shared `CLAUDE_CODE_OAUTH_TOKEN` through AgentGateway to `/v1/messages` without an Anthropic API key. Confirm the response succeeds, the token is not logged, and the per-run Secret is deleted with the Sandbox.
 - [ ] Record all pinned versions in the Paperclip manifests and this plan's implementation PR.
 
 **Acceptance:** A disposable Paperclip environment can create and delete one sandbox CR without an API-version or RBAC error.
@@ -127,19 +127,19 @@ References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master
 
 ---
 
-### Task 3a: Build the pinned OpenCode sandbox runtime
+### Task 3a: Build the pinned Claude Code sandbox runtime
 
 **Files:**
 - Create `.github/workflows/build-paperclip-runtime.yml`.
 - Record the upstream Paperclip source commit and resulting image digest in `apps/paperclip/environment.json`.
 
-- [ ] Check out the exact Paperclip source commit selected in Task 1 and build its upstream `docker/agent-runtime` `base` and `opencode` Bake targets for `linux/amd64`.
-- [ ] Push the result to `ghcr.io/timosur/homelab/paperclip/agent-runtime-opencode:<paperclip-source-sha>`; record and deploy by its immutable `@sha256:` digest.
-- [ ] Verify the image contains `opencode`, `git`, `gh`, `rg`, `/usr/bin/tini`, and `/usr/local/bin/paperclip-agent-shim`, and runs as UID/GID 1000 with a read-only root filesystem plus the provider's standard writable mounts. `gh` is required for the managed GitHub broker workflow to create and review PRs.
-- [ ] Do not copy upstream Dockerfiles into this repository. The workflow builds the pinned upstream source so the image, plugin, and server can be upgraded together. Its current Dockerfile installs `opencode-ai@latest`; record the installed OpenCode version in the build artifact and rebuild only for an intentional Paperclip or OpenCode update.
+- [ ] Check out the exact Paperclip source commit selected in Task 1 and build its upstream `docker/agent-runtime` base and Claude Code runtime target for `linux/amd64`. Record the selected target name from that pinned source.
+- [ ] Push the result to `ghcr.io/timosur/homelab/paperclip/agent-runtime-claude:<paperclip-source-sha>`; record and deploy by its immutable `@sha256:` digest.
+- [ ] Verify the image contains `claude`, `git`, `gh`, `rg`, `/usr/bin/tini`, and `/usr/local/bin/paperclip-agent-shim`, and runs as UID/GID 1000 with a read-only root filesystem plus the provider's standard writable mounts. `gh` is required for the managed GitHub broker workflow to create and review PRs.
+- [ ] Do not copy upstream Dockerfiles into this repository. The workflow builds the pinned upstream source so the image, plugin, and server can be upgraded together. Record the installed Claude Code version in the build artifact and rebuild only for an intentional Paperclip or Claude Code update.
 - [ ] Use an `imagePullSecret` only if the GHCR package is private; create the same named Secret in `paperclip-timosur` before the first lease and list it in `imagePullSecrets`.
 
-**Acceptance:** The digest-pinned image passes `opencode --version` in a Kata sandbox and no reference to an upstream `:v1` runtime tag remains.
+**Acceptance:** The digest-pinned image passes `claude --version` in a Kata sandbox and no reference to an upstream runtime tag remains.
 
 ---
 
@@ -205,16 +205,16 @@ References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master
 - [ ] Pre-create `paperclip-timosur` and the provider's exact expected names (`paperclip-tenant-sa`, `paperclip-tenant-role`, `paperclip-tenant-rb`, `paperclip-quota`, `paperclip-limits`, and the baseline policies) through GitOps. The provider is create-if-absent, not a reconciler: its values are frozen after first creation.
 - [ ] Grant Paperclip's server service account fixed-tenant create/read/delete permission for Sandbox CRs, pods/logs, per-run Secrets, and its labelled per-run `CiliumNetworkPolicy` resources. Also grant the reads the provider performs for the GitOps-owned tenant resources and cluster-scoped `get` on only the `paperclip-timosur` Namespace (`resourceNames`); grant no cluster-scoped write permission and no namespace/quota/limit-range/baseline-policy create permission.
 - [ ] Use that one tenant namespace for the pilot so its two-sandbox `ResourceQuota` is effective. Do not represent the namespace-scoped quota as a cluster-wide concurrency control if more tenants are added later.
-- [ ] Commit `apps/paperclip/environment.json` with `driver: sandbox`, `config.provider: kubernetes`, `inCluster: true`, `namespacePrefix: paperclip-`, `companySlug: timosur`, `backend: sandbox-cr`, `runtimeClassName: kata-paperclip`, `egressMode: cilium`, and `adapterType: opencode_local` so its derived namespace is the GitOps-created tenant. Do not add unsupported selector, affinity, toleration, or pod-template fields.
-- [ ] Configure the GitOps-owned namespace quota for two sandboxes. Use the environment's `defaultResources` for CPU/memory; use the GitOps `LimitRange`/`ResourceQuota` for ephemeral storage. Do not claim `podActivityDeadlineSec` limits `sandbox-cr` Pods: enforce the 30-minute run limit with `opencode_local.timeoutSec` and prove cleanup after timeout.
-- [ ] Default-deny sandbox ingress/egress. Baseline policy permits only DNS, Paperclip callback traffic, `github.com`, `api.github.com`, and internal `inference.ai.home.timosur.com`; do not allow package registries in the pilot runtime path.
-- [ ] Create a dedicated `paperclip-agentgateway-api-key` in Azure Key Vault. Mirror it with ExternalSecrets into the Paperclip namespace as `AGENTGATEWAY_API_KEY` and into `agentgateway-system` as a labeled API-key Secret. Change the strict AgentGateway policy from a single `secretRef` to a `secretSelector` that admits the existing clients and the Paperclip key independently, so Paperclip access can be revoked without rotating other clients.
-- [ ] Mount `AGENTGATEWAY_API_KEY` into the Paperclip server from its ExternalSecret and list it as the sole `opencode_local` adapter `envKey`. The Kubernetes provider then copies only that configured value into its Sandbox-owned per-run Secret, which is deleted with the Sandbox. OpenCode's OpenAI-compatible provider sends it as `Authorization: Bearer …` to AgentGateway; AgentGateway validates it before applying its separate upstream-provider credential. Do not inject upstream model-provider credentials into sandbox pods.
-- [ ] Configure the provider's authoritative `adapters` registry with its sole `opencode_local` entry: set `runtimeImage` to the Task 3a digest, `envKeys` to only `AGENTGATEWAY_API_KEY`, `allowFqdns` to only `inference.ai.home.timosur.com`, and `defaultEnv.PAPERCLIP_OPENCODE_PROVIDERS` to an `@ai-sdk/openai-compatible` AgentGateway provider at `https://inference.ai.home.timosur.com/v1` with `apiKey: {env:AGENTGATEWAY_API_KEY}` and an explicit `models` map. Set both the agent model and `PAPERCLIP_OPENCODE_SMALL_MODEL` to an AgentGateway-served `agentgateway/<model>` ID. Do not set `imageAllowList`: it authorizes agent overrides, not this runtime image. Do not add AgentGateway alongside the built-in upstream-provider credentials or FQDN grants.
+- [ ] Commit `apps/paperclip/environment.json` with `driver: sandbox`, `config.provider: kubernetes`, `inCluster: true`, `namespacePrefix: paperclip-`, `companySlug: timosur`, `backend: sandbox-cr`, `runtimeClassName: kata-paperclip`, `egressMode: cilium`, and `adapterType: claude_local` so its derived namespace is the GitOps-created tenant. Do not add unsupported selector, affinity, toleration, or pod-template fields.
+- [ ] Configure the GitOps-owned namespace quota for two sandboxes. Use the environment's `defaultResources` for CPU/memory; use the GitOps `LimitRange`/`ResourceQuota` for ephemeral storage. Do not claim `podActivityDeadlineSec` limits `sandbox-cr` Pods: enforce the 30-minute run limit with `claude_local.timeoutSec` and a bounded `maxTurnsPerRun`, then prove cleanup after timeout.
+- [ ] Default-deny sandbox ingress/egress. Baseline policy permits only DNS, Paperclip callback traffic, `github.com`, `api.github.com`, and internal `claude.ai.home.timosur.com`; do not allow package registries in the pilot runtime path.
+- [ ] Store the dedicated shared subscription token in Azure Key Vault. Mirror it with ExternalSecrets into the Paperclip server as `CLAUDE_CODE_OAUTH_TOKEN`; do not mirror it to AgentGateway or inject Anthropic API credentials into sandbox pods.
+- [ ] Add a dedicated `claude.ai.home.timosur.com` AgentGateway listener and an OAuth-passthrough Anthropic backend. Route `/v1/messages`, `/v1/messages/count_tokens`, and required passthrough requests to that backend without an upstream Anthropic API-key secret. Do not attach the existing static AgentGateway API-key policy to this listener: Claude Code's OAuth header must reach Anthropic unchanged. Permit AgentGateway, not sandbox pods, to reach Anthropic.
+- [ ] Configure the provider's authoritative `adapters` registry with its sole `claude_local` entry: set `runtimeImage` to the Task 3a digest, `envKeys` to only `CLAUDE_CODE_OAUTH_TOKEN`, `allowFqdns` to only `claude.ai.home.timosur.com`, and `defaultEnv.ANTHROPIC_BASE_URL` to that HTTPS origin. Configure each Paperclip agent with a model available to the subscription. Do not set `imageAllowList`: it authorizes agent overrides, not this runtime image.
 - [ ] Allow the Paperclip **server** (not sandbox pods) outbound HTTPS to `my.paperclip.app` for the managed Cloud Connector. Keep the sandbox baseline limited to DNS, Paperclip callback traffic, `github.com`, `api.github.com`, and internal AgentGateway. The managed runtime broker delivers GitHub credentials through the callback bridge; do not mount static GitHub credentials into the server or sandbox.
 - [ ] Use per-task Cilium FQDN grants only for exceptional destinations. When baseline egress blocks a task, the agent reports the exact attempted hostname and reason; it cannot self-approve or retry. A human reviews a GitOps approval record containing the Paperclip task ID, exact FQDNs, reason, and expiry, then manually sets that task's `executionWorkspaceSettings.networkEgress.allowFqdns` in Paperclip and reruns it. Do not approve wildcards or CIDRs for the pilot. This deliberately gives Paperclip namespace-scoped create/delete access to its own per-run policies; it does not give it namespace or baseline-policy authority.
 
-**Acceptance:** An agent can use OpenCode and agentgateway, clone the permitted repository, and cannot reach arbitrary LAN services or unapproved Internet destinations.
+**Acceptance:** An agent can use Claude Code through AgentGateway, clone the permitted repository, and cannot reach arbitrary LAN services or unapproved Internet destinations.
 
 ---
 
@@ -247,7 +247,7 @@ References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master
 - [ ] Keep Cloud Connector enrollment, managed GitHub connection/grants, Company/project workspaces, and agent creation as documented manual setup. The GitOps Job must not overwrite them and must not require a GitHub webhook endpoint.
 - [ ] During the manual setup, create `coder`, `reviewer`, and `platform-engineer` in the `timosur` Company. Assign GitHub access through the managed connection, give none merge authority, and apply the Task 7 role instructions.
 - [ ] Configure the internal review flow: coder opens/updates a PR and delegates review; reviewer returns findings to the coder issue; a human merges the source PR. After merge/release, a human creates the separate `homelab` platform issue with the published immutable digest.
-- [ ] Set `opencode_local.timeoutSec: 1800` explicitly (its default is longer), enforce the verified $5 Paperclip budget, require human approval for additional egress, and disable automatic retry. Do not represent `podActivityDeadlineSec` as a `sandbox-cr` wall-clock limit.
+- [ ] Set `claude_local.timeoutSec: 1800` and a bounded `maxTurnsPerRun` explicitly, require human approval for additional egress, and disable automatic retry. Do not represent `podActivityDeadlineSec` as a `sandbox-cr` wall-clock limit or subscription usage as a $5 API budget.
 - [ ] Make the bootstrap safe to rerun and ensure it never logs secret material.
 
 **Acceptance:** A fresh Paperclip database can be bootstrapped from GitOps resources and ExternalSecrets after the documented manual Cloud Connector/GitHub setup. Re-running the Job updates the named environment from committed JSON without duplicating it or overwriting the connection, grants, company, projects, or agents.
@@ -280,7 +280,7 @@ References: [plugin schema](https://github.com/paperclipai/paperclip/blob/master
 - [ ] Enroll the self-hosted instance with Paperclip Cloud, connect the existing Paperclip-managed GitHub App, and select the repositories approved for the shared-trust pilot.
 - [ ] Define each selected repository's Paperclip project/base branch and configure its protected target-branch ruleset requiring human approval, denying GitHub App bypass, and denying direct pushes.
 - [ ] For every application that deploys through `homelab`, ensure its release process publishes an immutable image digest before a platform-engineer deployment issue is created.
-- [ ] Prove AgentGateway cost reporting and Paperclip's $5 budget enforcement before enabling pilot agents.
+- [ ] Provision a dedicated Claude subscription for the shared pilot OAuth token and verify it can run a sandboxed Claude Code task through AgentGateway without direct API billing.
 
 ## Explicitly deferred
 
