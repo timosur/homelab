@@ -1,0 +1,20 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayModel
+metadata:
+  name: claude-sonnet-5-5
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-proxy
+      sectionName: https
+  provider: Custom
+  custom:
+    providerOverride: Anthropic
+    backendRef:
+      name: claude-bridge
+      port: 8000
+    formats:
+      - type: Messages
+        path: /anthropic/v1/messages

@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - admin-ui-service.yaml
   - agentgateway-anthropic-secret.yaml
+  - claude-bridge-backend.yaml
   - agentgateway-inference-api-key.yaml
   - agentgateway-mcp-api-keys.yaml
   - agentgateway-openai-secret.yaml
@@ -24,5 +25,8 @@ resources:
   - models/qwen3.8-27b.yaml
   - models/mythos-9b-unhinged.yaml
   - models/claude-fable-5-1.yaml
+  - models/claude-haiku-5-5.yaml
+  - models/claude-opus-5-5.yaml
+  - models/claude-sonnet-5-5.yaml
   - models/gpt-5-6-luna.yaml
   - models/gpt-5-6-sol-terra.yaml

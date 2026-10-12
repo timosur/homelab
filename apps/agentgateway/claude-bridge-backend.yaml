@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: claude-bridge
+  namespace: agentgateway-system
+spec:
+  type: ExternalName
+  externalName: claude-bridge.claude-bridge.svc.cluster.local
+  ports:
+    - name: http
+      port: 8000
+      protocol: TCP
