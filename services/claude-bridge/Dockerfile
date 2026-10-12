@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS bridge
+FROM python:3.14-slim-bookworm AS bridge
 
 ARG CLAUDE_BRIDGE_REF=b94bf404c6c004d34a8f1d7683aea121deef19dc
 
@@ -12,7 +12,7 @@ ARG CLAUDE_CODE_VERSION=2.1.296
 
 RUN npm install --global "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 COPY --from=bridge /usr/local /usr/local
 COPY --from=claude-code /usr/local/bin/claude /usr/local/bin/claude
