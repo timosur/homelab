@@ -19,6 +19,8 @@ spec:
                 createSecret: false
               acceptClients: false
               disableClients: true
+              configPersistence:
+                enabled: true
               service:
                 enabled: false
     - repoURL: https://github.com/timosur/homelab.git
