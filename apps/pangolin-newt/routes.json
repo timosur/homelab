@@ -24,6 +24,50 @@
         "name": "givgroov",
         "port": 80
       }
+    },
+    {
+      "name": "Kubernetes Authentik",
+      "domain": "timosur.com",
+      "subdomain": "auth",
+      "public": true,
+      "service": {
+        "namespace": "authentik",
+        "name": "authentik-server",
+        "port": 9000
+      }
+    },
+    {
+      "name": "Kubernetes Paperless",
+      "domain": "timosur.com",
+      "subdomain": "docs",
+      "public": true,
+      "service": {
+        "namespace": "paperless",
+        "name": "paperless",
+        "port": 8000
+      }
+    },
+    {
+      "name": "Kubernetes Mealie",
+      "domain": "timosur.com",
+      "subdomain": "mealie",
+      "public": true,
+      "service": {
+        "namespace": "mealie",
+        "name": "mealie",
+        "port": 9000
+      }
+    },
+    {
+      "name": "Kubernetes Open WebUI",
+      "domain": "timosur.com",
+      "subdomain": "ai",
+      "public": true,
+      "service": {
+        "namespace": "open-webui",
+        "name": "open-webui-service",
+        "port": 8080
+      }
     }
   ]
 }
