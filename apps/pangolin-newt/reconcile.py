@@ -104,6 +104,7 @@ def reconcile(route):
         "method": "http",
         "enabled": True,
         "hcEnabled": True,
+        "hcHostname": ip,
         "hcMode": health["mode"],
         "hcPort": port,
         "hcInterval": health["interval"],
