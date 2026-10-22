@@ -71,15 +71,11 @@ def reconcile(route):
         })
 
     if route.get("public"):
-        rules = items(api("GET", f"/public-resource/{resource['resourceId']}/rules"))
-        if not any(rule.get("action") == "ACCEPT" and rule.get("match") == "CIDR" and rule.get("value") == "0.0.0.0/0" for rule in rules):
-            api("PUT", f"/public-resource/{resource['resourceId']}/rule", {
-                "action": "ACCEPT",
-                "match": "CIDR",
-                "value": "0.0.0.0/0",
-                "priority": 0,
-                "enabled": True,
-            })
+        api("PUT", f"/public-resource-policy/{resource['resourceId']}/access-control", {
+            "sso": False,
+            "userIds": [],
+            "roleIds": [],
+        })
 
     ip = service_ip(route["service"])
     port = route["service"]["port"]
