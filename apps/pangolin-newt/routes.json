@@ -13,6 +13,17 @@
         "name": "portfolio",
         "port": 80
       }
+    },
+    {
+      "name": "Kubernetes Portfolio",
+      "domain": "timosur.com",
+      "subdomain": null,
+      "public": true,
+      "service": {
+        "namespace": "portfolio",
+        "name": "portfolio",
+        "port": 80
+      }
     }
   ]
 }

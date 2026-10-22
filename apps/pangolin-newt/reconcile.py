@@ -56,7 +56,7 @@ def reconcile(route):
     if not domain:
         raise RuntimeError(f"Pangolin domain not found: {route['domain']}")
 
-    hostname = f"{route['subdomain']}.{route['domain']}"
+    hostname = route["domain"] if route["subdomain"] is None else f"{route['subdomain']}.{route['domain']}"
     resources = items(api("GET", f"/org/{CONFIG['organization']}/public-resources"))
     resource = next((item for item in resources if item.get("fullDomain") == hostname), None)
     if resource and resource.get("name") != route["name"]:
@@ -101,6 +101,7 @@ def reconcile(route):
 if "--self-check" in sys.argv:
     assert items({"routes": [1]}) == [1]
     assert f"{CONFIG['routes'][0]['subdomain']}.{CONFIG['routes'][0]['domain']}" == "portfolio.pangolin.timosur.com"
+    assert CONFIG["routes"][1]["domain"] == "timosur.com"
 else:
     for route in CONFIG["routes"]:
         reconcile(route)
