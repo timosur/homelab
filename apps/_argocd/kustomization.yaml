@@ -26,7 +26,6 @@ resources:
   - smb-csi-driver-app.yaml
   - synology-csi-driver-app.yaml
   - vinyl-manager-app.yaml
-  - actual-app.yaml
   - givgroov-app.yaml
   - home-assistant-app.yaml
   - mealie-app.yaml

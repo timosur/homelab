@@ -10,9 +10,6 @@ spec:
       namespace: paperless
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
-      namespace: actual
-    - group: gateway.envoyproxy.io
-      kind: SecurityPolicy
       namespace: n8n
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy

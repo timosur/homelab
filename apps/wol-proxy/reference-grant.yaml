@@ -10,9 +10,6 @@ spec:
       namespace: paperless
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      namespace: actual
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
       namespace: vinyl-manager
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
