@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pangolin-routes
+  namespace: newt
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: pangolin-routes
+          restartPolicy: Never
+          hostAliases:
+            # CoreDNS may retain an NXDOMAIN response after a DNS record change.
+            - ip: 2.31.64.255
+              hostnames:
+                - api.pangolin.timosur.com
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: reconcile
+              image: python:3.13-alpine
+              command: ["python3", "/config/reconcile.py"]
+              env:
+                - name: PANGOLIN_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: pangolin-api-auth
+                      key: API_KEY
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                readOnlyRootFilesystem: true
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                  readOnly: true
+          volumes:
+            - name: config
+              configMap:
+                name: pangolin-routes

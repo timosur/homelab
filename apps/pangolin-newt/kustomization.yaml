@@ -4,3 +4,14 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - external-secret.yaml
+  - rbac.yaml
+  - cronjob.yaml
+
+configMapGenerator:
+  - name: pangolin-routes
+    files:
+      - reconcile.py
+      - routes.json
+
+generatorOptions:
+  disableNameSuffixHash: true

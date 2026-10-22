@@ -1,0 +1,17 @@
+{
+  "api": "https://api.pangolin.timosur.com/v1",
+  "organization": "timosur",
+  "siteId": 1,
+  "routes": [
+    {
+      "name": "Kubernetes Portfolio Pilot",
+      "domain": "pangolin.timosur.com",
+      "subdomain": "portfolio",
+      "service": {
+        "namespace": "portfolio",
+        "name": "portfolio",
+        "port": 80
+      }
+    }
+  ]
+}
