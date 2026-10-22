@@ -13,6 +13,17 @@
         "name": "portfolio",
         "port": 80
       }
+    },
+    {
+      "name": "Kubernetes GivGroov",
+      "domain": "givgroov.de",
+      "subdomain": null,
+      "public": true,
+      "service": {
+        "namespace": "givgroov",
+        "name": "givgroov",
+        "port": 80
+      }
     }
   ]
 }
