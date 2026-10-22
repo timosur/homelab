@@ -68,6 +68,50 @@
         "name": "open-webui-service",
         "port": 8080
       }
+    },
+    {
+      "name": "Kubernetes Bike Weather",
+      "domain": "bike-weather.com",
+      "subdomain": null,
+      "public": true,
+      "service": {
+        "namespace": "bike-weather",
+        "name": "bike-weather-nginx",
+        "port": 80
+      }
+    },
+    {
+      "name": "Kubernetes Fahrrad Wetter",
+      "domain": "fahrrad-wetter.com",
+      "subdomain": null,
+      "public": true,
+      "service": {
+        "namespace": "bike-weather",
+        "name": "bike-weather-nginx",
+        "port": 80
+      }
+    },
+    {
+      "name": "Kubernetes Bike Weather Preview",
+      "domain": "preview.bike-weather.com",
+      "subdomain": null,
+      "public": true,
+      "service": {
+        "namespace": "bike-weather-preview",
+        "name": "bike-weather-preview-nginx",
+        "port": 80
+      }
+    },
+    {
+      "name": "Kubernetes Bike Weather Auth",
+      "domain": "auth.bike-weather.com",
+      "subdomain": null,
+      "public": true,
+      "service": {
+        "namespace": "bike-weather-auth",
+        "name": "bike-weather-auth-server",
+        "port": 9000
+      }
     }
   ]
 }
