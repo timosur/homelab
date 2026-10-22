@@ -11,8 +11,6 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: envoy-gateway-internet-system
       toPorts:
         - ports:
             - port: "8080"

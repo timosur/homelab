@@ -1,7 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - actual-auth.yaml
-  - n8n-auth.yaml
-  - envoy-patch-extauth.yaml

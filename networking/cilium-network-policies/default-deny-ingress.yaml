@@ -24,7 +24,6 @@ spec:
           - argocd
           - external-secrets-system
           - envoy-gateway-system
-          - envoy-gateway-internet-system
   ingress:
     # Allow kubelet health probes from node IPs (host network)
     - fromEntities:
@@ -36,9 +35,6 @@ spec:
     - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: envoy-gateway-system
-    - fromEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: envoy-gateway-internet-system
   enableDefaultDeny:
     ingress: true
     egress: false

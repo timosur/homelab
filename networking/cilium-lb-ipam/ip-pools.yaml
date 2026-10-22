@@ -3,18 +3,6 @@
 #
 # NOTE: Ensure k3s ServiceLB is disabled (--disable=servicelb) for clean
 # Cilium LB IPAM operation. Update your k3s server flags and restart k3s.
----
-apiVersion: cilium.io/v2alpha1
-kind: CiliumLoadBalancerIPPool
-metadata:
-  name: internet-gateway-pool
-spec:
-  blocks:
-    - cidr: 192.168.2.254/32
-  serviceSelector:
-    matchLabels:
-      gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-internet
----
 # TODO: This one I should actually switch to another IP, which is not the node IP
 # because it can cause conflicts when the node is down and it should be different one.
 apiVersion: cilium.io/v2alpha1
