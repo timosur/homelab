@@ -86,15 +86,32 @@ def reconcile(route):
         and target.get("port") == port
         and target.get("method") == "http"
     )
-    if not any(wanted(target) for target in targets):
+    target = next((target for target in targets if wanted(target)), None)
+    if not target:
         for target in targets:
             api("DELETE", f"/target/{target['targetId']}")
-        api("PUT", f"/public-resource/{resource['resourceId']}/target", {
+        target = api("PUT", f"/public-resource/{resource['resourceId']}/target", {
             "siteId": CONFIG["siteId"],
             "ip": ip,
             "port": port,
             "method": "http",
         })
+    health = CONFIG["healthCheck"]
+    api("POST", f"/target/{target['targetId']}", {
+        "siteId": CONFIG["siteId"],
+        "ip": ip,
+        "port": port,
+        "method": "http",
+        "enabled": True,
+        "hcEnabled": True,
+        "hcMode": health["mode"],
+        "hcPort": port,
+        "hcInterval": health["interval"],
+        "hcUnhealthyInterval": health["unhealthyInterval"],
+        "hcTimeout": health["timeout"],
+        "hcHealthyThreshold": health["healthyThreshold"],
+        "hcUnhealthyThreshold": health["unhealthyThreshold"],
+    })
     print(f"{hostname} -> {ip}:{port}")
 
 

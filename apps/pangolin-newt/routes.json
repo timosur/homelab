@@ -2,6 +2,14 @@
   "api": "https://api.pangolin.timosur.com/v1",
   "organization": "timosur",
   "siteId": 1,
+  "healthCheck": {
+    "mode": "tcp",
+    "interval": 30,
+    "unhealthyInterval": 10,
+    "timeout": 5,
+    "healthyThreshold": 2,
+    "unhealthyThreshold": 2
+  },
   "routes": [
     {
       "name": "Kubernetes Portfolio",
