@@ -4,17 +4,6 @@
   "siteId": 1,
   "routes": [
     {
-      "name": "Kubernetes Portfolio Pilot",
-      "domain": "pangolin.timosur.com",
-      "subdomain": "portfolio",
-      "public": true,
-      "service": {
-        "namespace": "portfolio",
-        "name": "portfolio",
-        "port": 80
-      }
-    },
-    {
       "name": "Kubernetes Portfolio",
       "domain": "timosur.com",
       "subdomain": null,

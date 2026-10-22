@@ -100,8 +100,7 @@ def reconcile(route):
 
 if "--self-check" in sys.argv:
     assert items({"routes": [1]}) == [1]
-    assert f"{CONFIG['routes'][0]['subdomain']}.{CONFIG['routes'][0]['domain']}" == "portfolio.pangolin.timosur.com"
-    assert CONFIG["routes"][1]["domain"] == "timosur.com"
+    assert CONFIG["routes"][0]["domain"] == "timosur.com"
 else:
     for route in CONFIG["routes"]:
         reconcile(route)
