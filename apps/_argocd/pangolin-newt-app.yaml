@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pangolin-newt
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.fossorial.io
+      chart: newt
+      targetRevision: 1.5.0
+      helm:
+        valuesObject:
+          newtInstances:
+            - name: main-tunnel
+              enabled: true
+              auth:
+                existingSecretName: pangolin-newt-auth
+                createSecret: false
+              acceptClients: false
+              disableClients: true
+              service:
+                enabled: false
+    - repoURL: https://github.com/timosur/homelab.git
+      targetRevision: HEAD
+      path: apps/pangolin-newt
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: newt
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

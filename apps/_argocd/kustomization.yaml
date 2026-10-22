@@ -31,6 +31,7 @@ resources:
   - home-assistant-app.yaml
   - mealie-app.yaml
   - paperless-app.yaml
+  - pangolin-newt-app.yaml
   - pi-hole-app.yaml
   - portfolio-app.yaml
   - postgres-app.yaml
