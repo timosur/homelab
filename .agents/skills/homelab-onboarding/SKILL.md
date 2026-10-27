@@ -37,13 +37,18 @@ that aren't relevant based on earlier answers.
    - For each service, ask: name, container image (or if they need a new one built), port
 
 4. **Exposure** — how should the app be accessible?
-   - Home only (`*.home.timosur.com`, HTTP, LAN) — most apps use this
-   - Internet-facing (`*.timosur.com`, HTTPS with cert-manager)
+   - Home only (`*.home.timosur.com`, HTTPS, LAN) — most apps use this
+   - Internet-facing (HTTPS via Pangolin)
    - Both home and internet
    - Not exposed (background worker / internal only)
 
 5. **Custom domain** — does it need a domain other than `*.timosur.com` or `*.home.timosur.com`?
-   If yes, capture the domain name — this requires adding listeners to the internet gateway.
+   If yes, capture the domain name. Internet domains must exist in Pangolin before the
+   route reconciler can use them.
+
+   For internet exposure, also ask for the hostname, service and service port, and whether
+   the resource should be publicly accessible without Pangolin SSO. Do not set `public: true`
+   without confirming that unauthenticated access is intended.
 
 6. **Database** — does the app need PostgreSQL?
    - If yes: database name (default: `app`), role name (default: same as app name)
@@ -87,12 +92,11 @@ Before generating files, present a summary of what will be created:
 - apps/<app-name>/cronjob.yaml            (if cronjob needed)
 - apps/_argocd/<app-name>-app.yaml
 - networking/httproutes/home/<app-name>.yaml     (if home exposure)
-- networking/httproutes/internet/<app-name>.yaml  (if internet exposure)
 
 ### Existing files to update:
 - apps/_argocd/kustomization.yaml
 - networking/httproutes/home/kustomization.yaml      (if home)
-- networking/httproutes/internet/kustomization.yaml   (if internet)
+- apps/pangolin-newt/routes.json                     (if internet exposure)
 
 ### App repo files (if requested):
 - <service>/Dockerfile
@@ -190,10 +194,14 @@ See the n8n app (`apps/n8n/`) as the reference implementation.
 When adding entries to existing `kustomization.yaml` files, add the new entry in alphabetical
 order among the existing entries to keep things tidy.
 
-### HTTPRoute naming
+### Exposure routing
 
 - Home routes: `<app-name>-home` in namespace `<app-name>`
-- Internet routes: `<app-name>` in namespace `<app-name>`
+- Internet routes: add an entry to `apps/pangolin-newt/routes.json`, targeting the Kubernetes
+  Service and its Service port. See the Pangolin route template in `references/templates.md`.
+- `public: true` disables Pangolin SSO and clears user/role access restrictions for that resource.
+  For restricted resources, omit `public` or set it to `false` and configure access in Pangolin;
+  the reconciler does not establish or verify a restrictive policy.
 
 ---
 
@@ -216,16 +224,17 @@ After generating all files, remind the user of manual steps they still need to d
 - [ ] Verify AppDBClaim is ready (if database): kubectl get appdbclaim -n <app-name>
 - [ ] Verify connection secret exists (if database): kubectl get secret <app-name>-db-connection -n <app-name>
 - [ ] Verify pods are running: kubectl get pods -n <app-name>
+- [ ] For internet exposure, verify the Pangolin route reconciler succeeds and check the resource's access policy
 - [ ] Test the URL: <app-url>
 - [ ] Verify database connection (if applicable)
 - [ ] Check that Renovate detects new GHCR images (if applicable)
 ```
 
-If the app uses a custom domain (not `*.timosur.com`), also remind:
+For internet exposure, also remind:
 
 ```
-- [ ] Add DNS records for <custom-domain> pointing to the cluster
-- [ ] Add listener + certificate to networking/gateways/internet/gateway.yaml
+- [ ] Ensure the route's domain exists in Pangolin and configure its DNS as required by Pangolin
+- [ ] Confirm the intended Pangolin access policy and HTTPS certificate are working
 ```
 
 ---

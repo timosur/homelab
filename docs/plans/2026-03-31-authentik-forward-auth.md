@@ -1,6 +1,7 @@
 # Authentik Forward-Auth Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Historical plan, superseded for public exposure by Pangolin. Do not execute these tasks
+> as-is or assume their proposed forward-auth policies are currently enforced.
 
 **Goal:** Deploy a new Authentik instance at `auth.timosur.com` and protect the 4 WOL-proxy internet HTTPRoutes with Envoy Gateway SecurityPolicy ExtAuth, preventing bots from waking the desktop node.
 
@@ -481,58 +482,11 @@ git commit -m "feat(authentik): add kustomization and ArgoCD application"
 
 ---
 
-### Task 7: Create HTTPRoute for auth.timosur.com
+### Task 7: Expose auth.timosur.com
 
-**Files:**
-- Create: `networking/httproutes/internet/authentik.yaml`
-- Modify: `networking/httproutes/internet/kustomization.yaml`
-
-Note: The existing wildcard listener `https` on `*.timosur.com` already covers `auth.timosur.com`. No gateway changes needed.
-
-- [ ] **Step 1: Create authentik.yaml HTTPRoute**
-
-```yaml
-# networking/httproutes/internet/authentik.yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: authentik
-  namespace: authentik
-spec:
-  parentRefs:
-    - name: envoy-gateway-internet
-      namespace: envoy-gateway-internet-system
-      sectionName: https
-  hostnames:
-    - "auth.timosur.com"
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name: authentik-server
-          port: 9000
-```
-
-- [ ] **Step 2: Add to kustomization**
-
-In `networking/httproutes/internet/kustomization.yaml`, add `authentik.yaml` to the resources list (alphabetically, before `actual.yaml`):
-
-```yaml
-resources:
-  - actual.yaml
-  - authentik.yaml                      # ADD THIS LINE
-  - bike-weather.yaml
-  # ... rest unchanged
-```
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add networking/httproutes/internet/authentik.yaml networking/httproutes/internet/kustomization.yaml
-git commit -m "feat(authentik): add HTTPRoute for auth.timosur.com"
-```
+Public exposure is now managed by Pangolin. The existing `auth.timosur.com` route in
+`apps/pangolin-newt/routes.json` targets `authentik/authentik-server:9000`.
+Verify its DNS, certificate, and access policy in Pangolin.
 
 ---
 

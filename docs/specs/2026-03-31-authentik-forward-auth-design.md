@@ -1,5 +1,8 @@
 # Authentik Forward-Auth for WOL-Proxy Internet Services
 
+> Historical design: public services now use Pangolin. The forward-auth design below is
+> not a description of the current configuration; do not assume it is enforced.
+
 ## Problem
 
 The 4 internet-facing services (mealie, actual, n8n, paperless) route through the wol-proxy, which sends a Wake-on-LAN packet to the desktop node on every request. Bots and crawlers trigger unwanted wakes.
@@ -10,10 +13,12 @@ A new, independent Authentik instance at `auth.timosur.com` protects the WOL-pro
 
 ## Architecture
 
+The following diagram describes the historical proposal, not the current Pangolin setup:
+
 ```
 Internet Request (e.g. docs.timosur.com)
     |
-Envoy Gateway Internet (192.168.2.254)
+Proposed ingress
     |
 SecurityPolicy (extAuth) --> Authentik Embedded Outpost (auth.timosur.com)
     |
@@ -46,17 +51,10 @@ A new, independent Authentik deployment (separate from the existing `bike-weathe
 - Server and Worker run on `homelab-amd` (control plane, always on) to avoid chicken-and-egg with WOL
 - Redis runs alongside in the same namespace
 
-### 2. Networking: Gateway & HTTPRoute
+### 2. Networking: Public Route
 
-**Internet Gateway** (`networking/gateways/internet/gateway.yaml`):
-
-- No changes needed. The existing wildcard listener `https` on `*.timosur.com` already covers `auth.timosur.com`.
-
-**New HTTPRoute** (`networking/httproutes/internet/authentik.yaml`):
-- Hostname: `auth.timosur.com`
-- Parent: `envoy-gateway-internet` listener `https` (wildcard)
-- Backend: `authentik-server:9000` in `authentik` namespace
-- No ReferenceGrant needed — gateway has `allowedRoutes.namespaces.from: All`
+The current public route for `auth.timosur.com` is defined in
+`apps/pangolin-newt/routes.json` and targets `authentik/authentik-server:9000`.
 
 ### 3. SecurityPolicy for WOL-Proxy Routes (`networking/security-policies/`)
 
@@ -100,7 +98,7 @@ spec:
 
 ### 4. Network Policies
 
-- Allow ingress from `envoy-gateway-internet-system` to `authentik` namespace on port 9000 (serves both the HTTPRoute traffic and ExtAuth subrequests, since Envoy sends both)
+- The historical proposal required ingress to Authentik on port 9000 for public traffic and ExtAuth subrequests. Review the current Pangolin traffic path and network policies separately.
 
 ### 5. Unmodified Components
 
@@ -129,8 +127,8 @@ apps/_argocd/
   authentik-app.yaml                    # NEW - ArgoCD Application
   kustomization.yaml                    # MODIFY - add authentik-app.yaml
 
-networking/httproutes/internet/
-  authentik.yaml                        # NEW - HTTPRoute for auth.timosur.com
+apps/pangolin-newt/
+  routes.json                           # Current public route for auth.timosur.com
 
 networking/security-policies/           # NEW directory
   kustomization.yaml

@@ -7,9 +7,9 @@ My HomeLab running on a local K3s cluster with GitOps workflow.
 - **Cluster**: K3s on local hardware (1 control plane + 2 workers, provisioned via Ansible)
 - **CNI**: Cilium with Gateway API support and L2 announcements
 - **GitOps**: ArgoCD with automated sync (App of Apps pattern)
-- **Ingress**: Two Envoy Gateway instances (home/LAN + internet)
-- **TLS**: cert-manager with Let's Encrypt (DNS-01 via Cloudflare) for internet services
-- **DNS**: UDR DynDNS updates Cloudflare records for `*.timosur.com`, `timosur.com`, `givgroov.de`; Pi-hole for local DNS
+- **Ingress**: Envoy Gateway for home/LAN services; Pangolin and Newt for internet services
+- **TLS**: cert-manager for the home gateway; Pangolin for internet services
+- **DNS**: Pi-hole for local DNS; public domains configured for Pangolin
 - **Storage**: Synology CSI Driver (iSCSI) + SMB CSI Driver
 - **Secrets**: External Secrets Operator with Azure Key Vault
 - **Dependency Updates**: Renovate Bot for automated image and chart updates
@@ -48,6 +48,7 @@ homelab/
 │   ├── home-assistant/        # Home automation
 │   ├── mealie/                # Recipe management
 │   ├── open-webui/            # LLM interface
+│   ├── pangolin-newt/         # Pangolin tunnel and public route reconciliation
 │   ├── paperless/             # Document management
 │   ├── pi-hole/               # DNS ad blocker
 │   ├── portfolio/             # Personal portfolio
@@ -58,12 +59,10 @@ homelab/
 │   ├── kustomization.yaml
 │   ├── cilium-lb-ipam/        # IP pools and L2 announcements
 │   ├── cilium-network-policies/ # Network segmentation (home + internet)
-│   ├── gateways/              # Home and internet gateway definitions
-│   │   ├── home/              #   *.home.timosur.com (HTTP, LAN only)
-│   │   └── internet/          #   *.timosur.com (HTTPS, public)
+│   ├── gateways/              # Home gateway definitions
+│   │   └── home/              #   *.home.timosur.com (HTTPS, LAN only)
 │   └── httproutes/            # HTTPRoute definitions
-│       ├── home/              #   LAN-only service routes
-│       └── internet/          #   Public service routes
+│       └── home/              #   LAN-only service routes
 ├── backup/                     # Backup data
 ├── keys/                       # SSH keys for cluster access
 ├── scripts/                    # Utility scripts
@@ -124,7 +123,8 @@ The homelab runs several applications managed through ArgoCD:
 
 ### Infrastructure Applications
 
-- **envoy-gateway**: Ingress controllers for home and internet traffic (Helm chart)
+- **envoy-gateway**: Ingress controller for home traffic (Helm chart)
+- **pangolin-newt**: Tunnel and route reconciliation for internet services
 - **cert-manager**: Automatic TLS certificate management with Let's Encrypt (DNS-01 via Cloudflare)
 - **cloudnative-pg**: PostgreSQL operator for database management
 - **external-secrets**: Secure secrets management from Azure Key Vault
@@ -148,16 +148,17 @@ The homelab runs several applications managed through ArgoCD:
 
 ## Networking
 
-The cluster runs two separate Envoy Gateway instances to segment home and internet traffic.
+The home gateway handles LAN traffic. Pangolin exposes internet services through Newt;
+public routes are configured in `apps/pangolin-newt/routes.json`.
 
-| Gateway | IP | Protocol | Domain | Purpose |
+| Exposure | IP | Protocol | Domain | Purpose |
 |---|---|---|---|---|
-| Home | `192.168.2.100` | HTTP | `*.home.timosur.com` | LAN-only services |
-| Internet | `192.168.2.254` | HTTPS | `*.timosur.com` | Public services |
+| Home gateway | `192.168.2.100` | HTTPS | `*.home.timosur.com` | LAN-only services |
+| Pangolin | — | HTTPS | Configured public domains | Internet services |
 
 - **Load Balancer**: Cilium LB IPAM with L2 announcements
-- **DNS**: UDR DynDNS updates Cloudflare A records for `*.timosur.com`, `timosur.com`, `givgroov.de`
-- **TLS**: Wildcard `*.timosur.com` + individual certs via cert-manager + Let's Encrypt (DNS-01)
+- **DNS**: Pi-hole for local names; configure public domains for Pangolin
+- **TLS**: cert-manager for the home gateway; Pangolin for public routes
 - **Network Policies**: Cilium-based policies enforce LAN/internet segmentation
 
 For detailed networking documentation, see [NETWORKING.md](NETWORKING.md).
@@ -165,8 +166,8 @@ For detailed networking documentation, see [NETWORKING.md](NETWORKING.md).
 ## Key Features
 
 - **GitOps Workflow**: All changes deployed via Git commits
-- **Home/Internet Segmentation**: Separate gateways with Cilium network policies
-- **Automated TLS**: Certificates automatically provisioned and renewed via DNS-01
+- **Home/Internet Segmentation**: Home gateway and Pangolin with Cilium network policies
+- **Automated TLS**: Home gateway certificates provisioned and renewed via DNS-01
 - **Security**: Network policies and secret management via Azure Key Vault
 - **Automated Updates**: Renovate Bot keeps container images and Helm charts up to date
 - **Observability**: Hubble UI for network observability

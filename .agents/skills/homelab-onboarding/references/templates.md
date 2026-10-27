@@ -16,7 +16,7 @@ Replace all placeholders with actual values. Remove any optional sections that d
 9. [kustomization.yaml (app)](#kustomizationyaml-app)
 10. [ArgoCD Application](#argocd-application)
 11. [HTTPRoute — Home](#httproute--home)
-12. [HTTPRoute — Internet](#httproute--internet)
+12. [Pangolin Route — Internet](#pangolin-route--internet)
 13. [Dockerfile — Python/FastAPI](#dockerfile--pythonfastapi)
 14. [Dockerfile — React/Vite + nginx](#dockerfile--reactvite--nginx)
 15. [GitHub Actions CI/CD](#github-actions-cicd)
@@ -148,8 +148,8 @@ spec:
 ```
 
 For multi-service apps, create one Service per service that needs to be reachable. The main
-service (the one the HTTPRoute points to) should be named `<app-name>`. Internal-only services
-can be named `<app-name>-<service>`.
+service (the one the home HTTPRoute or Pangolin route points to) should be named `<app-name>`.
+Internal-only services can be named `<app-name>-<service>`.
 
 ---
 
@@ -370,32 +370,32 @@ spec:
 
 ---
 
-## HTTPRoute — Internet
+## Pangolin Route — Internet
 
-File: `networking/httproutes/internet/<app-name>.yaml`
+Add an entry to the `routes` array in `apps/pangolin-newt/routes.json`:
 
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: <app-name>
-  namespace: <app-name>
-spec:
-  parentRefs:
-    - name: envoy-gateway-internet
-      namespace: envoy-gateway-internet-system
-      sectionName: https
-  hostnames:
-    - "<app-name>.timosur.com"
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name: <service-name>
-          port: 80
+```json
+{
+  "name": "Kubernetes <app-name>",
+  "domain": "timosur.com",
+  "subdomain": "<app-name>",
+  "service": {
+    "namespace": "<app-name>",
+    "name": "<service-name>",
+    "port": 80
+  }
+}
 ```
+
+Use an exact domain already configured in Pangolin; use `null` for `subdomain` when exposing
+the domain itself. The port is the Kubernetes Service port, not the container port. Preserve
+the existing shared site and health-check configuration. The reconciler refuses to adopt an
+existing hostname whose resource name differs.
+
+Add `"public": true` only when unauthenticated public access is explicitly intended: it disables
+SSO and clears user/role restrictions. Omit it or use `false` for restricted resources, and
+configure and verify access in Pangolin separately; the reconciler does not set a restrictive
+policy. Ensure the domain's DNS and HTTPS certificate are configured for Pangolin.
 
 ---
 
