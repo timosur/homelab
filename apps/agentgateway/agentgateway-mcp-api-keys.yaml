@@ -18,3 +18,6 @@ spec:
     - secretKey: context7-api-key
       remoteRef:
         key: agentgateway-context7-api-key
+    - secretKey: penpot-mcp-key
+      remoteRef:
+        key: agentgateway-penpot-mcp-key

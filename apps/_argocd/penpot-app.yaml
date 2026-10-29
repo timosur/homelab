@@ -13,7 +13,7 @@ spec:
         valuesObject:
           config:
             publicUri: https://penpot.home.timosur.com
-            flags: "enable-registration enable-login-with-password disable-email-verification"
+            flags: "enable-registration enable-login-with-password disable-email-verification enable-mcp"
             existingSecret: penpot-secrets
             secretKeys:
               apiSecretKey: apiSecretKey
@@ -45,6 +45,13 @@ spec:
                 memory: 64Mi
               limits:
                 memory: 256Mi
+          mcp:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
           exporter:
             resources:
               requests:

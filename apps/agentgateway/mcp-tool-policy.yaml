@@ -14,4 +14,4 @@ spec:
         action: Deny
         policy:
           matchExpressions:
-            - '!(mcp.tool.name in ["kagi_search_fetch", "resolve-library-id", "query-docs", "browser_navigate", "browser_snapshot", "browser_markdown", "browser_links", "browser_extract", "browser_screenshot"])'
+            - '!(mcp.tool.name in ["kagi_search_fetch", "resolve-library-id", "query-docs", "browser_navigate", "browser_snapshot", "browser_markdown", "browser_links", "browser_extract", "browser_screenshot", "execute_code", "high_level_overview", "penpot_api_info", "export_shape"])'

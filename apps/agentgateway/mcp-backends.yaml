@@ -47,3 +47,18 @@ spec:
                     header:
                       name: Authorization
                       prefix: "Bearer "
+      - name: penpot
+        static:
+          host: penpot-mcp.penpot.svc.cluster.local
+          port: 4401
+          path: /mcp
+          protocol: StreamableHTTP
+          policies:
+            auth:
+              credentials:
+                - secretRef:
+                    name: agentgateway-mcp-api-keys
+                    key: penpot-mcp-key
+                  location:
+                    queryParameter:
+                      name: userToken
