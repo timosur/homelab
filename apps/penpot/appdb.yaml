@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: penpot-db
+  namespace: penpot
+spec:
+  appName: penpot
+  databaseName: penpot
+  roleName: penpot
+  compositionRef:
+    name: appdb-central-postgres

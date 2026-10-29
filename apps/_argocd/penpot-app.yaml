@@ -1,0 +1,79 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: penpot
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://helm.penpot.app
+      chart: penpot
+      targetRevision: 1.11.5
+      helm:
+        valuesObject:
+          config:
+            publicUri: https://penpot.home.timosur.com
+            flags: "enable-registration enable-login-with-password disable-email-verification"
+            existingSecret: penpot-secrets
+            secretKeys:
+              apiSecretKey: apiSecretKey
+            telemetryEnabled: false
+            postgresql:
+              host: central-postgres-rw.postgres.svc.cluster.local
+              database: penpot
+              existingSecret: penpot-db-connection
+              secretKeys:
+                usernameKey: username
+                passwordKey: password
+            redis:
+              host: penpot-valkey.penpot.svc.cluster.local
+          persistence:
+            assets:
+              storageClass: homelab-smb
+              size: 20Gi
+          backend:
+            resources:
+              requests:
+                cpu: 200m
+                memory: 1Gi
+              limits:
+                memory: 3Gi
+          frontend:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+          exporter:
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+    - repoURL: https://github.com/timosur/homelab.git
+      targetRevision: HEAD
+      path: apps/penpot
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: penpot
+  ignoreDifferences:
+    - group: k8s.homelab.timosur.com
+      kind: AppDBClaim
+      jsonPointers:
+        - /metadata
+        - /spec
+        - /status
+    - group: k8s.homelab.timosur.com
+      kind: AppDB
+      jsonPointers:
+        - /metadata
+        - /spec
+        - /status
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

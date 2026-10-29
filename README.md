@@ -142,6 +142,7 @@ The homelab runs several applications managed through ArgoCD:
 | **mealie** | Recipe management and meal planning | `mealie.timosur.com` |
 | **open-webui** | Modern interface for LLMs | `ai.timosur.com` |
 | **paperless** | Document management system | `docs.home.timosur.com` |
+| **penpot** | Design and prototyping | `penpot.home.timosur.com` |
 | **pi-hole** | DNS-level ad blocking | `pihole.home.timosur.com` |
 | **portfolio** | Personal portfolio website | `timosur.com` |
 | **vinyl-manager** | Vinyl record collection manager | `vinyl.home.timosur.com` |
