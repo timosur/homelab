@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - affine-app.yaml
+  - agent-sandbox-app.yaml
   - agentgateway-crds-app.yaml
   - agentgateway-app.yaml
   - authentik-app.yaml
@@ -12,8 +13,12 @@ resources:
   - bike-weather-auth-app.yaml
   - bike-weather-preview-app.yaml
   - cert-manager-app.yaml
+  - cert-manager-csi-app.yaml
   - cloudnative-pg-app.yaml
   - crossplane-app.yaml
+  - dark-factory-app.yaml
+  - dark-factory-prerequisites-app.yaml
+  - dark-factory-wake-app.yaml
   - envoy-gateway-app.yaml
   - external-secrets-app.yaml
   - ferienhof-wiesengrund-app.yaml

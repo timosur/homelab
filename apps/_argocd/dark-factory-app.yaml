@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dark-factory
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/prskr/dark-factory.git
+      targetRevision: c7fa511a106a8179af43f36439bd0c411d32141a
+      path: deploy/helm/dark-factory
+      helm:
+        releaseName: dark-factory
+        valueFiles:
+          - $values/apps/dark-factory/values.yaml
+    - repoURL: https://github.com/timosur/homelab.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dark-factory

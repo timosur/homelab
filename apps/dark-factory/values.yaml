@@ -1,0 +1,92 @@
+fullnameOverride: dark-factory
+
+image:
+  controlPlane:
+    digest: sha256:6a9528b984fe193683f1c0075571935b9c5c4d0ae2c073867f5bc0e25c2431db
+  runtime:
+    digest: sha256:06fa6d0b9071954279de5b878a9cff9ca29b819da7faf97fc598797d0a650fa6
+  harness:
+    claudeCode:
+      digest: sha256:c8c8e0445638c3bd6ba74f48f4771ea5cd99de011705c358a97a7a8908e9bc54
+  testProject:
+    digest: sha256:7625c60cc962e270a27a1c93d826efe51fe5f2dfa1423fb38e94225d6db1bd07
+
+database:
+  host: central-postgres-rw.postgres.svc.cluster.local
+  database: dark-factory
+  schema: dark_factory
+  owner:
+    user: dark-factory-owner
+    existingSecret: dark-factory-db-connection
+  app:
+    user: dark-factory-app
+    existingSecret: dark-factory-db-app
+  migrate:
+    manageAppRole: false
+
+oidc:
+  issuerUrl: https://auth.timosur.com/application/o/dark-factory/
+  clientId: dark-factory
+  existingSecret: dark-factory-oidc
+  publicUrl: https://factory.home.timosur.com
+  rolesClaim: groups
+  extraScopes: [groups]
+
+telemetry:
+  metrics:
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: monitoring
+
+sandboxNamespace:
+  name: dark-factory-sandboxes
+  runtimeClassName: kata-dark-factory
+  storageClass: homelab-smb
+  pvcSize: 20Gi
+  resourceQuota:
+    pods: '2'
+    requestsCpu: '2'
+    requestsMemory: 4Gi
+    limitsCpu: '4'
+    limitsMemory: 8Gi
+    requestsStorage: 200Gi
+    persistentVolumeClaims: '10'
+  limitRange:
+    defaultCpu: '2'
+    defaultMemory: 4Gi
+    defaultRequestCpu: 250m
+    defaultRequestMemory: 512Mi
+
+plugins:
+  forgejo: null
+  github:
+    image:
+      digest: sha256:aa6f74995b6ef5ce7193033f196ee752b7e87a2cd68f62da525ab7498c26cc65
+
+controlPlane:
+  resources:
+    limits:
+      cpu: '1'
+
+gateway:
+  resources:
+    limits:
+      cpu: 500m
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: envoy-gateway-home
+      namespace: envoy-gateway-system
+      sectionName: https
+  hostnames:
+    - factory.home.timosur.com
+
+networkPolicy:
+  ingressController:
+    namespaceSelector:
+      kubernetes.io/metadata.name: envoy-gateway-system
+  metricsScraper:
+    namespaceSelector:
+      kubernetes.io/metadata.name: monitoring

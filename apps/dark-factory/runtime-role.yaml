@@ -1,0 +1,20 @@
+apiVersion: postgresql.sql.crossplane.io/v1alpha1
+kind: Role
+metadata:
+  name: dark-factory-app
+spec:
+  deletionPolicy: Orphan
+  forProvider:
+    privileges:
+      bypassRls: false
+      createDb: false
+      createRole: false
+      inherit: true
+      login: true
+      replication: false
+      superUser: false
+  providerConfigRef:
+    name: central-postgres
+  writeConnectionSecretToRef:
+    name: dark-factory-db-app
+    namespace: dark-factory

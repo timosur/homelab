@@ -15,6 +15,9 @@ spec:
       labels:
         app: wol-proxy
     spec:
+      serviceAccountName: wol-proxy
+      securityContext:
+        fsGroup: 1000
       # Run on control plane (always on)
       nodeSelector:
         kubernetes.io/hostname: homelab-amd
@@ -34,6 +37,24 @@ spec:
               readOnly: true
             - name: ssh-key
               mountPath: /ssh-key
+        - name: prepare-desktop-power-key
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              if [ -s /power-secret/ssh-key ]; then
+                base64 -d /power-secret/ssh-key > /power-key/id
+                chown 1000:1000 /power-key/id
+                chmod 400 /power-key/id
+              fi
+          volumeMounts:
+            - name: desktop-power-secret
+              mountPath: /power-secret
+              readOnly: true
+            - name: desktop-power-key
+              mountPath: /power-key
       containers:
         - name: wol-proxy
           image: ghcr.io/timosur/homelab/wol-proxy:latest@sha256:0c173398e004c7f9b48422b1c9b83662610c57f637ca33ac8dc0f21a4f216172
@@ -42,6 +63,8 @@ spec:
               name: ollama
             - containerPort: 8080
               name: desktop
+            - containerPort: 9443
+              name: admission
           resources:
             requests:
               cpu: 10m
@@ -55,6 +78,15 @@ spec:
               readOnly: true
             - name: ssh-key
               mountPath: /secrets
+              readOnly: true
+            - name: admission-tls
+              mountPath: /run/dark-factory-admission
+              readOnly: true
+            - name: desktop-known-hosts
+              mountPath: /run/desktop-ssh
+              readOnly: true
+            - name: desktop-power-key
+              mountPath: /run/desktop-power-ssh
               readOnly: true
           livenessProbe:
             tcpSocket:
@@ -75,3 +107,20 @@ spec:
             secretName: wol-proxy-ssh-key
         - name: ssh-key
           emptyDir: {}
+        - name: admission-tls
+          secret:
+            secretName: dark-factory-admission-tls
+            optional: true
+            defaultMode: 288
+        - name: desktop-known-hosts
+          secret:
+            secretName: wol-proxy-desktop-known-hosts
+            optional: true
+            defaultMode: 288
+        - name: desktop-power-secret
+          secret:
+            secretName: wol-proxy-desktop-power-ssh-key
+            optional: true
+        - name: desktop-power-key
+          emptyDir:
+            medium: Memory

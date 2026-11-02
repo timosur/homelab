@@ -74,12 +74,25 @@ class NodeGroupConfig:
     wake_timeout_seconds: int = 120
     health_check_host: str = ""  # Any backend to TCP-check for node liveness
     backends: list[NodeGroupBackend] = field(default_factory=list)
+    sandbox_namespace: str = ""
+    sandbox_instance: str = ""
+    kubernetes_node: str = ""
+    sandbox_admission_enabled: bool = False
+    sandbox_power_interlock_enabled: bool = False
+    power_ssh_user: str = "dark-factory-power"
 
 
 @dataclass
 class Config:
     backends: list[BackendConfig] = field(default_factory=list)
     node_groups: list[NodeGroupConfig] = field(default_factory=list)
+
+
+def optional_boolean(config: dict, name: str) -> bool:
+    value = config.get(name, False)
+    if type(value) is not bool:
+        raise ValueError(f"{name} must be a boolean")
+    return value
 
 
 def load_config(path: str) -> Config:
@@ -135,6 +148,12 @@ def load_config(path: str) -> Config:
                 wake_timeout_seconds=ng.get("wakeTimeoutSeconds", 120),
                 health_check_host=ng.get("healthCheckHost", ""),
                 backends=ng_backends,
+                sandbox_namespace=ng.get("sandboxNamespace", ""),
+                sandbox_instance=ng.get("sandboxInstance", ""),
+                kubernetes_node=ng.get("kubernetesNode", ""),
+                sandbox_admission_enabled=optional_boolean(ng, "sandboxAdmissionEnabled"),
+                sandbox_power_interlock_enabled=optional_boolean(ng, "sandboxPowerInterlockEnabled"),
+                power_ssh_user=ng.get("powerSshUser", "dark-factory-power"),
             )
         )
 

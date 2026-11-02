@@ -14,6 +14,10 @@ from aiohttp import (
 from multidict import CIMultiDict
 
 from .config import BackendConfig, NodeGroupBackend, NodeGroupConfig
+from .coordinator import SleepCoordinator
+from .interlock import Interlock, InterlockError
+from .power_client import PowerClient, PowerClientError
+from .sandboxes import SandboxMonitor
 from .wol import send_wol_packet
 
 log = logging.getLogger("wol-proxy")
@@ -368,6 +372,25 @@ class NodeGroupProxy:
         self._state = "sleeping"  # sleeping | waking | ready
         self._wake_lock = asyncio.Lock()
         self._active_requests = 0
+        self._activity_lock = asyncio.Lock()
+        self._wake_requested = False
+        sandbox_configured = any((cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node))
+        if cfg.sandbox_admission_enabled and not sandbox_configured:
+            raise ValueError("sandbox admission requires sandbox monitoring")
+        self._sandbox_monitor = (
+            SandboxMonitor(cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node)
+            if sandbox_configured else None
+        )
+        self._last_sandbox_wake = float("-inf")
+        if cfg.sandbox_power_interlock_enabled and not cfg.sandbox_admission_enabled:
+            raise ValueError("power interlock requires sandbox admission")
+        self._coordinator = None
+        if cfg.sandbox_power_interlock_enabled:
+            self._coordinator = SleepCoordinator(
+                self, self._sandbox_monitor, Interlock(self._sandbox_monitor),
+                PowerClient(cfg.suspend_host, cfg.power_ssh_user, "/run/desktop-power-ssh/id", "/run/desktop-ssh/known_hosts"),
+                self._send_desktop_wake,
+            )
         self._host_map: dict[str, NodeGroupBackend] = {
             b.hostname: b for b in cfg.backends
         }
@@ -384,7 +407,9 @@ class NodeGroupProxy:
             self._health_port = 0
 
     async def check_node_health(self) -> bool:
-        """TCP connect to any backend service to check if node is up."""
+        """Check Kubernetes readiness when configured, otherwise probe a backend."""
+        if self._sandbox_monitor is not None:
+            return await self._sandbox_monitor.node_ready()
         if not self._health_host:
             return False
         try:
@@ -437,9 +462,15 @@ class NodeGroupProxy:
                     self.cfg.name,
                     self.cfg.wake_timeout_seconds,
                 )
-            except (OSError, RuntimeError, TimeoutError) as exc:
+            except (ClientError, OSError, RuntimeError, TimeoutError, ValueError, KeyError) as exc:
                 log.error("[%s] Failed to wake node: %s", self.cfg.name, exc)
             self._state = "sleeping"
+
+    async def _send_desktop_wake(self) -> None:
+        await send_wol_packet(
+            self.cfg.wol_mac, self.cfg.name, self.cfg.wol_host,
+            self.cfg.ssh_user, self.cfg.ssh_key_path, self.cfg.wol_broadcast,
+        )
 
     async def suspend(self) -> None:
         if not self.cfg.ssh_user or not self.cfg.suspend_host:
@@ -486,17 +517,24 @@ class NodeGroupProxy:
         return time.monotonic() - self._last_activity
 
     async def check_initial_state(self) -> None:
-        if await self.check_node_health():
-            log.info("[%s] Node already awake on startup", self.cfg.name)
-            self._state = "ready"
-            self.touch()
-        else:
-            log.info("[%s] Node not reachable on startup", self.cfg.name)
+        try:
+            if await self.check_node_health():
+                log.info("[%s] Node already awake on startup", self.cfg.name)
+                self._state = "ready"
+                self.touch()
+            else:
+                log.info("[%s] Node not reachable on startup", self.cfg.name)
+        except (ClientError, OSError, TimeoutError, ValueError, KeyError) as exc:
+            log.warning("[%s] Cannot determine initial node state: %s", self.cfg.name, exc)
 
     async def idle_watcher(self) -> None:
         timeout = self.cfg.idle_timeout_minutes * 60
         while True:
             await asyncio.sleep(60)
+            if self._sandbox_monitor is not None:
+                # Sandbox creation and node suspension are not atomic. Until a scheduling
+                # gate is in place, keep the desktop awake rather than risk suspending a run.
+                continue
             if not await self.check_node_health():
                 log.info("[%s] Node went offline externally", self.cfg.name)
                 self._state = "sleeping"
@@ -514,10 +552,75 @@ class NodeGroupProxy:
                 log.info("[%s] Idle timeout reached, suspending", self.cfg.name)
                 await self.suspend()
 
+    async def sandbox_watcher(self) -> None:
+        """Wake the desktop when a factory sandbox exists, including unscheduled ones."""
+        if self._sandbox_monitor is None:
+            return
+        while True:
+            try:
+                if self._coordinator is not None:
+                    await self._coordinator.tick()
+                    await asyncio.sleep(5)
+                    continue
+                active = await self._sandbox_monitor.active()
+                if active:
+                    self.touch()
+                    ready = await self._sandbox_monitor.node_ready()
+                    now = time.monotonic()
+                    if (
+                        not ready
+                        and self._state != "waking"
+                        and now - self._last_sandbox_wake >= self.cfg.wake_timeout_seconds
+                    ):
+                        self._state = "sleeping"
+                        self._last_sandbox_wake = now
+                        await self.wake_and_wait()
+            except (ClientError, OSError, RuntimeError, TimeoutError, ValueError, KeyError, InterlockError, PowerClientError) as exc:
+                log.warning("[%s] Cannot verify sandbox or node state: %s", self.cfg.name, exc)
+            await asyncio.sleep(5)
+
     async def handle_request(self, request: web.Request) -> web.StreamResponse:
+        if self._coordinator is None or request.path == "/wol-proxy/status":
+            return await self._handle_request(request)
+        host = request.host.split(":")[0]
+        backend = self._host_map.get(host)
+        if backend is None:
+            return web.Response(status=404, text=f"Unknown host: {host}")
+        async with self._activity_lock:
+            if not self._coordinator.accepting:
+                self._wake_requested = True
+                self.touch()
+                if request.method == "GET" and not is_websocket_request(request):
+                    from .wake_page import render_wake_page
+                    return web.Response(text=render_wake_page(backend.hostname), content_type="text/html")
+                return web.Response(status=503, text="Desktop is starting; retry shortly", headers={"Retry-After": "5"})
+            try:
+                await self._coordinator.interlock.http_change(1)
+            except (ClientError, OSError, TimeoutError, InterlockError):
+                self._coordinator.accepting = False
+                self._wake_requested = True
+                self.touch()
+                return web.Response(status=503, text="Desktop activity cannot be verified")
+            self._active_requests += 1
+        try:
+            return await self._handle_request(request)
+        finally:
+            async with self._activity_lock:
+                self._active_requests -= 1
+                self.touch()
+                try:
+                    await self._coordinator.interlock.http_change(-1)
+                except (ClientError, OSError, TimeoutError, InterlockError) as exc:
+                    self._coordinator.accepting = False
+                    log.error("[%s] Cannot clear durable HTTP activity: %s", self.cfg.name, exc)
+
+    async def _handle_request(self, request: web.Request) -> web.StreamResponse:
         # Status API
         if request.path == "/wol-proxy/status":
-            return web.json_response({"state": self._state, "node": self.cfg.name})
+            state = self._state
+            if self._coordinator is not None:
+                state = "ready" if self._coordinator.accepting else ("waking" if self._wake_requested else "sleeping")
+            return web.json_response({"state": state, "node": self.cfg.name})
 
         # Find backend by Host header
         host = request.host.split(":")[0]  # strip port
@@ -526,7 +629,12 @@ class NodeGroupProxy:
             return web.Response(status=404, text=f"Unknown host: {host}")
 
         # Check node health
-        if not await self.check_node_health():
+        try:
+            node_ready = await self.check_node_health()
+        except (ClientError, OSError, TimeoutError, ValueError, KeyError) as exc:
+            log.warning("[%s] Cannot verify node readiness: %s", self.cfg.name, exc)
+            return web.Response(status=503, text="Node readiness is unavailable")
+        if not node_ready:
             if self._state == "ready":
                 self._state = "sleeping"
             # Start waking in background if not already

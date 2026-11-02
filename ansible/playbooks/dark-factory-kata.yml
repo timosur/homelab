@@ -1,0 +1,7 @@
+---
+- name: Install Kata on the Dark Factory desktop worker
+  hosts: homelab-amd-desktop
+  become: true
+  gather_facts: true
+  roles:
+    - dark-factory-kata

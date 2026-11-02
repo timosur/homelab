@@ -1,0 +1,134 @@
+---
+- name: Check host architecture and hardware virtualization
+  ansible.builtin.stat:
+    path: /dev/kvm
+  register: kata_kvm
+
+- name: Refuse unsupported hosts
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == 'homelab-amd-desktop'
+      - ansible_architecture == 'x86_64'
+      - kata_kvm.stat.exists
+    fail_msg: Kata requires the designated x86_64 desktop with /dev/kvm available.
+
+- name: Check that the K3s agent is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: kata_k3s_binary
+
+- name: Refuse to configure a host without K3s
+  ansible.builtin.assert:
+    that:
+      - kata_k3s_binary.stat.exists
+    fail_msg: Install the K3s agent on the desktop before configuring Kata.
+
+- name: Check for an existing Kata installation
+  ansible.builtin.stat:
+    path: /opt/kata
+  register: kata_installation
+
+- name: Check the managed Kata version marker
+  ansible.builtin.stat:
+    path: "/opt/kata/.homelab-{{ dark_factory_kata_version }}"
+  register: kata_version_marker
+
+- name: Refuse to overwrite an existing Kata installation
+  ansible.builtin.assert:
+    that:
+      - not kata_installation.stat.exists or kata_version_marker.stat.exists
+    fail_msg: /opt/kata already exists without the expected version marker; inspect it before proceeding.
+
+- name: Check the existing K3s containerd template
+  ansible.builtin.stat:
+    path: /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl
+    checksum_algorithm: sha1
+  register: kata_containerd_template
+
+- name: Refuse to overwrite another containerd template
+  ansible.builtin.assert:
+    that:
+      - >-
+        not kata_containerd_template.stat.exists or
+        kata_containerd_template.stat.checksum ==
+        (lookup('file', role_path ~ '/files/config-v3.toml.tmpl', rstrip=False) | hash('sha1'))
+    fail_msg: An existing containerd v3 template requires manual integration before Kata can be installed.
+
+- name: Check for an existing Kata shim
+  ansible.builtin.stat:
+    path: /usr/local/bin/containerd-shim-kata-v2
+    follow: false
+  register: kata_shim
+
+- name: Refuse to replace another Kata shim
+  ansible.builtin.assert:
+    that:
+      - >-
+        not kata_shim.stat.exists or
+        (kata_shim.stat.islnk and kata_shim.stat.lnk_source == '/opt/kata/bin/containerd-shim-kata-v2')
+    fail_msg: An existing Kata shim requires manual inspection before proceeding.
+
+- name: Install archive prerequisites
+  ansible.builtin.package:
+    name: zstd
+    state: present
+
+- name: Download the pinned Kata release
+  ansible.builtin.get_url:
+    url: "https://github.com/kata-containers/kata-containers/releases/download/{{ dark_factory_kata_version }}/kata-static-{{ dark_factory_kata_version }}-amd64.tar.zst"
+    dest: "/var/tmp/kata-static-{{ dark_factory_kata_version }}-amd64.tar.zst"
+    checksum: "sha256:{{ dark_factory_kata_sha256 }}"
+    mode: "0644"
+  when: not kata_version_marker.stat.exists
+
+- name: Extract the pinned Kata release
+  ansible.builtin.command:
+    argv:
+      - tar
+      - --zstd
+      - -xf
+      - "/var/tmp/kata-static-{{ dark_factory_kata_version }}-amd64.tar.zst"
+      - -C
+      - /
+  when: not kata_version_marker.stat.exists
+  changed_when: true
+  notify: Restart k3s agent
+
+- name: Verify the installed Kata files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /opt/kata/bin/containerd-shim-kata-v2
+    - /opt/kata/share/defaults/kata-containers/configuration.toml
+  register: kata_files
+
+- name: Refuse an incomplete Kata installation
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+    fail_msg: "Kata installation is missing {{ item.item }}; inspect /opt/kata before retrying."
+  loop: "{{ kata_files.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Mark the managed installation
+  ansible.builtin.file:
+    path: "/opt/kata/.homelab-{{ dark_factory_kata_version }}"
+    state: touch
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Install the Kata shim link
+  ansible.builtin.file:
+    src: /opt/kata/bin/containerd-shim-kata-v2
+    dest: /usr/local/bin/containerd-shim-kata-v2
+    state: link
+  notify: Restart k3s agent
+
+- name: Install the K3s containerd template
+  ansible.builtin.copy:
+    src: config-v3.toml.tmpl
+    dest: /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl
+    mode: "0644"
+  notify: Restart k3s agent
