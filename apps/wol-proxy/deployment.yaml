@@ -36,7 +36,7 @@ spec:
               mountPath: /ssh-key
       containers:
         - name: wol-proxy
-          image: ghcr.io/timosur/homelab/wol-proxy:latest@sha256:2a8f8c29f183cc906a4059e2c13ee08a8a51f295205479e49fd6709ff640a8bb
+          image: ghcr.io/timosur/homelab/wol-proxy:latest@sha256:0c173398e004c7f9b48422b1c9b83662610c57f637ca33ac8dc0f21a4f216172
           ports:
             - containerPort: 11434
               name: ollama
