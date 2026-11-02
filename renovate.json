@@ -99,6 +99,7 @@
       "matchPackageNames": [
         "argoproj/argo-cd"
       ],
+      "separateMultipleMinor": true,
       "automerge": false
     }
   ],

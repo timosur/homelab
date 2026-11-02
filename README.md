@@ -99,16 +99,26 @@ ArgoCD manages its own installation through `apps/_argocd/argocd-app.yaml`.
 The upstream release and local configuration are pinned in
 `apps/argocd/kustomization.yml`. Renovate opens a reviewable PR for version
 updates; after a PR is merged, ArgoCD automatically syncs the updated overlay.
-Review the upstream upgrade notes and back up ArgoCD before merging an upgrade.
+Review and merge minor-version upgrades in order, reading each upstream upgrade
+guide and backing up ArgoCD before merging. Renovate proposes separate minor
+versions, but reviewers must ensure that no minor version is skipped.
 Automatic pruning is disabled for this application to protect its CRDs and
 other resources; review and remove obsolete resources separately when needed.
 
 Ansible bootstraps the same overlay only when both the ArgoCD server deployment
 and self-management Application are absent. Normal reruns do not overwrite a
-self-managed installation. For
-recovery, `-e argocd_bootstrap_force=true` explicitly reapplies the overlay
-using server-side apply and takes ownership of conflicting fields. The overlay
-requires the `argocd` namespace and pins workloads to `homelab-amd`.
+self-managed installation. For recovery, `-e argocd_bootstrap_force=true`
+explicitly reapplies the overlay using server-side apply with ArgoCD's
+`argocd-controller` field manager and takes ownership of conflicting fields.
+The overlay requires the `argocd` namespace and pins workloads to `homelab-amd`.
+
+Older bootstraps used other field managers, including `argocd-bootstrap` and
+update-based Ansible managers. Matching values can remain shared with those
+managers even after ArgoCD syncs, preventing later field removals from taking
+effect. For existing installations, inspect `metadata.managedFields`, back up
+the affected objects, and carefully relinquish obsolete ownership before
+depending on field removal. Do not remove entries belonging to active
+controllers or clear all managed fields indiscriminately.
 
 ### 3. Access ArgoCD
 

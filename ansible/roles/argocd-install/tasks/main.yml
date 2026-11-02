@@ -51,7 +51,7 @@
         state: present
         apply: true
         server_side_apply:
-          field_manager: argocd-bootstrap
+          field_manager: argocd-controller
           force_conflicts: true
         definition: "{{ argocd_rendered_overlay.stdout | from_yaml_all | list }}"
       no_log: true
