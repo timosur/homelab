@@ -113,6 +113,7 @@
     user: dark-factory-power
     key: "{{ dark_factory_power_authorized_key }}"
     key_options: 'restrict,command="/usr/local/bin/dark-factory-power-command"'
+    exclusive: true
     state: present
 
 - name: Mark the managed account
