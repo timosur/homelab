@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: vaultwarden
-          image: ghcr.io/dani-garcia/vaultwarden:latest@sha256:094b5689ed81549bd293418395c7cf495ae9d960fc2d4928cef2083ef913d912
+          image: ghcr.io/dani-garcia/vaultwarden:latest@sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f
           ports:
             - containerPort: 80
               name: http
