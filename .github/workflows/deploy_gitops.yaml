@@ -47,7 +47,6 @@ jobs:
                 ansible_connection: local
                 ansible_python_interpreter: $(which python3)
             vars:
-              argocd_version: "v3.2.3"
               azure_client_id: "${{ secrets.AZURE_SP_CLIENT_ID }}"
               azure_client_secret: "${{ secrets.AZURE_SP_CLIENT_SECRET }}"
               azure_tenant_id: "${{ secrets.AZURE_TENANT_ID }}"

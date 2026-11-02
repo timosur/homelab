@@ -90,6 +90,16 @@
         "/:latest$/",
         "/:main$/"
       ]
+    },
+    {
+      "description": "Require review for Argo CD upgrades",
+      "matchManagers": [
+        "kustomize"
+      ],
+      "matchPackageNames": [
+        "argoproj/argo-cd"
+      ],
+      "automerge": false
     }
   ],
   "kubernetes": {

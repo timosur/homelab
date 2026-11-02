@@ -10,7 +10,7 @@ git_repo_url: "https://github.com/timosur/homelab.git"
 git_repo_name: "homelab-repo"
 
 # Root application configuration
-root_app_path: "apps/root-home.yaml"
+root_app_path: "{{ playbook_dir }}/../../apps/root.yaml"
 root_app_name: "root"
 
 # Azure Key Vault configuration

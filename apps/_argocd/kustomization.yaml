@@ -5,6 +5,7 @@ resources:
   - affine-app.yaml
   - agentgateway-crds-app.yaml
   - agentgateway-app.yaml
+  - argocd-app.yaml
   - authentik-app.yaml
   - atuin-app.yaml
   - atuin-ai-app.yaml

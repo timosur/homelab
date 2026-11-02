@@ -9,6 +9,7 @@
         kind: Deployment
         name: argocd-server
         namespace: "{{ argocd_namespace }}"
+        wait: true
         wait_condition:
           type: Available
           status: "True"
@@ -21,6 +22,7 @@
         namespace: "{{ argocd_namespace }}"
         label_selectors:
           - app.kubernetes.io/name=argocd-server
+        wait: true
         wait_condition:
           type: Ready
           status: "True"
@@ -33,6 +35,7 @@
         namespace: "{{ argocd_namespace }}"
         label_selectors:
           - app.kubernetes.io/name=argocd-repo-server
+        wait: true
         wait_condition:
           type: Ready
           status: "True"

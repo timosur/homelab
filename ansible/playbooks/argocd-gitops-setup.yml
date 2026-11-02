@@ -6,12 +6,11 @@
 
   vars:
     # ArgoCD configuration
-    argocd_version: "v3.2.3"
     argocd_namespace: "argocd"
 
     # GitOps configuration
     git_repo_url: "https://github.com/timosur/homelab.git"
-    root_app_path: "{{ playbook_dir }}/../../apps/root-home.yaml"
+    root_app_path: "{{ playbook_dir }}/../../apps/root.yaml"
 
     # Azure configuration, is getting overwritten from gh action created inventory
     # azure_client_id: "{{ vault_azure_client_id | default('') }}"

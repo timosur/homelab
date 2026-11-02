@@ -1,20 +1,14 @@
 ---
 # Default variables for argocd-install role
 
-# ArgoCD version
-argocd_version: "v3.2.3"
-
 # Namespace for ArgoCD
 argocd_namespace: "argocd"
 
-# ArgoCD installation method: "manifest" or "helm"
-argocd_install_method: "manifest"
+# The same pinned overlay is used by ArgoCD after bootstrap.
+argocd_overlay_path: "{{ playbook_dir }}/../../apps/argocd"
 
-# Manifest URL for ArgoCD
-argocd_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml"
+# Explicit recovery override; normal runs leave existing installations alone.
+argocd_bootstrap_force: false
 
 # Wait timeout for ArgoCD readiness (seconds)
 argocd_wait_timeout: 300
-
-# Node to pin ArgoCD workloads to (must have enough memory)
-argocd_node_hostname: "homelab-amd"

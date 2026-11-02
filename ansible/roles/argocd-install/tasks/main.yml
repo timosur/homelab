@@ -1,6 +1,11 @@
 ---
 # tasks file for argocd-install
 
+- name: Verify the overlay namespace
+  ansible.builtin.assert:
+    that: argocd_namespace == 'argocd'
+    fail_msg: The ArgoCD overlay is configured for the argocd namespace.
+
 - name: Create ArgoCD namespace
   kubernetes.core.k8s:
     name: "{{ argocd_namespace }}"
@@ -8,69 +13,48 @@
     kind: Namespace
     state: present
 
-- name: Download ArgoCD installation manifest
-  ansible.builtin.get_url:
-    url: "{{ argocd_manifest_url }}"
-    dest: /tmp/argocd-install.yaml
-    mode: '0644'
-  delegate_to: localhost
-  become: false
-
-- name: Apply ArgoCD installation manifest
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('file', '/tmp/argocd-install.yaml') | from_yaml_all | list }}"
-    namespace: "{{ argocd_namespace }}"
-
-- name: Pin ArgoCD workloads to control plane node
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: "{{ item.api }}"
-      kind: "{{ item.kind }}"
-      metadata:
-        name: "{{ item.name }}"
-        namespace: "{{ argocd_namespace }}"
-      spec:
-        template:
-          spec:
-            nodeSelector:
-              kubernetes.io/hostname: "{{ argocd_node_hostname }}"
-  loop:
-    - { api: "apps/v1", kind: "StatefulSet", name: "argocd-application-controller" }
-    - { api: "apps/v1", kind: "Deployment", name: "argocd-server" }
-    - { api: "apps/v1", kind: "Deployment", name: "argocd-repo-server" }
-    - { api: "apps/v1", kind: "Deployment", name: "argocd-applicationset-controller" }
-    - { api: "apps/v1", kind: "Deployment", name: "argocd-redis" }
-    - { api: "apps/v1", kind: "Deployment", name: "argocd-dex-server" }
-  loop_control:
-    label: "{{ item.name }}"
-
-- name: Configure ArgoCD server to run in insecure mode (no TLS redirect)
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: argocd-cmd-params-cm
-        namespace: "{{ argocd_namespace }}"
-      data:
-        server.insecure: "true"
-
-- name: Restart ArgoCD server to pick up insecure mode config
-  kubernetes.core.k8s:
-    state: present
+- name: Check for an existing ArgoCD installation
+  kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: Deployment
     name: argocd-server
     namespace: "{{ argocd_namespace }}"
-    definition:
-      spec:
-        template:
-          metadata:
-            annotations:
-              kubectl.kubernetes.io/restartedAt: "{{ ansible_date_time.iso8601 }}"
+  register: argocd_existing_server
+
+- name: Check for the ArgoCD self-management application
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: argocd
+    namespace: "{{ argocd_namespace }}"
+  register: argocd_self_management
+
+- name: Bootstrap ArgoCD from the GitOps overlay
+  when: >-
+    argocd_bootstrap_force | bool or
+    (argocd_existing_server.resources | length == 0 and
+     argocd_self_management.resources | default([]) | length == 0)
+  block:
+    - name: Render the pinned ArgoCD overlay
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - kustomize
+          - "{{ argocd_overlay_path }}"
+      register: argocd_rendered_overlay
+      changed_when: false
+      check_mode: false
+      no_log: true
+
+    - name: Apply the ArgoCD overlay using server-side apply
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        server_side_apply:
+          field_manager: argocd-bootstrap
+          force_conflicts: true
+        definition: "{{ argocd_rendered_overlay.stdout | from_yaml_all | list }}"
+      no_log: true
 
 - name: Wait for ArgoCD server deployment to be ready
   kubernetes.core.k8s_info:
@@ -78,6 +62,7 @@
     kind: Deployment
     name: argocd-server
     namespace: "{{ argocd_namespace }}"
+    wait: true
     wait_condition:
       type: Available
       status: "True"
@@ -89,17 +74,19 @@
     kind: Deployment
     name: argocd-repo-server
     namespace: "{{ argocd_namespace }}"
+    wait: true
     wait_condition:
       type: Available
       status: "True"
     wait_timeout: "{{ argocd_wait_timeout }}"
 
-- name: Wait for ArgoCD application controller deployment to be ready
+- name: Wait for ArgoCD ApplicationSet controller deployment to be ready
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: Deployment
     name: argocd-applicationset-controller
     namespace: "{{ argocd_namespace }}"
+    wait: true
     wait_condition:
       type: Available
       status: "True"
@@ -112,6 +99,7 @@
     namespace: "{{ argocd_namespace }}"
     label_selectors:
       - app.kubernetes.io/name=argocd-server
+    wait: true
     wait_condition:
       type: Ready
       status: "True"
@@ -124,18 +112,24 @@
     namespace: "{{ argocd_namespace }}"
     label_selectors:
       - app.kubernetes.io/name=argocd-repo-server
+    wait: true
     wait_condition:
       type: Ready
       status: "True"
     wait_timeout: "{{ argocd_wait_timeout }}"
 
-- name: Get ArgoCD admin initial password
+- name: Wait for ArgoCD application controller pod to be ready
   kubernetes.core.k8s_info:
     api_version: v1
-    kind: Secret
-    name: argocd-initial-admin-secret
+    kind: Pod
     namespace: "{{ argocd_namespace }}"
-  register: argocd_admin_secret
+    label_selectors:
+      - app.kubernetes.io/name=argocd-application-controller
+    wait: true
+    wait_condition:
+      type: Ready
+      status: "True"
+    wait_timeout: "{{ argocd_wait_timeout }}"
 
 - name: Display ArgoCD admin password instructions
   ansible.builtin.debug:
@@ -149,10 +143,3 @@
       kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 8080:443
 
       Then open https://localhost:8080 and login with username 'admin'
-
-- name: Clean up downloaded manifest
-  ansible.builtin.file:
-    path: /tmp/argocd-install.yaml
-    state: absent
-  delegate_to: localhost
-  become: false
