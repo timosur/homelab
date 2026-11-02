@@ -19,7 +19,7 @@ spec:
         kubernetes.io/arch: arm64
       containers:
         - name: garden-backend
-          image: ghcr.io/timosur/life-as-a-garden/backend:1.0.7
+          image: ghcr.io/timosur/life-as-a-garden/backend:1.0.7@sha256:ba470f4cf22c28946b503d68a65a0be009a341ae1b67a89a7888abc6b2fdba0f
           command:
             [
               "fastapi",
