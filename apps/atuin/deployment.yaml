@@ -19,7 +19,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: atuin
-          image: ghcr.io/atuinsh/atuin:18.21.0@sha256:38c6c323c6d3864250dc345dcf9d41b7a408ee6e33a7cc3cde44b6ffe9f64a02
+          image: ghcr.io/atuinsh/atuin:18.24.4@sha256:1cb33a7126b748e0ad6d18d0f52e9bb805a98a196feccd597bf66544f58cf68e
           args:
             - start
           ports:
