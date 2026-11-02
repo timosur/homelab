@@ -598,7 +598,7 @@ class NodeGroupProxy:
             if self._proxied_requests == 0:
                 try:
                     await self._coordinator.interlock.http_change(1)
-                except (ClientError, OSError, TimeoutError, InterlockError):
+                except (ClientError, OSError, TimeoutError, ValueError, InterlockError):
                     self._coordinator.accepting = False
                     self._wake_requested = True
                     self.touch()
@@ -615,7 +615,7 @@ class NodeGroupProxy:
                 if self._proxied_requests == 0:
                     try:
                         await self._coordinator.interlock.http_change(-1)
-                    except (ClientError, OSError, TimeoutError, InterlockError) as exc:
+                    except (ClientError, OSError, TimeoutError, ValueError, InterlockError) as exc:
                         self._coordinator.accepting = False
                         log.error("[%s] Cannot clear durable HTTP activity: %s", self.cfg.name, exc)
 

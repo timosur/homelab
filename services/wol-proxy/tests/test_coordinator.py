@@ -313,27 +313,29 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([call.args for call in changes.await_args_list], [(1,), (-1,), (1,), (-1,)])
 
     async def test_http_activity_errors_fail_closed(self):
-        config = NodeGroupConfig(name="desktop", listen_port=8080, wol_mac="00:11:22:33:44:55",
-                                 backends=[NodeGroupBackend(hostname="app.example", target="backend:80")])
-        proxy = NodeGroupProxy(config)
-        changes = AsyncMock(side_effect=OSError("API unavailable"))
-        proxy._coordinator = SimpleNamespace(accepting=True, interlock=SimpleNamespace(http_change=changes))
-        proxy._handle_request = AsyncMock(return_value=web.Response(text="ok"))
-        request = SimpleNamespace(path="/", host="app.example", method="GET", headers={})
+        for error in (OSError("API unavailable"), ValueError("malformed response")):
+            with self.subTest(error=type(error).__name__):
+                config = NodeGroupConfig(name="desktop", listen_port=8080, wol_mac="00:11:22:33:44:55",
+                                         backends=[NodeGroupBackend(hostname="app.example", target="backend:80")])
+                proxy = NodeGroupProxy(config)
+                changes = AsyncMock(side_effect=error)
+                proxy._coordinator = SimpleNamespace(accepting=True, interlock=SimpleNamespace(http_change=changes))
+                proxy._handle_request = AsyncMock(return_value=web.Response(text="ok"))
+                request = SimpleNamespace(path="/", host="app.example", method="GET", headers={})
 
-        self.assertEqual((await proxy.handle_request(request)).status, 503)
-        self.assertFalse(proxy._coordinator.accepting)
-        self.assertTrue(proxy._wake_requested)
-        self.assertEqual(proxy._proxied_requests, 0)
-        proxy._handle_request.assert_not_awaited()
+                self.assertEqual((await proxy.handle_request(request)).status, 503)
+                self.assertFalse(proxy._coordinator.accepting)
+                self.assertTrue(proxy._wake_requested)
+                self.assertEqual(proxy._proxied_requests, 0)
+                proxy._handle_request.assert_not_awaited()
 
-        proxy._coordinator.accepting = True
-        changes.side_effect = [None, OSError("API unavailable")]
-        with self.assertLogs("wol-proxy", level="ERROR"):
-            self.assertEqual((await proxy.handle_request(request)).status, 200)
-        self.assertFalse(proxy._coordinator.accepting)
-        self.assertEqual(proxy._proxied_requests, 0)
-        self.assertEqual(proxy._active_requests, 0)
+                proxy._coordinator.accepting = True
+                changes.side_effect = [None, error]
+                with self.assertLogs("wol-proxy", level="ERROR"):
+                    self.assertEqual((await proxy.handle_request(request)).status, 200)
+                self.assertFalse(proxy._coordinator.accepting)
+                self.assertEqual(proxy._proxied_requests, 0)
+                self.assertEqual(proxy._active_requests, 0)
 
     async def test_status_does_not_claim_ready_before_interlock_is_ready(self):
         config = NodeGroupConfig(name="desktop", listen_port=8080, wol_mac="00:11:22:33:44:55")
