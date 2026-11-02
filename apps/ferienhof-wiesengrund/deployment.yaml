@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: ferienhof-wiesengrund
-          image: ghcr.io/timosur/ferienhof-wiesengrund:latest # TODO: Pin with SHA after first build
+          image: ghcr.io/timosur/ferienhof-wiesengrund:latest@sha256:7cd831badd30e1c77b1481fba22936ee304ab7dce7d719dc09e3839f42389aa1 # TODO: Pin with SHA after first build
           ports:
             - containerPort: 80
           livenessProbe:

@@ -22,7 +22,7 @@ spec:
         - name: ghcr-io-pull-secret
       containers:
         - name: frontend
-          image: ghcr.io/timosur/bike-weather/frontend:0.1.7
+          image: ghcr.io/timosur/bike-weather/frontend:0.1.7@sha256:bdb19bb4a68f6522c4ebf8f3713a5e6977aa0f19b8186f73bf26292ae8124ee5
           ports:
             - containerPort: 80
           env:

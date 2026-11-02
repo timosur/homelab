@@ -37,7 +37,7 @@ spec:
               echo "Database is accepting connections!"
       containers:
         - name: backend
-          image: ghcr.io/timosur/bike-weather/backend:0.1.6
+          image: ghcr.io/timosur/bike-weather/backend:0.1.6@sha256:b4359450c210bfe1fd8878ff54e31ad84801bba71167222b2185683fdf0605d1
           ports:
             - containerPort: 8000
           env:
