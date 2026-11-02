@@ -57,7 +57,7 @@ spec:
               mountPath: /power-key
       containers:
         - name: wol-proxy
-          image: ghcr.io/timosur/homelab/wol-proxy:latest@sha256:0c173398e004c7f9b48422b1c9b83662610c57f637ca33ac8dc0f21a4f216172
+          image: ghcr.io/timosur/homelab/wol-proxy:latest@sha256:f4760a80d26cc6fdd5f96bb9e7869ad8f53969a1e7f0eac1faebce85291c66c1
           ports:
             - containerPort: 11434
               name: ollama
