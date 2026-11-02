@@ -8,3 +8,12 @@ resources:
   - valkey.yaml
 
 namespace: penpot
+
+# Copy of the image's /tmp/nginx.conf.template (penpotapp/frontend:2.18.5) with
+# worker_processes 2 / worker_connections 4096; re-sync on every Penpot upgrade.
+configMapGenerator:
+  - name: penpot-frontend-nginx
+    files:
+      - nginx.conf.template
+    options:
+      disableNameSuffixHash: true
