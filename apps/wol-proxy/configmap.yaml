@@ -29,6 +29,12 @@ data:
     nodeGroups:
       - name: desktop
         listenPort: 8080
+        # Enable only after the Dark Factory wake RBAC and suspend interlock are validated.
+        # sandboxNamespace: dark-factory-sandboxes
+        # sandboxInstance: dark-factory
+        # kubernetesNode: homelab-amd-desktop
+        # sandboxAdmissionEnabled: true
+        # sandboxPowerInterlockEnabled: true
         wolMac: "30:9c:23:8a:30:e3"
         wolHost: "192.168.2.100"
         wolBroadcast: "192.168.2.255"

@@ -1,0 +1,125 @@
+---
+- name: Refuse to install the guard on another host
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == 'homelab-amd-desktop'
+
+- name: Require the dedicated desktop power public key
+  ansible.builtin.assert:
+    that:
+      - dark_factory_power_authorized_key is defined
+      - dark_factory_power_authorized_key is match('^ssh-ed25519 [A-Za-z0-9+/=]+( .*)?$')
+    fail_msg: Supply the verified dedicated Ed25519 public key as dark_factory_power_authorized_key.
+
+- name: Check for an existing desktop power account
+  ansible.builtin.getent:
+    database: passwd
+    key: dark-factory-power
+    fail_key: false
+
+- name: Check for the managed account marker
+  ansible.builtin.stat:
+    path: /var/lib/dark-factory-power-guard/.account-managed
+  register: power_guard_account_marker
+
+- name: Refuse to modify an unmanaged existing account
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.getent_passwd['dark-factory-power'] is none or power_guard_account_marker.stat.exists
+    fail_msg: The dark-factory-power account exists without the managed marker; inspect it first.
+
+- name: Check existing power guard files
+  ansible.builtin.stat:
+    path: "{{ item.dest }}"
+    checksum_algorithm: sha1
+  loop:
+    - src: "{{ playbook_dir }}/../../services/wol-proxy/wol_proxy/power_guard.py"
+      dest: /usr/local/sbin/dark-factory-power-guard
+    - src: "{{ role_path }}/files/dark-factory-power-guard-sleep"
+      dest: /usr/lib/systemd/system-sleep/dark-factory-power-guard
+    - src: "{{ role_path }}/files/dark-factory-power-sudoers"
+      dest: /etc/sudoers.d/dark-factory-power-guard
+    - src: "{{ playbook_dir }}/../../services/wol-proxy/wol_proxy/power_command.sh"
+      dest: /usr/local/bin/dark-factory-power-command
+  register: power_guard_files
+
+- name: Refuse to overwrite an unmanaged power guard file
+  ansible.builtin.assert:
+    that:
+      # The account marker is created only after all four files are installed.
+      - >-
+        not item.stat.exists or
+        (power_guard_account_marker.stat.exists and power_guard_account_marker.stat.isreg and item.stat.isreg) or
+        item.stat.checksum == (lookup('file', item.item.src, rstrip=False) | hash('sha1'))
+    fail_msg: "{{ item.item.dest }} already exists with different contents; inspect it first."
+  loop: "{{ power_guard_files.results }}"
+  loop_control:
+    label: "{{ item.item.dest }}"
+
+- name: Install the power guard
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../services/wol-proxy/wol_proxy/power_guard.py"
+    dest: /usr/local/sbin/dark-factory-power-guard
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install the post-sleep completion hook
+  ansible.builtin.copy:
+    src: dark-factory-power-guard-sleep
+    dest: /usr/lib/systemd/system-sleep/dark-factory-power-guard
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install the restricted power-guard sudo rule
+  ansible.builtin.copy:
+    src: dark-factory-power-sudoers
+    dest: /etc/sudoers.d/dark-factory-power-guard
+    owner: root
+    group: root
+    mode: '0440'
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Install the restricted SSH forced command
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../services/wol-proxy/wol_proxy/power_command.sh"
+    dest: /usr/local/bin/dark-factory-power-command
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Check durable guard state
+  ansible.builtin.stat:
+    path: /var/lib/dark-factory-power-guard/state.json
+  register: power_guard_state
+
+- name: Initialize or verify durable guard state
+  ansible.builtin.command:
+    argv:
+      - /usr/local/sbin/dark-factory-power-guard
+      - init
+  changed_when: not power_guard_state.stat.exists
+
+- name: Create the dedicated desktop power account
+  ansible.builtin.user:
+    name: dark-factory-power
+    system: true
+    create_home: true
+    shell: /bin/sh
+
+- name: Install its dedicated SSH public key
+  ansible.posix.authorized_key:
+    user: dark-factory-power
+    key: "{{ dark_factory_power_authorized_key }}"
+    key_options: 'restrict,command="/usr/local/bin/dark-factory-power-command"'
+    exclusive: true
+    state: present
+
+- name: Mark the managed account
+  ansible.builtin.file:
+    path: /var/lib/dark-factory-power-guard/.account-managed
+    state: touch
+    mode: '0600'
+    modification_time: preserve
+    access_time: preserve

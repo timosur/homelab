@@ -1,0 +1,53 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dark-factory-wake-reader
+  namespace: dark-factory-sandboxes
+rules:
+  - apiGroups: [agents.x-k8s.io]
+    resources: [sandboxes]
+    verbs: [list]
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dark-factory-wake-reader
+  namespace: dark-factory-sandboxes
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dark-factory-wake-reader
+subjects:
+  - kind: ServiceAccount
+    name: wol-proxy
+    namespace: wol-proxy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dark-factory-desktop-reader
+rules:
+  - apiGroups: ['']
+    resources: [nodes]
+    resourceNames: [homelab-amd-desktop]
+    verbs: [get]
+  - apiGroups: [admissionregistration.k8s.io]
+    resources: [mutatingwebhookconfigurations, validatingwebhookconfigurations]
+    resourceNames: [dark-factory-sandbox-gate]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dark-factory-desktop-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dark-factory-desktop-reader
+subjects:
+  - kind: ServiceAccount
+    name: wol-proxy
+    namespace: wol-proxy

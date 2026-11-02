@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-csi
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: quay.io/jetstack/charts
+    chart: cert-manager-csi-driver
+    targetRevision: v0.16.1
+    helm:
+      valuesObject:
+        tolerations:
+          - key: availability
+            operator: Equal
+            value: daytime
+            effect: NoSchedule
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager

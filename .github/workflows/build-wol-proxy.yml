@@ -25,6 +25,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Test WoL proxy
+        working-directory: services/wol-proxy
+        run: |
+          python -m pip install uv
+          uv run --frozen --no-dev python -m unittest discover -s tests -v
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 

@@ -1,0 +1,5 @@
+#!/bin/sh
+# systemd invokes this hook as root after a sleep operation completes or fails.
+if [ "$1" = post ]; then
+    exec /usr/local/sbin/dark-factory-power-guard complete
+fi

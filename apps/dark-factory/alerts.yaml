@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dark-factory
+  namespace: dark-factory
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: dark-factory
+      rules:
+        - alert: DarkFactoryControlPlaneUnavailable
+          expr: kube_deployment_status_replicas_available{namespace="dark-factory",deployment="dark-factory-control-plane"} < 1 or absent(kube_deployment_status_replicas_available{namespace="dark-factory",deployment="dark-factory-control-plane"})
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Dark Factory control plane has no available replicas
+        - alert: DarkFactoryGatewayUnavailable
+          expr: kube_deployment_status_replicas_available{namespace="dark-factory",deployment="dark-factory-gateway"} < 1 or absent(kube_deployment_status_replicas_available{namespace="dark-factory",deployment="dark-factory-gateway"})
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Dark Factory gateway has no available replicas

@@ -1,0 +1,2 @@
+# Only fenced operations are available to the dedicated desktop power account.
+dark-factory-power ALL=(root) NOPASSWD: /usr/local/sbin/dark-factory-power-guard fence *, /usr/local/sbin/dark-factory-power-guard suspend *

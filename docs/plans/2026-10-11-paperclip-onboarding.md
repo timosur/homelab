@@ -1,5 +1,7 @@
 # Paperclip Onboarding Plan
 
+> Superseded by Dark Factory onboarding. Retained as historical context; do not deploy this plan.
+
 **Goal:** Run Paperclip coding, review, and platform-engineering agents across the selected GitHub repositories. Paperclip issues start work through its UI/API; each repository has its own project workspace and produces its own pull request. Humans remain the only merge authority.
 
 **Architecture:** One Paperclip Company, `timosur`, runs in the homelab cluster with central CNPG and a home-only UI. Its native Kubernetes sandbox provider creates ephemeral Agent Sandbox workloads. Workloads run as Kata microVMs only on `homelab-amd` and `homelab-amd-desktop`, run Claude Code with a shared subscription OAuth token, and reach Anthropic only through the internal `agentgateway`. Cilium allow-lists sandbox egress. Paperclip's managed GitHub connection is enrolled through the Paperclip Cloud Connector; the Paperclip server makes the required outbound Cloud connection and brokers task-scoped GitHub credentials to sandboxes. Neither the UI nor a GitHub webhook is public.

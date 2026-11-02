@@ -1,0 +1,44 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: dark-factory-admission-selfsigned
+  namespace: wol-proxy
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dark-factory-admission-ca
+  namespace: wol-proxy
+spec:
+  isCA: true
+  commonName: dark-factory-admission-ca
+  secretName: dark-factory-admission-ca
+  issuerRef:
+    name: dark-factory-admission-selfsigned
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: dark-factory-admission-ca
+  namespace: wol-proxy
+spec:
+  ca:
+    secretName: dark-factory-admission-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dark-factory-admission-tls
+  namespace: wol-proxy
+spec:
+  secretName: dark-factory-admission-tls
+  dnsNames:
+    - dark-factory-admission.wol-proxy.svc
+    - dark-factory-admission.wol-proxy.svc.cluster.local
+  usages: [server auth]
+  issuerRef:
+    name: dark-factory-admission-ca
+    kind: Issuer

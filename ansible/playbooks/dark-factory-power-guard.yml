@@ -1,0 +1,7 @@
+---
+- name: Install the staged desktop power fencing helper
+  hosts: homelab-amd-desktop
+  become: true
+  gather_facts: true
+  roles:
+    - dark-factory-power-guard
