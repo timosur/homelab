@@ -187,7 +187,7 @@ The deployment should reference the Crossplane-managed secret for DB credentials
 - Individual `env` entries with `secretKeyRef` pointing to `<app-name>-db-connection`
 - DB host in the ConfigMap: `central-postgres-rw.postgres.svc.cluster.local`
 
-See the n8n app (`apps/n8n/`) as the reference implementation.
+See the paperless app (`apps/paperless/`) as a reference implementation.
 
 ### Kustomization updates
 

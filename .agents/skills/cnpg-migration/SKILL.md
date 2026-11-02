@@ -110,7 +110,7 @@ Steps:
 
 Apps that load DB host from ConfigMap and password from a Secret via individual `env` entries.
 
-**Examples**: n8n (already migrated — reference implementation)
+**Examples**: n8n (retired — historical reference implementation below)
 
 Steps:
 
@@ -298,7 +298,7 @@ All apps have been migrated to the central postgres cluster.
 
 ## Reference Implementation: n8n
 
-n8n was the first app migrated. Use it as a reference for the Pattern B flow.
+n8n was the first app migrated and has since been retired. Use this historical example as a reference for the Pattern B flow.
 
 ### appdb.yaml
 
