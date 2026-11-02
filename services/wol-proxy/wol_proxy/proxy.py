@@ -373,6 +373,7 @@ class NodeGroupProxy:
         self._wake_lock = asyncio.Lock()
         self._active_requests = 0
         self._activity_lock = asyncio.Lock()
+        self._proxied_requests = 0
         self._wake_requested = False
         sandbox_configured = any((cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node))
         if cfg.sandbox_admission_enabled and not sandbox_configured:
@@ -594,25 +595,29 @@ class NodeGroupProxy:
                     from .wake_page import render_wake_page
                     return web.Response(text=render_wake_page(backend.hostname), content_type="text/html")
                 return web.Response(status=503, text="Desktop is starting; retry shortly", headers={"Retry-After": "5"})
-            try:
-                await self._coordinator.interlock.http_change(1)
-            except (ClientError, OSError, TimeoutError, InterlockError):
-                self._coordinator.accepting = False
-                self._wake_requested = True
-                self.touch()
-                return web.Response(status=503, text="Desktop activity cannot be verified")
+            if self._proxied_requests == 0:
+                try:
+                    await self._coordinator.interlock.http_change(1)
+                except (ClientError, OSError, TimeoutError, InterlockError):
+                    self._coordinator.accepting = False
+                    self._wake_requested = True
+                    self.touch()
+                    return web.Response(status=503, text="Desktop activity cannot be verified")
+            self._proxied_requests += 1
             self._active_requests += 1
         try:
             return await self._handle_request(request)
         finally:
             async with self._activity_lock:
                 self._active_requests -= 1
+                self._proxied_requests -= 1
                 self.touch()
-                try:
-                    await self._coordinator.interlock.http_change(-1)
-                except (ClientError, OSError, TimeoutError, InterlockError) as exc:
-                    self._coordinator.accepting = False
-                    log.error("[%s] Cannot clear durable HTTP activity: %s", self.cfg.name, exc)
+                if self._proxied_requests == 0:
+                    try:
+                        await self._coordinator.interlock.http_change(-1)
+                    except (ClientError, OSError, TimeoutError, InterlockError) as exc:
+                        self._coordinator.accepting = False
+                        log.error("[%s] Cannot clear durable HTTP activity: %s", self.cfg.name, exc)
 
     async def _handle_request(self, request: web.Request) -> web.StreamResponse:
         # Status API

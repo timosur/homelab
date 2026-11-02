@@ -264,6 +264,77 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await response).status, 200)
         self.assertEqual(self.client.data["http_active"], "0")
 
+    async def test_overlapping_http_requests_share_durable_activity(self):
+        await self.interlock.claim()
+        config = NodeGroupConfig(name="desktop", listen_port=8080, wol_mac="00:11:22:33:44:55",
+                                 backends=[NodeGroupBackend(hostname="app.example", target="backend:80")])
+        proxy = NodeGroupProxy(config)
+        changes = AsyncMock(wraps=self.interlock.http_change)
+        self.interlock.http_change = changes
+        proxy._coordinator = SimpleNamespace(accepting=True, interlock=self.interlock)
+        started = [asyncio.Event(), asyncio.Event()]
+        finish = [asyncio.Event(), asyncio.Event()]
+
+        async def handler(request):
+            proxy._active_requests += 1  # As in the actual proxying path.
+            try:
+                started[request.index].set()
+                await finish[request.index].wait()
+                return web.Response(text="ok")
+            finally:
+                proxy._active_requests -= 1
+
+        proxy._handle_request = handler
+        requests = [SimpleNamespace(path="/", host="app.example", method="GET", headers={}, index=i)
+                    for i in range(2)]
+        first = asyncio.create_task(proxy.handle_request(requests[0]))
+        await started[0].wait()
+        second = asyncio.create_task(proxy.handle_request(requests[1]))
+        await started[1].wait()
+        self.assertEqual(self.client.data["http_active"], "1")
+        self.assertEqual(proxy._active_requests, 4)
+        changes.assert_awaited_once_with(1)
+
+        finish[0].set()
+        await first
+        self.assertEqual(self.client.data["http_active"], "1")
+        changes.assert_awaited_once_with(1)
+        with self.assertRaises(InterlockError):
+            await Interlock(self.client).claim()
+
+        second.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await second
+        self.assertEqual(self.client.data["http_active"], "0")
+        self.assertEqual(proxy._active_requests, 0)
+        self.assertEqual([call.args for call in changes.await_args_list], [(1,), (-1,)])
+
+        await proxy.handle_request(requests[0])
+        self.assertEqual([call.args for call in changes.await_args_list], [(1,), (-1,), (1,), (-1,)])
+
+    async def test_http_activity_errors_fail_closed(self):
+        config = NodeGroupConfig(name="desktop", listen_port=8080, wol_mac="00:11:22:33:44:55",
+                                 backends=[NodeGroupBackend(hostname="app.example", target="backend:80")])
+        proxy = NodeGroupProxy(config)
+        changes = AsyncMock(side_effect=OSError("API unavailable"))
+        proxy._coordinator = SimpleNamespace(accepting=True, interlock=SimpleNamespace(http_change=changes))
+        proxy._handle_request = AsyncMock(return_value=web.Response(text="ok"))
+        request = SimpleNamespace(path="/", host="app.example", method="GET", headers={})
+
+        self.assertEqual((await proxy.handle_request(request)).status, 503)
+        self.assertFalse(proxy._coordinator.accepting)
+        self.assertTrue(proxy._wake_requested)
+        self.assertEqual(proxy._proxied_requests, 0)
+        proxy._handle_request.assert_not_awaited()
+
+        proxy._coordinator.accepting = True
+        changes.side_effect = [None, OSError("API unavailable")]
+        with self.assertLogs("wol-proxy", level="ERROR"):
+            self.assertEqual((await proxy.handle_request(request)).status, 200)
+        self.assertFalse(proxy._coordinator.accepting)
+        self.assertEqual(proxy._proxied_requests, 0)
+        self.assertEqual(proxy._active_requests, 0)
+
     async def test_status_does_not_claim_ready_before_interlock_is_ready(self):
         config = NodeGroupConfig(name="desktop", listen_port=8080, wol_mac="00:11:22:33:44:55")
         proxy = NodeGroupProxy(config)
