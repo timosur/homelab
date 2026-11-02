@@ -32,6 +32,11 @@ spec:
               storageClass: homelab-smb
               size: 20Gi
           backend:
+            extraEnvs:
+              - name: PENPOT_DATABASE_MIN_POOL_SIZE
+                value: "2"
+              - name: PENPOT_DATABASE_MAX_POOL_SIZE
+                value: "20"
             resources:
               requests:
                 cpu: 200m
