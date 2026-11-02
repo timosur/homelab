@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: oci://quay.io/jetstack/charts/cert-manager-csi-driver
+    repoURL: quay.io/jetstack/charts
     chart: cert-manager-csi-driver
     targetRevision: v0.16.1
     helm:

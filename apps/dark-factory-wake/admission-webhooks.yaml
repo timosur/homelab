@@ -3,7 +3,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: dark-factory-sandbox-gate
   annotations:
-    cert-manager.io/inject-ca-from: wol-proxy/dark-factory-admission-ca
+    cert-manager.io/inject-ca-from: wol-proxy/dark-factory-admission-tls
 webhooks:
   - name: mutate.sandbox-gate.home.timosur.com
     admissionReviewVersions: [v1]
@@ -31,7 +31,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: dark-factory-sandbox-gate
   annotations:
-    cert-manager.io/inject-ca-from: wol-proxy/dark-factory-admission-ca
+    cert-manager.io/inject-ca-from: wol-proxy/dark-factory-admission-tls
 webhooks:
   - name: validate.sandbox-gate.home.timosur.com
     admissionReviewVersions: [v1]

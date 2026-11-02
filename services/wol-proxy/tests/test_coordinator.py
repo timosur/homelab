@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from aiohttp import web
+from aiohttp import ClientPayloadError, ClientResponseError, web
 
 from test_interlock import FakeKubernetes
 from wol_proxy.config import NodeGroupBackend, NodeGroupConfig
@@ -119,6 +119,31 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.client.data["phase"], "releasing")
         with self.assertRaises(InterlockError):
             await Interlock(self.client).claim()
+
+    async def test_gate_release_http_errors_distinguish_rejection_from_uncertainty(self):
+        for status in (400, 403, 404, 409, 422, 499, 408, 429, 500, 503):
+            with self.subTest(status=status):
+                await self.asyncSetUp()
+                await self.ready()
+                self.monitor.any_workload.return_value = True
+                self.monitor.has_gated_pods.return_value = True
+                error = ClientResponseError(None, (), status=status)
+                self.monitor.release_gates.side_effect = error
+                with self.assertRaises(ClientResponseError) as caught:
+                    await self.coordinator.tick()
+                self.assertIs(caught.exception, error)
+                expected = "idle" if 400 <= status < 500 and status not in (408, 429) else "releasing"
+                self.assertEqual(self.client.data["phase"], expected)
+                self.assertFalse(self.coordinator.accepting)
+
+    async def test_gate_release_read_failure_remains_uncertain(self):
+        await self.ready()
+        self.monitor.any_workload.return_value = True
+        self.monitor.has_gated_pods.return_value = True
+        self.monitor.release_gates.side_effect = ClientPayloadError("incomplete response")
+        with self.assertRaises(ClientPayloadError):
+            await self.coordinator.tick()
+        self.assertEqual(self.client.data["phase"], "releasing")
 
     async def test_takeover_is_blocked_while_gate_patch_is_in_flight(self):
         await self.ready()

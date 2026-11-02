@@ -3,6 +3,8 @@
 import asyncio
 import time
 
+from aiohttp import ClientResponseError
+
 from .interlock import InterlockError
 from .power_client import PowerClientError
 
@@ -85,9 +87,14 @@ class SleepCoordinator:
         if active and await self.monitor.has_gated_pods():
             async with self.proxy._activity_lock:
                 await self.interlock.transition("idle", "releasing")
-                # If PATCH or its result is uncertain, leave releasing persisted. A new
-                # owner cannot safely take over until an operator fences the old request.
-                await self.monitor.release_gates(self.interlock.epoch, self.interlock.owner, self.interlock.anchor)
+                try:
+                    await self.monitor.release_gates(self.interlock.epoch, self.interlock.owner, self.interlock.anchor)
+                except ClientResponseError as exc:
+                    # A definite rejection leaves no PATCH in flight. Uncertain outcomes
+                    # must remain persisted until an operator fences the old request.
+                    if 400 <= exc.status < 500 and exc.status not in (408, 429):
+                        await self.interlock.transition("releasing", "idle")
+                    raise
                 await self.interlock.transition("releasing", "idle")
             return
 

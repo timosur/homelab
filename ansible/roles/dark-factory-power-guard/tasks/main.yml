@@ -46,8 +46,10 @@
 - name: Refuse to overwrite an unmanaged power guard file
   ansible.builtin.assert:
     that:
+      # The account marker is created only after all four files are installed.
       - >-
         not item.stat.exists or
+        (power_guard_account_marker.stat.exists and item.stat.isreg) or
         item.stat.checksum == (lookup('file', item.item.src, rstrip=False) | hash('sha1'))
     fail_msg: "{{ item.item.dest }} already exists with different contents; inspect it first."
   loop: "{{ power_guard_files.results }}"

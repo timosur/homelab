@@ -10,13 +10,15 @@ class FakeKubernetes:
         self.data = {"epoch": "0", "owner": "", "phase": "idle", "http_active": "0"}
         self.uid = "12345678-1234-1234-1234-123456789abc"
         self.revision = 1
+        self.metadata = {}
 
     async def _get(self, path):
-        return {"metadata": {"resourceVersion": str(self.revision), "uid": self.uid}, "data": copy.deepcopy(self.data)}
+        return {"metadata": {**copy.deepcopy(self.metadata), "resourceVersion": str(self.revision), "uid": self.uid}, "data": copy.deepcopy(self.data)}
 
     async def _put(self, path, body):
         if body["metadata"]["resourceVersion"] != str(self.revision):
             raise RuntimeError("conflict")
+        self.metadata = copy.deepcopy(body["metadata"])
         self.data = copy.deepcopy(body["data"])
         self.revision += 1
         return {}
@@ -33,6 +35,20 @@ class InterlockTests(unittest.IsolatedAsyncioTestCase):
         await self.first.transition("idle", "releasing")
         await self.first.transition("releasing", "idle")
         self.assertEqual(self.client.data["phase"], "idle")
+
+    async def test_writes_preserve_existing_metadata(self):
+        metadata = {
+            "name": "dark-factory-interlock", "namespace": "wol-proxy",
+            "labels": {"app": "wol-proxy"}, "annotations": {"example": "value"},
+            "ownerReferences": [{"apiVersion": "v1", "kind": "ConfigMap", "name": "owner", "uid": "owner-uid"}],
+            "finalizers": ["example.com/finalizer"],
+        }
+        self.client.metadata = copy.deepcopy(metadata)
+        await self.first.claim()
+        await self.first.transition("idle", "releasing")
+        for key, value in metadata.items():
+            self.assertEqual(self.client.metadata[key], value)
+        self.assertEqual(self.client.metadata["resourceVersion"], "2")
 
     async def test_takeover_cannot_pass_uncertain_release(self):
         await self.first.claim()
