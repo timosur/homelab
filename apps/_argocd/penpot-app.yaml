@@ -44,6 +44,15 @@ spec:
               limits:
                 memory: 3Gi
           frontend:
+            # Stock template runs one ~30Mi worker per node CPU and OOMs; see apps/penpot/kustomization.yaml
+            volumes:
+              - name: nginx-template
+                configMap:
+                  name: penpot-frontend-nginx
+            volumeMounts:
+              - name: nginx-template
+                mountPath: /tmp/nginx.conf.template
+                subPath: nginx.conf.template
             resources:
               requests:
                 cpu: 50m
