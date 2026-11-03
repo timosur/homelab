@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nfs-csi-driver
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/timosur/homelab.git
+    targetRevision: HEAD
+    path: apps/nfs-csi-driver
+  destination:
+    server: https://kubernetes.default.svc

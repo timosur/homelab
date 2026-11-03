@@ -1,0 +1,9 @@
+# No snapshotter or NFS credentials are used by this deployment.
+- op: remove
+  path: /rules/10
+- op: remove
+  path: /rules/5
+- op: remove
+  path: /rules/4
+- op: remove
+  path: /rules/3

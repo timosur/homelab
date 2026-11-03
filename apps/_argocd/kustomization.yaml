@@ -26,6 +26,7 @@ resources:
   - house-builder-app.yaml
   - monitoring-app.yaml
   - networking-app.yaml
+  - nfs-csi-driver-app.yaml
   - open-webui-app.yaml
   - smb-csi-driver-app.yaml
   - synology-csi-driver-app.yaml

@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kube-system
+
+resources:
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/v4.13.6/deploy/v4.13.6/rbac-csi-nfs.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/v4.13.6/deploy/v4.13.6/csi-nfs-driverinfo.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/v4.13.6/deploy/v4.13.6/csi-nfs-controller.yaml
+  - https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/v4.13.6/deploy/v4.13.6/csi-nfs-node.yaml
+  - storage-class.yaml
+
+patches:
+  - path: controller-patch.yaml
+  - path: node-patch.yaml
+  - target:
+      kind: ClusterRole
+      name: nfs-external-provisioner-role
+    path: provisioner-rbac-patch.yaml
