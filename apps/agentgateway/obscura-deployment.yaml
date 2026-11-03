@@ -28,6 +28,12 @@ spec:
             - --port
             - "8080"
             - --stealth
+          env:
+            - name: OBSCURA_MCP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: agentgateway-mcp-api-keys
+                  key: obscura-mcp-token
           ports:
             - name: mcp
               containerPort: 8080

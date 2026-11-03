@@ -21,3 +21,6 @@ spec:
     - secretKey: penpot-mcp-key
       remoteRef:
         key: agentgateway-penpot-mcp-key
+    - secretKey: obscura-mcp-token
+      remoteRef:
+        key: agentgateway-obscura-mcp-token

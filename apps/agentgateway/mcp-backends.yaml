@@ -9,10 +9,19 @@ spec:
     targets:
       - name: obscura
         static:
-          backendRef:
-            name: obscura
+          host: obscura.agentgateway-system.svc.cluster.local
           port: 8080
           protocol: StreamableHTTP
+          policies:
+            auth:
+              credentials:
+                - secretRef:
+                    name: agentgateway-mcp-api-keys
+                    key: obscura-mcp-token
+                  location:
+                    header:
+                      name: Authorization
+                      prefix: "Bearer "
       - name: context7
         static:
           host: mcp.context7.com
