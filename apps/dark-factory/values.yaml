@@ -45,14 +45,14 @@ sandboxNamespace:
   storageClass: dark-factory-nfs
   pvcSize: 20Gi
   resourceQuota:
-    # Keep agent pods and task volumes blocked until the safety gates pass.
-    pods: '0'
+    # User-authorized early real-task rollout; remaining acceptance gates are still open.
+    pods: '2'
     requestsCpu: '2'
     requestsMemory: 4Gi
     limitsCpu: '4'
     limitsMemory: 8Gi
     requestsStorage: 200Gi
-    persistentVolumeClaims: '0'
+    persistentVolumeClaims: '2'
   limitRange:
     defaultCpu: '2'
     defaultMemory: 4Gi
