@@ -101,8 +101,10 @@ suspend can require manual recovery; do not assume an SSH disconnect means suspe
   `https://github.com/timosur/homelab`. Build the credential-free, amd64-only
   `ghcr.io/timosur/homelab-dark-factory-project` image from the released
   `claude-project:2026.11.1` base. Pull requests validate it without publishing; `main` publishes
-  `sha-<commit>` and `latest`. Resolve the published SHA tag to a digest and configure the project
-  with that immutable digest, never `latest`. The released upstream base was observed at digest
+  `sha-<commit>` and `latest`. The first published SHA tag resolves to
+  `sha256:5f5c70cb625703f4422afbd40cf1b3053b63fec9803180645e17cf01e9bac1ae`; configure
+  the project with `ghcr.io/timosur/homelab-dark-factory-project` at that immutable digest, never
+  `latest`. The released upstream base was observed at digest
   `sha256:c9491848a9c48475636288f37b6d46a680bf72ede21eeb5e262b89121a4d4b6b`.
 - Verify branch protection requires human review, prevents direct pushes and PAT bypass, and
   prohibits agent merges. Review PR-triggered workflows. The Git proxy is not a substitute for
