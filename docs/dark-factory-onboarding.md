@@ -98,9 +98,12 @@ suspend can require manual recovery; do not assume an SSH disconnect means suspe
   with other workloads.
 - Check Authentik login and the home-only route. Configure credential references to
   `dark-factory-github` and `dark-factory-claude` in the UI, and configure the GitHub project for
-  `https://github.com/timosur/homelab`. Use an amd64 project image compatible with the selected
-  harness; upstream `claude-project:dev` was observed at digest
-  `sha256:b5029c1da745212ee1f38c2b96b77767c3d0bdccccd1896aab2fc73724f94fa1`.
+  `https://github.com/timosur/homelab`. Build the credential-free, amd64-only
+  `ghcr.io/timosur/homelab-dark-factory-project` image from the released
+  `claude-project:2026.11.1` base. Pull requests validate it without publishing; `main` publishes
+  `sha-<commit>` and `latest`. Resolve the published SHA tag to a digest and configure the project
+  with that immutable digest, never `latest`. The released upstream base was observed at digest
+  `sha256:c9491848a9c48475636288f37b6d46a680bf72ede21eeb5e262b89121a4d4b6b`.
 - Verify branch protection requires human review, prevents direct pushes and PAT bypass, and
   prohibits agent merges. Review PR-triggered workflows. The Git proxy is not a substitute for
   repository branch protection.

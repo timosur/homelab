@@ -1,0 +1,93 @@
+name: Build Dark Factory project image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-dark-factory-project.yml'
+      - 'images/dark-factory-project/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-dark-factory-project.yml'
+      - 'images/dark-factory-project/**'
+
+env:
+  IMAGE_NAME: ghcr.io/timosur/homelab-dark-factory-project
+  LOCAL_IMAGE: dark-factory-project:validation
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build project image
+        uses: docker/build-push-action@v7
+        with:
+          context: images/dark-factory-project
+          load: true
+          platforms: linux/amd64
+          push: false
+          tags: ${{ env.LOCAL_IMAGE }}
+          cache-from: type=gha,scope=dark-factory-project
+          cache-to: type=gha,mode=max,scope=dark-factory-project
+
+      - name: Validate project tooling and isolation
+        run: |
+          docker run --rm --platform linux/amd64 --entrypoint sh "${LOCAL_IMAGE}" -ec '
+            test "$(id -u)" = 1000
+            test "$(id -g)" = 1000
+            test "$PWD" = /workspace
+            command -v python3 uv node npm openspec helm kubectl ansible
+            openspec --version
+            mkdir /tmp/kustomize
+            printf "apiVersion: kustomize.config.k8s.io/v1beta1\\nkind: Kustomization\\nconfigMapGenerator:\\n- name: validation\\n  literals:\\n  - ok=true\\n" > /tmp/kustomize/kustomization.yaml
+            kubectl kustomize /tmp/kustomize
+            test ! -e "$HOME/.ssh"
+            test ! -e "$HOME/.gitconfig"
+          '
+
+  publish:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish project image
+        uses: docker/build-push-action@v7
+        with:
+          context: images/dark-factory-project
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=dark-factory-project
+          cache-to: type=gha,mode=max,scope=dark-factory-project
