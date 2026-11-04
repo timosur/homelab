@@ -25,6 +25,11 @@ webhooks:
         operations: [CREATE]
         resources: [pods]
         scope: Namespaced
+      - apiGroups: ['']
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [persistentvolumeclaims]
+        scope: Namespaced
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -57,4 +62,9 @@ webhooks:
         apiVersions: [v1]
         operations: [CREATE]
         resources: [pods/binding, bindings]
+        scope: Namespaced
+      - apiGroups: ['']
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE, DELETE]
+        resources: [persistentvolumeclaims]
         scope: Namespaced

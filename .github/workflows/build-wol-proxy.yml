@@ -5,10 +5,14 @@ on:
     branches: [main]
     paths:
       - "services/wol-proxy/**"
+      - "apps/dark-factory-wake/**"
+      - "apps/wol-proxy/configmap.yaml"
   pull_request:
     branches: [main]
     paths:
       - "services/wol-proxy/**"
+      - "apps/dark-factory-wake/**"
+      - "apps/wol-proxy/configmap.yaml"
 
 env:
   REGISTRY: ghcr.io

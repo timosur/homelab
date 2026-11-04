@@ -8,6 +8,7 @@ data:
   owner: ''
   phase: idle
   http_active: '0'
+  workspace_records: '{}'
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -42,7 +43,7 @@ metadata:
 rules:
   - apiGroups: [coordination.k8s.io]
     resources: [leases]
-    resourceNames: [homelab-amd-desktop]
+    resourceNames: [homelab-amd-desktop, homelab-gpu]
     verbs: [get]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

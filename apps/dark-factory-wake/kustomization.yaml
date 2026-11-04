@@ -6,6 +6,8 @@ resources:
   - interlock.yaml
   - desktop-known-hosts-external-secret.yaml
   - desktop-power-external-secret.yaml
+  - gpu-known-hosts-external-secret.yaml
+  - gpu-power-external-secret.yaml
   - admission-tls.yaml
   - admission-service.yaml
   - admission-webhooks.yaml
