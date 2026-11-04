@@ -13,8 +13,7 @@ data:
         wolMac: "2c:f0:5d:05:9d:80"
         wolHost: "192.168.2.100"
         wolBroadcast: "192.168.2.255"
-        # Temporary controlled power-acceptance test value; restore 5 after sleep/wake verification.
-        idleTimeoutMinutes: 1
+        idleTimeoutMinutes: 5
         wakeTimeoutSeconds: 120
         sshUser: timosur
         sshKeyPath: /secrets/ssh-key
