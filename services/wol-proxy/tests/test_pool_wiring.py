@@ -97,7 +97,7 @@ class PoolWiringTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             build_proxies(Config([self.backend], [self.group, other]))
 
-    def test_commented_gitops_example_builds_safe_staged_pool(self):
+    def test_enabled_gitops_pool_uses_the_power_coordinator(self):
         root = Path(__file__).resolve().parents[3]
         manifest = yaml.safe_load((root / "apps/wol-proxy/configmap.yaml").read_text())
         lines = manifest["data"]["config.yaml"].splitlines()
@@ -117,5 +117,5 @@ class PoolWiringTests(unittest.IsolatedAsyncioTestCase):
             groups, backends = build_proxies(load_config(str(config)))
         self.assertEqual([worker.node for worker in groups[0].cfg.sandbox_pool.workers],
                          ["homelab-amd-desktop", "homelab-gpu"])
-        self.assertIsNone(groups[0]._coordinator)
+        self.assertIsNotNone(groups[0]._coordinator)
         self.assertTrue(backends[0]._sleep_managed)

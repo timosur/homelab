@@ -37,7 +37,7 @@ data:
         sandboxWorkspaceDeleteActor: system:serviceaccount:dark-factory:dark-factory-control-plane
         kubernetesNode: homelab-amd-desktop
         sandboxAdmissionEnabled: true
-        # sandboxPowerInterlockEnabled: true
+        sandboxPowerInterlockEnabled: true
         sandboxPool:
           backends: [ollama]
           workers:
