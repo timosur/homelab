@@ -82,6 +82,7 @@
       --set hubble.ui.enabled=true
       --set routingMode=tunnel
       --set bpf.masquerade=true
+      --set socketLB.hostNamespaceOnly=true
       --set envoy.enabled=false
       --set l2announcements.enabled=true
       --set externalIPs.enabled=true
