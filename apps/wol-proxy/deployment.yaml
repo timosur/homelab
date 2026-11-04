@@ -55,9 +55,27 @@ spec:
               readOnly: true
             - name: desktop-power-key
               mountPath: /power-key
+        - name: prepare-gpu-power-key
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              if [ -s /power-secret/ssh-key ]; then
+                base64 -d /power-secret/ssh-key > /power-key/id
+                chown 1000:1000 /power-key/id
+                chmod 400 /power-key/id
+              fi
+          volumeMounts:
+            - name: gpu-power-secret
+              mountPath: /power-secret
+              readOnly: true
+            - name: gpu-power-key
+              mountPath: /power-key
       containers:
         - name: wol-proxy
-          image: ghcr.io/timosur/homelab/wol-proxy:latest@sha256:0c173398e004c7f9b48422b1c9b83662610c57f637ca33ac8dc0f21a4f216172
+          image: ghcr.io/timosur/homelab/wol-proxy:sha-6e555a2@sha256:873d71651fc6a7fdf012ccfae8c754e734a52f2b6a120f0067a0356f2b70d440
           ports:
             - containerPort: 11434
               name: ollama
@@ -87,6 +105,12 @@ spec:
               readOnly: true
             - name: desktop-power-key
               mountPath: /run/desktop-power-ssh
+              readOnly: true
+            - name: gpu-known-hosts
+              mountPath: /run/gpu-ssh
+              readOnly: true
+            - name: gpu-power-key
+              mountPath: /run/gpu-power-ssh
               readOnly: true
           livenessProbe:
             tcpSocket:
@@ -122,5 +146,17 @@ spec:
             secretName: wol-proxy-desktop-power-ssh-key
             optional: true
         - name: desktop-power-key
+          emptyDir:
+            medium: Memory
+        - name: gpu-known-hosts
+          secret:
+            secretName: wol-proxy-gpu-known-hosts
+            optional: true
+            defaultMode: 288
+        - name: gpu-power-secret
+          secret:
+            secretName: wol-proxy-gpu-power-ssh-key
+            optional: true
+        - name: gpu-power-key
           emptyDir:
             medium: Memory
