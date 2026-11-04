@@ -29,32 +29,32 @@ data:
     nodeGroups:
       - name: desktop
         listenPort: 8080
-        # Enable only after the Dark Factory wake RBAC and suspend interlock are validated.
-        # sandboxNamespace: dark-factory-sandboxes
-        # sandboxInstance: dark-factory
-        # sandboxWorkspaceStorageClass: dark-factory-nfs
-        # sandboxWorkspaceDeleteActor: system:serviceaccount:dark-factory:dark-factory-control-plane
-        # kubernetesNode: homelab-amd-desktop
-        # sandboxAdmissionEnabled: true
+        # Admission is enabled before the power interlock. Quotas and worker labels remain disabled
+        # until the documented workspace and power acceptance tests pass.
+        sandboxNamespace: dark-factory-sandboxes
+        sandboxInstance: dark-factory
+        sandboxWorkspaceStorageClass: dark-factory-nfs
+        sandboxWorkspaceDeleteActor: system:serviceaccount:dark-factory:dark-factory-control-plane
+        kubernetesNode: homelab-amd-desktop
+        sandboxAdmissionEnabled: true
         # sandboxPowerInterlockEnabled: true
-        # Configure the pool only after reviewing docs/dark-factory-onboarding.md.
-        # sandboxPool:
-        #   backends: [ollama]
-        #   workers:
-        #     - node: homelab-amd-desktop
-        #       suspendHost: "192.168.2.241"
-        #       wolMac: "30:9c:23:8a:30:e3"
-        #       wolHost: "192.168.2.100"
-        #       wolBroadcast: "192.168.2.255"
-        #       powerKeyPath: /run/desktop-power-ssh/id
-        #       knownHostsPath: /run/desktop-ssh/known_hosts
-        #     - node: homelab-gpu
-        #       suspendHost: "192.168.2.47"
-        #       wolMac: "2c:f0:5d:05:9d:80"
-        #       wolHost: "192.168.2.100"
-        #       wolBroadcast: "192.168.2.255"
-        #       powerKeyPath: /run/gpu-power-ssh/id
-        #       knownHostsPath: /run/gpu-ssh/known_hosts
+        sandboxPool:
+          backends: [ollama]
+          workers:
+            - node: homelab-amd-desktop
+              suspendHost: "192.168.2.241"
+              wolMac: "30:9c:23:8a:30:e3"
+              wolHost: "192.168.2.100"
+              wolBroadcast: "192.168.2.255"
+              powerKeyPath: /run/desktop-power-ssh/id
+              knownHostsPath: /run/desktop-ssh/known_hosts
+            - node: homelab-gpu
+              suspendHost: "192.168.2.47"
+              wolMac: "2c:f0:5d:05:9d:80"
+              wolHost: "192.168.2.100"
+              wolBroadcast: "192.168.2.255"
+              powerKeyPath: /run/gpu-power-ssh/id
+              knownHostsPath: /run/gpu-ssh/known_hosts
         wolMac: "30:9c:23:8a:30:e3"
         wolHost: "192.168.2.100"
         wolBroadcast: "192.168.2.255"
