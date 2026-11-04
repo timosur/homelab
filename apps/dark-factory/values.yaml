@@ -2,14 +2,14 @@ fullnameOverride: dark-factory
 
 image:
   controlPlane:
-    digest: sha256:6a9528b984fe193683f1c0075571935b9c5c4d0ae2c073867f5bc0e25c2431db
+    digest: sha256:8b0eeb0b84e8698d98efb4b7ed3d2bf1b8b67d090f2a83c09b82dc7dc16f5ff3
   runtime:
-    digest: sha256:06fa6d0b9071954279de5b878a9cff9ca29b819da7faf97fc598797d0a650fa6
+    digest: sha256:edfe67804857a7345c3ba3a7537da9a7004ffff9b2e6fc008233c72c909ec975
   harness:
     claudeCode:
-      digest: sha256:c8c8e0445638c3bd6ba74f48f4771ea5cd99de011705c358a97a7a8908e9bc54
+      digest: sha256:528c382e92527df7f85c019272060254e6885f63dc97e3d9f511edba280061f0
   testProject:
-    digest: sha256:7625c60cc962e270a27a1c93d826efe51fe5f2dfa1423fb38e94225d6db1bd07
+    digest: sha256:e8d3ae9416e7dc893c6f8ccba6d935dcfcd98cf4a93cea4a7dd8ed66a6117c1f
 
 database:
   host: central-postgres-rw.postgres.svc.cluster.local
@@ -42,16 +42,17 @@ telemetry:
 sandboxNamespace:
   name: dark-factory-sandboxes
   runtimeClassName: kata-dark-factory
-  storageClass: homelab-smb
+  storageClass: dark-factory-nfs
   pvcSize: 20Gi
   resourceQuota:
-    pods: '2'
+    # Keep agent pods and task volumes blocked until the safety gates pass.
+    pods: '0'
     requestsCpu: '2'
     requestsMemory: 4Gi
     limitsCpu: '4'
     limitsMemory: 8Gi
     requestsStorage: 200Gi
-    persistentVolumeClaims: '10'
+    persistentVolumeClaims: '0'
   limitRange:
     defaultCpu: '2'
     defaultMemory: 4Gi
@@ -62,7 +63,7 @@ plugins:
   forgejo: null
   github:
     image:
-      digest: sha256:aa6f74995b6ef5ce7193033f196ee752b7e87a2cd68f62da525ab7498c26cc65
+      digest: sha256:b46b87da22e639dd80f066013b0ad4b8cbca2a43f8bf587880bb227515749339
 
 controlPlane:
   resources:

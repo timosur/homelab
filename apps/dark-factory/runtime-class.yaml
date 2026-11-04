@@ -5,9 +5,13 @@ metadata:
 handler: kata
 scheduling:
   nodeSelector:
-    kubernetes.io/hostname: homelab-amd-desktop
+    dark-factory.home.timosur.com/sandbox-worker: 'true'
   tolerations:
     - key: availability
       operator: Equal
       value: daytime
+      effect: NoSchedule
+    - key: gpu
+      operator: Equal
+      value: 'true'
       effect: NoSchedule
