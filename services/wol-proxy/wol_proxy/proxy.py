@@ -17,8 +17,10 @@ from .config import BackendConfig, NodeGroupBackend, NodeGroupConfig
 from .coordinator import SleepCoordinator
 from .interlock import Interlock, InterlockError
 from .power_client import PowerClient, PowerClientError
+from .pool import PoolMonitor, PoolPowerClient, wake_all
 from .sandboxes import SandboxMonitor
 from .wol import send_wol_packet
+from .workspace import WorkspaceVerifier
 
 log = logging.getLogger("wol-proxy")
 
@@ -116,8 +118,10 @@ async def proxy_websocket(
 
 
 class ProxyBackend:
-    def __init__(self, cfg: BackendConfig) -> None:
+    def __init__(self, cfg: BackendConfig, *, coordinator: SleepCoordinator | None = None, sleep_managed: bool = False) -> None:
         self.cfg = cfg
+        self._coordinator = coordinator
+        self._sleep_managed = sleep_managed or coordinator is not None
         self._last_activity = time.monotonic()
         self._is_awake = False
         self._wake_lock = asyncio.Lock()
@@ -182,6 +186,8 @@ class ProxyBackend:
     # -- Suspend ------------------------------------------------------------
 
     async def suspend(self) -> None:
+        if self._sleep_managed:
+            raise RuntimeError("coordinated backends cannot suspend outside the power guard")
         if not self.cfg.ssh_user:
             log.info("[%s] No SSH user configured, skipping suspend", self.cfg.name)
             return
@@ -239,6 +245,9 @@ class ProxyBackend:
     # -- Idle watcher -------------------------------------------------------
 
     async def idle_watcher(self) -> None:
+        if self._sleep_managed:
+            log.info("[%s] Idle sleep managed by power coordinator", self.cfg.name)
+            return
         if self.cfg.idle_timeout_minutes <= 0:
             log.info("[%s] Idle timeout disabled", self.cfg.name)
             return
@@ -270,6 +279,43 @@ class ProxyBackend:
     # -- HTTP reverse proxy -------------------------------------------------
 
     async def handle_request(self, request: web.Request) -> web.StreamResponse:
+        if self._coordinator is None:
+            return await self._handle_request(request)
+
+        coordinator = self._coordinator
+        proxy = coordinator.proxy
+        async with proxy._activity_lock:
+            if not coordinator.accepting:
+                if request.method == "GET" and request.path in self._cached_paths and request.path in self._cache:
+                    return web.Response(text=self._cache[request.path], content_type="application/json")
+                proxy._wake_requested = True
+                proxy.touch()
+                return web.Response(status=503, text="Backend is starting; retry shortly", headers={"Retry-After": "5"})
+            if proxy._proxied_requests == 0:
+                try:
+                    await coordinator.interlock.http_change(1)
+                except (ClientError, OSError, TimeoutError, ValueError, InterlockError):
+                    coordinator.accepting = False
+                    proxy._wake_requested = True
+                    proxy.touch()
+                    return web.Response(status=503, text="Backend activity cannot be verified")
+            proxy._proxied_requests += 1
+            proxy._active_requests += 1
+        try:
+            return await self._handle_request(request)
+        finally:
+            async with proxy._activity_lock:
+                proxy._active_requests -= 1
+                proxy._proxied_requests -= 1
+                proxy.touch()
+                if proxy._proxied_requests == 0:
+                    try:
+                        await coordinator.interlock.http_change(-1)
+                    except (ClientError, OSError, TimeoutError, ValueError, InterlockError) as exc:
+                        coordinator.accepting = False
+                        log.error("[%s] Cannot clear durable HTTP activity: %s", self.cfg.name, exc)
+
+    async def _handle_request(self, request: web.Request) -> web.StreamResponse:
         path = request.path
         is_cacheable = path in self._cached_paths and request.method == "GET"
 
@@ -378,18 +424,50 @@ class NodeGroupProxy:
         sandbox_configured = any((cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node))
         if cfg.sandbox_admission_enabled and not sandbox_configured:
             raise ValueError("sandbox admission requires sandbox monitoring")
-        self._sandbox_monitor = (
-            SandboxMonitor(cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node)
-            if sandbox_configured else None
-        )
+        if cfg.sandbox_pool is not None:
+            workers = cfg.sandbox_pool.workers
+            required = ("node", "suspend_host", "wol_mac", "wol_host", "wol_broadcast", "power_key_path", "known_hosts_path", "power_ssh_user")
+            if (
+                not sandbox_configured or len(workers) < 2 or not cfg.ssh_user or not cfg.ssh_key_path
+                or any(not isinstance(getattr(worker, key), str) or not getattr(worker, key) for worker in workers for key in required)
+                or workers[0].node != cfg.kubernetes_node
+                or workers[0].suspend_host != cfg.suspend_host or workers[0].wol_mac.lower() != cfg.wol_mac.lower()
+                or len({worker.suspend_host for worker in workers}) != len(workers)
+                or len({worker.wol_mac.lower() for worker in workers}) != len(workers)
+            ):
+                raise ValueError("sandbox pool requires distinct, fully configured workers and a primary node")
+            self._sandbox_monitor = PoolMonitor([
+                SandboxMonitor(cfg.sandbox_namespace, cfg.sandbox_instance, worker.node) for worker in workers
+            ])
+        else:
+            self._sandbox_monitor = (
+                SandboxMonitor(cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node)
+                if sandbox_configured else None
+            )
+        if cfg.sandbox_workspace_storage_class and self._sandbox_monitor is not None:
+            primary = (self._sandbox_monitor.monitors[0] if cfg.sandbox_pool is not None
+                       else self._sandbox_monitor)
+            nodes = (tuple(worker.node for worker in cfg.sandbox_pool.workers)
+                     if cfg.sandbox_pool is not None else (cfg.kubernetes_node,))
+            verifier = WorkspaceVerifier(primary, cfg.sandbox_namespace, cfg.sandbox_instance,
+                                         cfg.sandbox_workspace_storage_class, nodes)
+            primary.workspace_check = verifier.check
+            primary.workspace_reserve = verifier.reserve
         self._last_sandbox_wake = float("-inf")
         if cfg.sandbox_power_interlock_enabled and not cfg.sandbox_admission_enabled:
             raise ValueError("power interlock requires sandbox admission")
         self._coordinator = None
         if cfg.sandbox_power_interlock_enabled:
+            power = (
+                PoolPowerClient([
+                    PowerClient(worker.suspend_host, worker.power_ssh_user, worker.power_key_path, worker.known_hosts_path)
+                    for worker in cfg.sandbox_pool.workers
+                ]) if cfg.sandbox_pool is not None else
+                PowerClient(cfg.suspend_host, cfg.power_ssh_user, "/run/desktop-power-ssh/id", "/run/desktop-ssh/known_hosts")
+            )
             self._coordinator = SleepCoordinator(
-                self, self._sandbox_monitor, Interlock(self._sandbox_monitor),
-                PowerClient(cfg.suspend_host, cfg.power_ssh_user, "/run/desktop-power-ssh/id", "/run/desktop-ssh/known_hosts"),
+                self, self._sandbox_monitor, Interlock(self._sandbox_monitor.monitors[0] if cfg.sandbox_pool is not None else self._sandbox_monitor),
+                power,
                 self._send_desktop_wake,
             )
         self._host_map: dict[str, NodeGroupBackend] = {
@@ -442,14 +520,7 @@ class NodeGroupProxy:
                 return
             self._state = "waking"
             try:
-                await send_wol_packet(
-                    self.cfg.wol_mac,
-                    self.cfg.name,
-                    self.cfg.wol_host,
-                    self.cfg.ssh_user,
-                    self.cfg.ssh_key_path,
-                    self.cfg.wol_broadcast,
-                )
+                await self._send_desktop_wake()
                 deadline = time.monotonic() + self.cfg.wake_timeout_seconds
                 while time.monotonic() < deadline:
                     await asyncio.sleep(3)
@@ -468,12 +539,22 @@ class NodeGroupProxy:
             self._state = "sleeping"
 
     async def _send_desktop_wake(self) -> None:
+        if self.cfg.sandbox_pool is not None:
+            async def wake(worker):
+                await send_wol_packet(
+                    worker.wol_mac, worker.node, worker.wol_host,
+                    self.cfg.ssh_user, self.cfg.ssh_key_path, worker.wol_broadcast,
+                )
+            await wake_all([lambda worker=worker: wake(worker) for worker in self.cfg.sandbox_pool.workers])
+            return
         await send_wol_packet(
             self.cfg.wol_mac, self.cfg.name, self.cfg.wol_host,
             self.cfg.ssh_user, self.cfg.ssh_key_path, self.cfg.wol_broadcast,
         )
 
     async def suspend(self) -> None:
+        if self.cfg.sandbox_pool is not None:
+            raise RuntimeError("sandbox pool cannot suspend outside the power guard")
         if not self.cfg.ssh_user or not self.cfg.suspend_host:
             return
         log.info(

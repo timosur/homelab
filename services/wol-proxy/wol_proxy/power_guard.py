@@ -1,9 +1,8 @@
 #!/usr/bin/python3
-"""Desktop-side fencing primitive for Dark Factory sleep requests.
+"""Host-side fencing primitive for Dark Factory sleep requests.
 
-This program is not yet connected to the Kubernetes coordinator. Only a trusted
-systemd post-sleep hook may invoke ``complete``. All desktop suspension must go
-through this guard for a completion to identify the guard's own request.
+Only a trusted systemd post-sleep hook may invoke ``complete``. All host suspension
+must go through this guard for a completion to identify the guard's own request.
 """
 
 import argparse
@@ -148,7 +147,7 @@ class PowerGuard:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Desktop power fencing for Dark Factory")
+    parser = argparse.ArgumentParser(description="Host power fencing for Dark Factory")
     parser.add_argument("operation", choices=("init", "status", "fence", "suspend", "complete"))
     parser.add_argument("epoch", nargs="?", type=int)
     parser.add_argument("owner", nargs="?")

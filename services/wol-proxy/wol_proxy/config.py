@@ -60,6 +60,24 @@ class NodeGroupBackend:
 
 
 @dataclass
+class SandboxWorkerConfig:
+    node: str
+    suspend_host: str
+    wol_mac: str
+    wol_host: str
+    wol_broadcast: str
+    power_key_path: str
+    known_hosts_path: str
+    power_ssh_user: str = "dark-factory-power"
+
+
+@dataclass
+class SandboxPoolConfig:
+    workers: list[SandboxWorkerConfig]
+    backends: list[str]
+
+
+@dataclass
 class NodeGroupConfig:
     """Host-based backend group sharing one physical node."""
     name: str
@@ -76,10 +94,13 @@ class NodeGroupConfig:
     backends: list[NodeGroupBackend] = field(default_factory=list)
     sandbox_namespace: str = ""
     sandbox_instance: str = ""
+    sandbox_workspace_storage_class: str = ""
+    sandbox_workspace_delete_actor: str = ""
     kubernetes_node: str = ""
     sandbox_admission_enabled: bool = False
     sandbox_power_interlock_enabled: bool = False
     power_ssh_user: str = "dark-factory-power"
+    sandbox_pool: SandboxPoolConfig | None = None
 
 
 @dataclass
@@ -121,6 +142,21 @@ def load_config(path: str) -> Config:
 
     node_groups = []
     for ng in raw.get("nodeGroups", []):
+        pool = ng.get("sandboxPool")
+        if pool is not None:
+            if not isinstance(pool, dict) or not isinstance(pool.get("workers"), list) or not isinstance(pool.get("backends"), list):
+                raise ValueError("sandboxPool requires worker and backend lists")
+            workers = []
+            for worker in pool["workers"]:
+                if not isinstance(worker, dict):
+                    raise ValueError("invalid sandbox worker")
+                workers.append(SandboxWorkerConfig(
+                    node=worker["node"], suspend_host=worker["suspendHost"], wol_mac=worker["wolMac"],
+                    wol_host=worker["wolHost"], wol_broadcast=worker["wolBroadcast"],
+                    power_key_path=worker["powerKeyPath"], known_hosts_path=worker["knownHostsPath"],
+                    power_ssh_user=worker.get("powerSshUser", "dark-factory-power"),
+                ))
+            pool = SandboxPoolConfig(workers=workers, backends=pool["backends"])
         ng_backends = []
         for nb in ng.get("backends", []):
             path_routes = [
@@ -150,10 +186,13 @@ def load_config(path: str) -> Config:
                 backends=ng_backends,
                 sandbox_namespace=ng.get("sandboxNamespace", ""),
                 sandbox_instance=ng.get("sandboxInstance", ""),
+                sandbox_workspace_storage_class=ng.get("sandboxWorkspaceStorageClass", ""),
+                sandbox_workspace_delete_actor=ng.get("sandboxWorkspaceDeleteActor", ""),
                 kubernetes_node=ng.get("kubernetesNode", ""),
                 sandbox_admission_enabled=optional_boolean(ng, "sandboxAdmissionEnabled"),
                 sandbox_power_interlock_enabled=optional_boolean(ng, "sandboxPowerInterlockEnabled"),
                 power_ssh_user=ng.get("powerSshUser", "dark-factory-power"),
+                sandbox_pool=pool,
             )
         )
 

@@ -1,0 +1,17 @@
+# From upstream e73a64db, df_k8s__render__tests__pvc_default.snap.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: dark-factory
+    dark-factory.io/instance: test-instance
+    dark-factory.io/task-key: DF-1
+  name: task-df-1
+  namespace: dark-factory-dev-sandboxes
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: factory-workspace

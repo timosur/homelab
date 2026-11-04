@@ -7,6 +7,20 @@ from aiohttp import ClientResponseError
 
 from .interlock import InterlockError
 from .power_client import PowerClientError
+from .workspace import WorkspaceBusy
+
+
+def leases_advanced(previous, current):
+    """Require a fresh lease from every worker in the fenced pool."""
+    if isinstance(previous, str) and isinstance(current, str):
+        return bool(previous and current and previous != current)
+    if (
+        not isinstance(previous, tuple) or not isinstance(current, tuple)
+        or not previous or len(previous) != len(current)
+        or not all(isinstance(value, str) and value for value in previous + current)
+    ):
+        raise ValueError("node lease revisions are unavailable or inconsistent")
+    return all(old != new for old, new in zip(previous, current))
 
 
 class SleepCoordinator:
@@ -68,7 +82,7 @@ class SleepCoordinator:
 
         if not self.accepting:
             revision = await self.monitor.node_lease_revision()
-            if revision == self.lease_revision:
+            if not leases_advanced(self.lease_revision, revision):
                 return
             if not await self.monitor.node_ready():
                 self.fenced_epoch = None
@@ -89,6 +103,10 @@ class SleepCoordinator:
                 await self.interlock.transition("idle", "releasing")
                 try:
                     await self.monitor.release_gates(self.interlock.epoch, self.interlock.owner, self.interlock.anchor)
+                except WorkspaceBusy:
+                    # No PATCH was attempted for the busy workspace; retry on a later tick.
+                    await self.interlock.transition("releasing", "idle")
+                    return
                 except ClientResponseError as exc:
                     # A definite rejection leaves no PATCH in flight. Uncertain outcomes
                     # must remain persisted until an operator fences the old request.

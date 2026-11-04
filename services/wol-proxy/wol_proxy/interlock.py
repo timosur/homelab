@@ -33,14 +33,16 @@ class Interlock:
             or not isinstance(anchor, str) or not anchor
         ):
             raise InterlockError("interlock state is invalid")
-        return {"epoch": int(epoch), "owner": owner, "phase": phase, "http_active": int(http_active), "revision": revision, "anchor": anchor, "metadata": meta}
+        return {"epoch": int(epoch), "owner": owner, "phase": phase, "http_active": int(http_active), "revision": revision, "anchor": anchor, "metadata": meta, "data": dict(data)}
 
     async def _replace(self, state, *, epoch, owner, phase, http_active=None):
+        data = dict(state["data"])
+        data.update(epoch=str(epoch), owner=owner, phase=phase,
+                    http_active=str(state["http_active"] if http_active is None else http_active))
         await self.client._put(self.path, {
             "apiVersion": "v1", "kind": "ConfigMap",
             "metadata": state["metadata"],
-            "data": {"epoch": str(epoch), "owner": owner, "phase": phase,
-                     "http_active": str(state["http_active"] if http_active is None else http_active)},
+            "data": data,
         })
 
     async def claim(self):

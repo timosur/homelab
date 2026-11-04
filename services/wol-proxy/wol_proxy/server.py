@@ -9,9 +9,58 @@ from aiohttp import web
 from .config import load_config
 from .admission import admission_app
 from .proxy import NodeGroupProxy, ProxyBackend
-from .sandboxes import SandboxMonitor
 
 log = logging.getLogger("wol-proxy")
+
+
+def build_proxies(config):
+    groups = [NodeGroupProxy(group) for group in config.node_groups]
+    names = [backend.name for backend in config.backends]
+    if len(set(names)) != len(names):
+        raise ValueError("backend names must be distinct")
+    managed = {}
+    claimed_hosts = set()
+    claimed_macs = set()
+    for group in groups:
+        pool = group.cfg.sandbox_pool
+        if pool is None:
+            continue
+        backend_names = pool.backends
+        if (
+            not isinstance(backend_names, list)
+            or not all(isinstance(name, str) and name for name in backend_names)
+            or len(set(backend_names)) != len(backend_names)
+        ):
+            raise ValueError("sandbox pool backend names must be distinct strings")
+        hosts = {worker.suspend_host for worker in pool.workers}
+        macs = {worker.wol_mac.lower() for worker in pool.workers}
+        if claimed_hosts & hosts or claimed_macs & macs:
+            raise ValueError("sandbox pools cannot share a power host")
+        claimed_hosts.update(hosts)
+        claimed_macs.update(macs)
+        expected = {backend.name for backend in config.backends
+                    if backend.target_host in hosts or backend.wol_mac.lower() in macs}
+        if set(backend_names) != expected or any(name in managed for name in backend_names):
+            raise ValueError("sandbox pool must coordinate every matching backend exactly once")
+        if any(
+            not any(backend.target_host == worker.suspend_host and backend.wol_mac.lower() == worker.wol_mac.lower()
+                    for worker in pool.workers)
+            for backend in config.backends if backend.name in backend_names
+        ):
+            raise ValueError("coordinated backend host and MAC must match the same sandbox worker")
+        for name in backend_names:
+            managed[name] = group
+    for group in groups:
+        if group.cfg.sandbox_pool is None and (
+            group.cfg.suspend_host in claimed_hosts or group.cfg.wol_mac.lower() in claimed_macs
+        ):
+            raise ValueError("uncoordinated node group overlaps a sandbox pool")
+    backends = [
+        ProxyBackend(backend, coordinator=managed[backend.name]._coordinator, sleep_managed=True)
+        if backend.name in managed else ProxyBackend(backend)
+        for backend in config.backends
+    ]
+    return groups, backends
 
 
 async def reload_admission_tls(context: ssl.SSLContext) -> None:
@@ -23,6 +72,20 @@ async def reload_admission_tls(context: ssl.SSLContext) -> None:
             log.warning("Cannot reload admission certificate: %s", exc)
 
 
+def build_admission_app(group):
+    cfg = group.cfg
+    nodes = (tuple(worker.node for worker in cfg.sandbox_pool.workers)
+             if cfg.sandbox_pool is not None else cfg.kubernetes_node)
+    monitor = group._sandbox_monitor
+    return admission_app(
+        cfg.sandbox_namespace, nodes, monitor.can_bind, monitor.can_release,
+        workspace_instance=cfg.sandbox_instance,
+        workspace_storage_class=cfg.sandbox_workspace_storage_class,
+        workspace_delete_actor=cfg.sandbox_workspace_delete_actor,
+        can_delete=monitor.can_delete_workspace,
+    )
+
+
 async def run(config_path: str) -> None:
     config = load_config(config_path)
     if not config.backends and not config.node_groups:
@@ -31,28 +94,25 @@ async def run(config_path: str) -> None:
 
     runners: list[web.AppRunner] = []
     tasks: list[asyncio.Task] = []
-    admission_groups = [group for group in config.node_groups if group.sandbox_admission_enabled]
+    groups, backends = build_proxies(config)
+    admission_groups = [group for group in groups if group.cfg.sandbox_admission_enabled]
     if len(admission_groups) > 1:
         raise ValueError("only one sandbox admission group is supported")
     if admission_groups:
-        namespace = admission_groups[0].sandbox_namespace
+        group = admission_groups[0]
+        namespace = group.cfg.sandbox_namespace
         if not namespace:
             raise ValueError("sandbox admission requires a namespace")
-        admission_monitor = SandboxMonitor(
-            namespace, admission_groups[0].sandbox_instance, admission_groups[0].kubernetes_node
-        )
         tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         tls.load_cert_chain("/run/dark-factory-admission/tls.crt", "/run/dark-factory-admission/tls.key")
-        admission_runner = web.AppRunner(admission_app(
-            namespace, admission_groups[0].kubernetes_node, admission_monitor.can_bind, admission_monitor.can_release,
-        ))
+        admission_runner = web.AppRunner(build_admission_app(group))
         await admission_runner.setup()
         await web.TCPSite(admission_runner, "0.0.0.0", 9443, ssl_context=tls).start()
         runners.append(admission_runner)
         tasks.append(asyncio.create_task(reload_admission_tls(tls)))
 
-    for backend_cfg in config.backends:
-        backend = ProxyBackend(backend_cfg)
+    for backend in backends:
+        backend_cfg = backend.cfg
         await backend.check_initial_state()
 
         tasks.append(asyncio.create_task(backend.idle_watcher()))
@@ -74,8 +134,8 @@ async def run(config_path: str) -> None:
             backend_cfg.target_port,
         )
 
-    for ng_cfg in config.node_groups:
-        ng_proxy = NodeGroupProxy(ng_cfg)
+    for ng_proxy in groups:
+        ng_cfg = ng_proxy.cfg
         await ng_proxy.check_initial_state()
         tasks.append(asyncio.create_task(ng_proxy.idle_watcher()))
         tasks.append(asyncio.create_task(ng_proxy.sandbox_watcher()))

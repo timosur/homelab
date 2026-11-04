@@ -9,6 +9,15 @@ from aiohttp import ClientSession, ClientTimeout
 
 from .admission import GATE, RELEASE_TOKEN
 from .interlock import Interlock
+from .workspace import WorkspaceBusy
+
+
+def pod_list(response: dict) -> list:
+    items, metadata = response.get("items"), response.get("metadata", {})
+    if (not isinstance(items, list) or not isinstance(metadata, dict)
+            or metadata.get("continue")):
+        raise ValueError("incomplete Kubernetes pod list")
+    return items
 
 
 class SandboxMonitor:
@@ -18,6 +27,9 @@ class SandboxMonitor:
         self.namespace = namespace
         self.instance = instance
         self.node = node
+        # No gate or binding may pass until a durable workspace verifier is installed.
+        self.workspace_check = None
+        self.workspace_reserve = None
         self.api = f"https://{os.environ['KUBERNETES_SERVICE_HOST']}:{os.environ.get('KUBERNETES_SERVICE_PORT_HTTPS', '443')}"
         self.credentials = Path("/var/run/secrets/kubernetes.io/serviceaccount")
 
@@ -41,24 +53,42 @@ class SandboxMonitor:
     async def active(self) -> bool:
         namespace = quote(self.namespace, safe="")
         selector = {"labelSelector": f"dark-factory.io/instance={self.instance}"}
-        sandboxes = await self._get(
-            f"/apis/agents.x-k8s.io/v1beta1/namespaces/{namespace}/sandboxes",
-            params=selector,
-        )
         pods = await self._get(f"/api/v1/namespaces/{namespace}/pods", params=selector)
-        if not isinstance(sandboxes.get("items"), list) or not isinstance(pods.get("items"), list):
-            raise ValueError("incomplete Kubernetes workload list")
-        # Retain protection until both the Sandbox and its pod have disappeared.
-        return bool(sandboxes["items"] or pods["items"])
+        # A deleting or terminal pod remains active until Kubernetes removes it.
+        return bool(pod_list(pods))
 
     async def any_workload(self) -> bool:
-        """Use unfiltered, consistent lists before suspending the desktop."""
+        """Use an unfiltered pod list before suspending the desktop."""
         namespace = quote(self.namespace, safe="")
-        sandboxes = await self._get(f"/apis/agents.x-k8s.io/v1beta1/namespaces/{namespace}/sandboxes")
         pods = await self._get(f"/api/v1/namespaces/{namespace}/pods")
-        if not isinstance(sandboxes.get("items"), list) or not isinstance(pods.get("items"), list):
-            raise ValueError("incomplete Kubernetes workload list")
-        return bool(sandboxes["items"] or pods["items"])
+        return bool(pod_list(pods))
+
+    async def can_delete_workspace(self, claim: dict) -> bool:
+        metadata = claim.get("metadata") if isinstance(claim, dict) else None
+        name = metadata.get("name") if isinstance(metadata, dict) else None
+        uid = metadata.get("uid") if isinstance(metadata, dict) else None
+        if not all(isinstance(value, str) and value for value in (name, uid)):
+            raise ValueError("workspace claim identity is incomplete")
+        namespace = quote(self.namespace, safe="")
+        pods = await self._get(f"/api/v1/namespaces/{namespace}/pods")
+        for pod in pod_list(pods):
+            spec = pod.get("spec") if isinstance(pod, dict) else None
+            if not isinstance(spec, dict):
+                raise ValueError("invalid Kubernetes pod")
+            volumes = spec.get("volumes", [])
+            if not isinstance(volumes, list) or not all(isinstance(volume, dict) for volume in volumes):
+                raise ValueError("invalid Kubernetes pod volumes")
+            for volume in volumes:
+                # Generic ephemeral claims can be generated from pod and volume names.
+                if "ephemeral" in volume:
+                    return False
+                if "persistentVolumeClaim" in volume:
+                    source = volume["persistentVolumeClaim"]
+                    if not isinstance(source, dict) or not isinstance(source.get("claimName"), str) or not source["claimName"]:
+                        raise ValueError("invalid Kubernetes pod claim reference")
+                    if source["claimName"] == name:
+                        return False
+        return True
 
     async def node_lease_revision(self) -> str:
         lease = await self._get(f"/apis/coordination.k8s.io/v1/namespaces/kube-node-lease/leases/{quote(self.node, safe='')}")
@@ -71,9 +101,12 @@ class SandboxMonitor:
         """Refuse power actions if either fail-closed admission configuration is missing."""
         base = "/apis/admissionregistration.k8s.io/v1"
         for resource, path, operations in (
-            ("mutatingwebhookconfigurations", "/mutate", {"pods": {"CREATE"}}),
+            ("mutatingwebhookconfigurations", "/mutate", {
+                "pods": {"CREATE"}, "persistentvolumeclaims": {"CREATE", "UPDATE"},
+            }),
             ("validatingwebhookconfigurations", "/validate", {
                 "pods": {"CREATE", "UPDATE"}, "pods/binding": {"CREATE"}, "bindings": {"CREATE"},
+                "persistentvolumeclaims": {"CREATE", "UPDATE", "DELETE"},
             }),
         ):
             configuration = await self._get(f"{base}/{resource}/dark-factory-sandbox-gate")
@@ -120,17 +153,21 @@ class SandboxMonitor:
             raise ValueError("node readiness is unavailable")
         return any(c.get("type") == "Ready" and c.get("status") == "True" for c in conditions)
 
-    async def can_bind(self, name: str) -> bool:
+    async def can_bind(self, name: str, uid: str) -> bool:
         namespace = quote(self.namespace, safe="")
         pod = await self._get(f"/api/v1/namespaces/{namespace}/pods/{quote(name, safe='')}")
         metadata = pod.get("metadata", {})
         spec = pod.get("spec", {})
         if not isinstance(metadata, dict) or metadata.get("name") != name or not isinstance(spec, dict):
             raise ValueError("invalid bound pod")
+        if metadata.get("uid") != uid:
+            return False
         scheduling_gates = spec.get("schedulingGates", [])
         if not isinstance(scheduling_gates, list) or not all(isinstance(g, dict) for g in scheduling_gates):
             raise ValueError("invalid pod scheduling gates")
-        return not any(gate.get("name") == GATE for gate in scheduling_gates)
+        if any(gate.get("name") == GATE for gate in scheduling_gates) or self.workspace_check is None:
+            return False
+        return await self.workspace_check(pod) is True
 
     async def can_release(self, pod: dict) -> bool:
         metadata = pod.get("metadata", {})
@@ -140,7 +177,9 @@ class SandboxMonitor:
             return False
         state = await Interlock(self).read()
         expected = f"{state['epoch']}:{state['owner']}:{state['anchor']}"
-        return state["phase"] == "releasing" and token == expected
+        if state["phase"] != "releasing" or token != expected or self.workspace_check is None:
+            return False
+        return await self.workspace_check(pod) is True
 
     async def has_gated_pods(self) -> bool:
         namespace = quote(self.namespace, safe="")
@@ -148,9 +187,7 @@ class SandboxMonitor:
             f"/api/v1/namespaces/{namespace}/pods",
             params={"labelSelector": f"dark-factory.io/instance={self.instance}"},
         )
-        if not isinstance(result.get("items"), list):
-            raise ValueError("incomplete Kubernetes pod list")
-        for pod in result["items"]:
+        for pod in pod_list(result):
             if not isinstance(pod, dict) or not isinstance(pod.get("spec", {}), dict):
                 raise ValueError("invalid Kubernetes pod")
             pod_gates = pod.get("spec", {}).get("schedulingGates", [])
@@ -167,9 +204,7 @@ class SandboxMonitor:
             f"/api/v1/namespaces/{namespace}/pods",
             params={"labelSelector": f"dark-factory.io/instance={self.instance}"},
         )
-        if not isinstance(result.get("items"), list):
-            raise ValueError("incomplete Kubernetes pod list")
-        for pod in result["items"]:
+        for pod in pod_list(result):
             if not isinstance(pod, dict):
                 raise ValueError("invalid Kubernetes pod")
             metadata = pod.get("metadata", {})
@@ -184,6 +219,13 @@ class SandboxMonitor:
                 name, uid, version = metadata.get("name"), metadata.get("uid"), metadata.get("resourceVersion")
                 if not all(isinstance(value, str) and value for value in (name, uid, version)):
                     raise ValueError("pod identity is incomplete")
+                if self.workspace_reserve is None:
+                    raise ValueError("workspace reservation is unavailable")
+                try:
+                    await self.workspace_reserve(pod, epoch, owner, anchor)
+                except WorkspaceBusy:
+                    # Leave this gate in place without starving unrelated tasks.
+                    break
                 patch = [
                     {"op": "test", "path": "/metadata/uid", "value": uid},
                     {"op": "test", "path": "/metadata/resourceVersion", "value": version},

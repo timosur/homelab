@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 from aiohttp.test_utils import TestClient, TestServer
 
-from wol_proxy.admission import CONTROLLER, GATE, admission_app, review
+from wol_proxy.admission import CONTROLLER, GATE, admission_app, review, review_binding
 
 
 def request(operation="CREATE", pod=None, old=None, user="agent-sandbox"):
@@ -36,6 +36,11 @@ class AdmissionTests(unittest.TestCase):
     def test_rejects_prebound_and_missing_gate(self):
         self.assertFalse(review(request(pod={"spec": {"nodeName": "desktop"}}), self.namespace, mutate=True)["response"]["allowed"])
         self.assertFalse(review(request(), self.namespace, mutate=False)["response"]["allowed"])
+
+    def test_direct_node_assignment_on_update_is_rejected(self):
+        old = {"spec": {"schedulingGates": [{"name": GATE}]}}
+        new = {"spec": {"schedulingGates": [{"name": GATE}], "nodeName": "desktop"}}
+        self.assertFalse(review(request("UPDATE", new, old, CONTROLLER), self.namespace, mutate=False)["response"]["allowed"])
 
     def test_only_controller_can_remove_its_gate(self):
         old = {"spec": {"schedulingGates": [{"name": GATE}, {"name": "other.example/gate"}]}}
@@ -75,15 +80,15 @@ class AdmissionHttpTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status, 400)
 
     async def test_binding_of_gated_pod_is_denied(self):
-        body = request(pod={"metadata": {"name": "run-1"}, "target": {"kind": "Node", "name": "desktop"}})
+        body = request(pod={"metadata": {"name": "run-1", "uid": "pod-uid"}, "target": {"kind": "Node", "name": "desktop"}})
         body["request"].update({"subResource": "binding", "name": "run-1"})
         result = await self.client.post("/validate", json=body)
         self.assertFalse((await result.json())["response"]["allowed"])
-        self.can_bind.assert_awaited_once_with("run-1")
+        self.can_bind.assert_awaited_once_with("run-1", "pod-uid")
 
     async def test_binding_is_allowed_only_after_gate_is_removed(self):
         self.can_bind.return_value = True
-        body = request(pod={"metadata": {"name": "run-1"}, "target": {"kind": "Node", "name": "desktop"}})
+        body = request(pod={"metadata": {"name": "run-1", "uid": "pod-uid"}, "target": {"kind": "Node", "name": "desktop"}})
         body["request"].update({"subResource": "binding", "name": "run-1"})
         result = await self.client.post("/validate", json=body)
         self.assertTrue((await result.json())["response"]["allowed"])
@@ -96,11 +101,35 @@ class AdmissionHttpTests(unittest.IsolatedAsyncioTestCase):
         self.can_bind.assert_not_awaited()
 
     async def test_legacy_binding_cannot_bypass_gate(self):
-        body = request(pod={"metadata": {"name": "run-1"}, "target": {"kind": "Node", "name": "desktop"}})
+        body = request(pod={"metadata": {"name": "run-1", "uid": "pod-uid"}, "target": {"kind": "Node", "name": "desktop"}})
         body["request"]["resource"]["resource"] = "bindings"
         result = await self.client.post("/validate", json=body)
         self.assertFalse((await result.json())["response"]["allowed"])
-        self.can_bind.assert_awaited_once_with("run-1")
+        self.can_bind.assert_not_awaited()
+
+    async def test_binding_without_uid_is_denied_on_both_apis(self):
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy):
+                body = request(pod={"metadata": {"name": "run-1"}, "target": {"kind": "Node", "name": "desktop"}})
+                if legacy:
+                    body["request"]["resource"]["resource"] = "bindings"
+                else:
+                    body["request"].update({"subResource": "binding", "name": "run-1"})
+                self.can_bind.return_value = True
+                result = await self.client.post("/validate", json=body)
+                self.assertFalse((await result.json())["response"]["allowed"])
+                self.can_bind.assert_not_awaited()
+
+    async def test_binding_cannot_change_workspace_labels(self):
+        for key in ("dark-factory.io/task-key", "dark-factory.io/instance", "app.kubernetes.io/managed-by"):
+            with self.subTest(key=key):
+                body = request(pod={"metadata": {"name": "run-1", "uid": "pod-uid", "labels": {key: "changed"}},
+                                    "target": {"kind": "Node", "name": "desktop"}})
+                body["request"].update({"subResource": "binding", "name": "run-1"})
+                self.can_bind.return_value = True
+                result = await self.client.post("/validate", json=body)
+                self.assertFalse((await result.json())["response"]["allowed"])
+                self.can_bind.assert_not_awaited()
 
     async def test_controller_cannot_remove_gate_without_durable_reservation(self):
         old = {"spec": {"schedulingGates": [{"name": GATE}]}}
@@ -118,3 +147,20 @@ class AdmissionHttpTests(unittest.IsolatedAsyncioTestCase):
         result = await self.client.post("/validate", json=body)
         self.assertFalse((await result.json())["response"]["allowed"])
         self.can_bind.assert_not_awaited()
+
+    async def test_explicit_worker_pool_accepts_only_designated_ungated_nodes(self):
+        can_bind = AsyncMock(return_value=True)
+        for node, allowed in (("desktop", True), ("gpu", True), ("other", False)):
+            with self.subTest(node=node):
+                body = request(pod={"metadata": {"name": "run-1", "uid": "pod-uid"}, "target": {"kind": "Node", "name": node}})
+                body["request"].update({"subResource": "binding", "name": "run-1"})
+                result = await review_binding(body, "dark-factory-sandboxes", ("desktop", "gpu"), can_bind)
+                self.assertEqual(result["response"]["allowed"], allowed)
+        can_bind.return_value = False
+        body["request"]["object"]["target"]["name"] = "gpu"
+        self.assertFalse((await review_binding(body, "dark-factory-sandboxes", ("desktop", "gpu"), can_bind))["response"]["allowed"])
+
+    async def test_worker_pool_configuration_rejects_empty_or_duplicate_nodes(self):
+        for nodes in ((), ("desktop", "desktop"), ("desktop", "")):
+            with self.subTest(nodes=nodes), self.assertRaises(ValueError):
+                admission_app("dark-factory-sandboxes", nodes)

@@ -15,6 +15,7 @@ from wol_proxy.interlock import Interlock, InterlockError
 from wol_proxy.power_client import PowerClientError
 from wol_proxy.power_guard import GuardError, PowerGuard
 from wol_proxy.proxy import NodeGroupProxy
+from wol_proxy.workspace import WorkspaceBusy
 
 
 class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
@@ -119,6 +120,19 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.client.data["phase"], "releasing")
         with self.assertRaises(InterlockError):
             await Interlock(self.client).claim()
+
+    async def test_busy_workspace_keeps_gate_closed_and_retries_without_stranding_power_interlock(self):
+        await self.ready()
+        self.monitor.any_workload.return_value = True
+        self.monitor.has_gated_pods.return_value = True
+        self.monitor.release_gates.side_effect = [WorkspaceBusy("previous pod exists"), None]
+        await self.coordinator.tick()
+        self.assertEqual(self.client.data["phase"], "idle")
+        self.assertTrue(self.coordinator.accepting)
+        self.assertEqual(self.power.call.await_count, 1)
+        await self.coordinator.tick()
+        self.assertEqual(self.client.data["phase"], "idle")
+        self.assertEqual(self.monitor.release_gates.await_count, 2)
 
     async def test_gate_release_http_errors_distinguish_rejection_from_uncertainty(self):
         for status in (400, 403, 404, 409, 422, 499, 408, 429, 500, 503):
