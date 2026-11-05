@@ -10,8 +10,12 @@ My HomeLab running on a local K3s cluster with GitOps workflow.
 - **Ingress**: Envoy Gateway for home/LAN services; Pangolin and Newt for internet services
 - **TLS**: cert-manager for the home gateway; Pangolin for internet services
 - **DNS**: Pi-hole for local DNS; public domains configured for Pangolin
-- **Storage**: Synology CSI Driver (iSCSI) + SMB CSI Driver
+- **Storage**: Synology CSI Driver (iSCSI), SMB CSI Driver, and NFS CSI Driver (Dark Factory workspaces)
 - **Secrets**: External Secrets Operator with Azure Key Vault
+- **Identity**: Authentik; Vaultwarden for passwords
+- **Observability and Security**: Monitoring stack, Hubble, Tetragon, Trivy Operator, Kured for node reboots
+- **Databases**: CloudNativePG, with Crossplane-provisioned per-app databases
+- **AI / Agents**: AgentGateway, Dark Factory sandboxes (Kata) with a wake-on-LAN proxy
 - **Dependency Updates**: Renovate Bot for automated image and chart updates
 
 ## Repository Structure
@@ -39,22 +43,41 @@ homelab/
 ├── apps/                       # Application definitions and ArgoCD apps
 │   ├── _argocd/               # ArgoCD Application manifests
 │   ├── root.yaml              # Root ArgoCD Application (App of Apps)
-│   ├── actual/                # Budget management
+│   ├── affine/                # Knowledge base / notes
+│   ├── agent-sandbox/         # Agent sandbox controller
+│   ├── agentgateway/          # LLM and MCP gateway
+│   ├── argocd/                # ArgoCD self-management overlay
+│   ├── atuin/, atuin-ai/      # Shell history sync and AI service
+│   ├── authentik/             # Identity provider
+│   ├── bike-weather*/         # Bike weather app (backend, auth, preview)
 │   ├── cert-manager/          # Certificate management (DNS-01)
 │   ├── cloudnative-pg/        # PostgreSQL operator
+│   ├── crossplane/            # Crossplane app database composition
+│   ├── dark-factory/          # Dark Factory chart values, runtime class, alerts
+│   ├── dark-factory-wake/     # Sandbox admission webhooks and power interlock
 │   ├── external-secrets/      # External secrets operator
 │   ├── garden/                # Garden management app
 │   ├── givgroov/              # Music sharing app
 │   ├── home-assistant/        # Home automation
+│   ├── house-builder/         # House builder app
+│   ├── kured/                 # Node reboot daemon
 │   ├── mealie/                # Recipe management
+│   ├── monitoring/            # Monitoring and alerting
+│   ├── nfs-csi-driver/        # NFS storage driver (workspaces)
 │   ├── open-webui/            # LLM interface
 │   ├── pangolin-newt/         # Pangolin tunnel and public route reconciliation
 │   ├── paperless/             # Document management
+│   ├── penpot/                # Design and prototyping
 │   ├── pi-hole/               # DNS ad blocker
 │   ├── portfolio/             # Personal portfolio
+│   ├── postgres/              # Shared PostgreSQL clusters
 │   ├── smb-csi-driver/        # SMB storage driver
 │   ├── synology-csi-driver/   # Synology NAS storage driver
-│   └── vinyl-manager/         # Vinyl collection manager
+│   ├── tetragon/              # Runtime security observability
+│   ├── trivy-operator/        # Vulnerability scanning
+│   ├── vaultwarden/           # Password manager
+│   ├── vinyl-manager/         # Vinyl collection manager
+│   └── wol-proxy/             # Wake-on-LAN proxy for the GPU/desktop node
 ├── networking/                 # Networking configurations
 │   ├── kustomization.yaml
 │   ├── cilium-lb-ipam/        # IP pools and L2 announcements
@@ -63,13 +86,15 @@ homelab/
 │   │   └── home/              #   *.home.timosur.com (HTTPS, LAN only)
 │   └── httproutes/            # HTTPRoute definitions
 │       └── home/              #   LAN-only service routes
-├── backup/                     # Backup data
-├── keys/                       # SSH keys for cluster access
+├── docs/                       # Docs, plans and specs (e.g. dark-factory-onboarding.md)
+├── images/                     # Container images (dark-factory-project)
+├── openspec/                   # OpenSpec specs and change records
 ├── scripts/                    # Utility scripts
+├── services/                   # Custom services (wol-proxy)
+├── models.yaml                 # Model definitions
 ├── renovate.json               # Renovate Bot configuration
-├── NETWORKING.md               # Detailed networking documentation
-├── ONBOARDING_GUIDE.md         # Guide for adding new applications
-└── RENOVATE.md                 # Renovate Bot documentation
+├── AGENTS.md                   # Agent guidance (commit conventions)
+└── TODO.md
 ```
 
 ## Deployment Flow
@@ -157,6 +182,21 @@ The homelab runs several applications managed through ArgoCD:
 - **external-secrets**: Secure secrets management from Azure Key Vault
 - **smb-csi-driver**: SMB storage driver for NAS/storage box access
 - **synology-csi-driver**: Synology NAS iSCSI storage driver
+- **nfs-csi-driver**: NFS storage driver for Dark Factory workspaces
+- **argocd**: Self-managed ArgoCD installation
+- **agentgateway**: LLM/MCP gateway (MCP endpoints require authentication)
+- **crossplane**: Provisions per-application databases (`appdb`)
+- **monitoring, tetragon, trivy-operator, kured**: Observability, runtime security, vulnerability scanning, node reboots
+- **authentik, vaultwarden**: Identity and password management
+
+### Dark Factory
+
+Dark Factory runs autonomous agent workspaces in Kata sandboxes. `wol-proxy`
+(`services/wol-proxy`) wakes the desktop on demand and enforces workspace
+ownership and admission; `dark-factory-wake` provides the admission webhooks and
+the power interlock for automatic sleep. The ArgoCD apps for it require manual
+sync, and automatic sleep is not yet enabled. See
+[docs/dark-factory-onboarding.md](docs/dark-factory-onboarding.md) before syncing.
 
 ### User Applications
 
@@ -188,8 +228,6 @@ public routes are configured in `apps/pangolin-newt/routes.json`.
 - **DNS**: Pi-hole for local names; configure public domains for Pangolin
 - **TLS**: cert-manager for the home gateway; Pangolin for public routes
 - **Network Policies**: Cilium-based policies enforce LAN/internet segmentation
-
-For detailed networking documentation, see [NETWORKING.md](NETWORKING.md).
 
 ## Key Features
 
@@ -269,5 +307,4 @@ Common issues and solutions:
 4. **ArgoCD sync failures**: Review application events and resource conflicts
 5. **Network connectivity**: Use Cilium connectivity tests and Hubble observability
 
-For detailed onboarding of new applications, see [ONBOARDING_GUIDE.md](ONBOARDING_GUIDE.md).
-For Renovate Bot configuration details, see [RENOVATE.md](RENOVATE.md).
+Renovate Bot is configured in `renovate.json`. Agents should follow [AGENTS.md](AGENTS.md) for commits.
