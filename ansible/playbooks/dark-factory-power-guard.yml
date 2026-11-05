@@ -1,6 +1,7 @@
 ---
-- name: Install the staged desktop power fencing helper
-  hosts: homelab-amd-desktop
+- name: Install the staged sandbox worker power fencing helper
+  hosts: homelab-amd-desktop:homelab-gpu
+  serial: 1
   become: true
   gather_facts: true
   roles:

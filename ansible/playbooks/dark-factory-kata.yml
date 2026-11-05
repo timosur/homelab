@@ -1,6 +1,7 @@
 ---
-- name: Install Kata on the Dark Factory desktop worker
-  hosts: homelab-amd-desktop
+- name: Install Kata on the Dark Factory sandbox workers
+  hosts: homelab-amd-desktop:homelab-gpu
+  serial: 1
   become: true
   gather_facts: true
   roles:

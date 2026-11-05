@@ -10,3 +10,7 @@ spec:
           operator: "Equal"
           value: "daytime"
           effect: "NoSchedule"
+        - key: "gpu"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"

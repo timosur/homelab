@@ -1,0 +1,9 @@
+# Match both Raspberry Pi eth* and AMD en* network interfaces.
+devices: "eth+,en+"
+
+# Kata traffic needs service translation at the host-side veth, not pod socket hooks.
+socketLB:
+  hostNamespaceOnly: true
+
+# Recreate agents when their configuration changes so build-config runs again.
+rollOutCiliumPods: true

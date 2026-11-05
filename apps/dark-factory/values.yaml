@@ -52,7 +52,8 @@ sandboxNamespace:
     limitsCpu: '4'
     limitsMemory: 8Gi
     requestsStorage: 200Gi
-    persistentVolumeClaims: '2'
+    # Retained per-task workspaces are independent of the two concurrent sandbox slots.
+    persistentVolumeClaims: '10'
   limitRange:
     defaultCpu: '2'
     defaultMemory: 4Gi

@@ -64,10 +64,27 @@
   ansible.builtin.set_fact:
     cilium_operation: "{{ 'upgrade' if (cilium_pods.stdout | from_json | json_query('items') | length > 0) else 'install' }}"
 
+- name: Create Cilium configuration directory
+  ansible.builtin.file:
+    path: /etc/cilium
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copy Cilium networking values
+  ansible.builtin.copy:
+    src: values.yaml
+    dest: /etc/cilium/values.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Install or upgrade Cilium with cluster mesh support
   ansible.builtin.command:
     cmd: >
       cilium {{ cilium_operation }}
+      --values /etc/cilium/values.yaml
       --set cluster.name=home
       --set cluster.id=2
       --set ipam.mode=kubernetes
@@ -82,11 +99,9 @@
       --set hubble.ui.enabled=true
       --set routingMode=tunnel
       --set bpf.masquerade=true
-      --set socketLB.hostNamespaceOnly=true
       --set envoy.enabled=false
       --set l2announcements.enabled=true
       --set externalIPs.enabled=true
-      --set devices={eth+,en+}
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   register: cilium_result

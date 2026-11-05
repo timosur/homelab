@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-"""Bootstrap Authentik on Kubernetes with bike-weather OAuth2 applications.
+"""Bootstrap Authentik OAuth2 applications on Kubernetes.
 
-Run after Authentik is deployed and healthy in the bike-weather-auth namespace.
-Creates OAuth2 providers and applications for both production and preview environments.
-Stores the API token in Azure Key Vault.
+The legacy default provisions Bike Weather's production and preview applications.
+``--provision-oidc`` provisions one reusable confidential OIDC application against any
+Authentik instance, creates a temporary in-cluster API token, and deletes that token when done.
+It stores a newly generated client secret only in the requested Kubernetes Secret; it never
+prints the secret or persists the temporary API token.
 
 Idempotent — safe to re-run.
 
@@ -17,15 +19,23 @@ Prerequisites:
 Usage:
     python3 scripts/setup_authentik_homelab.py
     python3 scripts/setup_authentik_homelab.py --base-url https://auth.bike-weather.com
+    python3 scripts/setup_authentik_homelab.py --provision-oidc \
+      --kube-context homelab --base-url https://auth.timosur.com \
+      --namespace authentik --server-selector app=authentik-server \
+      --app-name 'Example App' --slug example --client-id example \
+      --redirect-uri https://example.com/auth/callback --launch-url https://example.com/ \
+      --secret-namespace example --secret-name example-oidc
 """
 
 import argparse
 import json
 import os
+import secrets
 import subprocess
 import sys
 import urllib.request
 import urllib.error
+import uuid
 
 NAMESPACE = "bike-weather-auth"
 VAULT_NAME = "homelab-timosur"
@@ -57,6 +67,7 @@ HEADERS = {
     "Content-Type": "application/json",
     "Accept": "application/json",
 }
+KUBECTL_CONTEXT: str | None = None
 
 
 def api(base: str, method: str, path: str, data=None):
@@ -139,6 +150,205 @@ def ensure_api_token() -> str:
         print(f"  stderr: {result.stderr}")
         sys.exit(1)
     return token
+
+
+def kubectl(args: list[str], *, data: str | None = None):
+    """Run kubectl without writing supplied secret data to terminal output."""
+    context = ["--context", KUBECTL_CONTEXT] if KUBECTL_CONTEXT else []
+    result = subprocess.run(
+        ["kubectl", *context, *args], input=data, capture_output=True, text=True
+    )
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "kubectl command failed")
+    return result.stdout
+
+
+def api_or_raise(base: str, method: str, path: str, data=None):
+    """Call Authentik without logging request bodies, which may contain a client secret."""
+    body = json.dumps(data).encode() if data is not None else None
+    request = urllib.request.Request(
+        f"{base}{path}", data=body, headers=HEADERS, method=method
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            content = response.read()
+            return json.loads(content) if content else {}
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(f"Authentik API {method} {path} failed with HTTP {error.code}") from error
+    except urllib.error.URLError as error:
+        raise RuntimeError(f"Authentik API {method} {path} could not be reached") from error
+
+
+def temporary_api_token(namespace: str, selector: str) -> tuple[str, str]:
+    """Mint a one-time API token in the server pod; callers must delete it."""
+    pod = kubectl([
+        "get", "pods", "-n", namespace, "-l", selector,
+        "-o", "jsonpath={.items[0].metadata.name}",
+    ]).strip()
+    if not pod:
+        raise RuntimeError(f"no Authentik server pod matched {selector!r} in {namespace}")
+    identifier = f"opencode-oidc-bootstrap-{uuid.uuid4()}"
+    create = (
+        "import os, django; "
+        "from datetime import timedelta; "
+        "from django.utils import timezone; "
+        "os.environ['DJANGO_SETTINGS_MODULE']='authentik.root.settings'; django.setup(); "
+        "from authentik.core.models import Token, TokenIntents, User; "
+        f"t=Token.objects.create(identifier={identifier!r}, user=User.objects.get(username='akadmin'), "
+        "intent=TokenIntents.INTENT_API, expiring=True, expires=timezone.now()+timedelta(minutes=10)); "
+        "print(t.key)"
+    )
+    token = kubectl(["exec", "-n", namespace, pod, "--", "python", "-c", create]).strip()
+    if len(token) < 10:
+        raise RuntimeError("Authentik did not return a temporary API token")
+    return token, identifier
+
+
+def delete_temporary_api_token(namespace: str, selector: str, identifier: str):
+    """Best-effort cleanup; never print the token or identifier-derived secret material."""
+    try:
+        pod = kubectl([
+            "get", "pods", "-n", namespace, "-l", selector,
+            "-o", "jsonpath={.items[0].metadata.name}",
+        ]).strip()
+        if not pod:
+            return
+        delete = (
+            "import os, django; "
+            "os.environ['DJANGO_SETTINGS_MODULE']='authentik.root.settings'; django.setup(); "
+            "from authentik.core.models import Token; "
+            f"Token.objects.filter(identifier={identifier!r}).delete()"
+        )
+        kubectl(["exec", "-n", namespace, pod, "--", "python", "-c", delete])
+    except RuntimeError as error:
+        print(f"WARNING: could not delete the temporary Authentik API token: {error}", file=sys.stderr)
+
+
+def first_result(response: dict, description: str) -> dict:
+    results = response.get("results") if isinstance(response, dict) else None
+    if not isinstance(results, list) or not results:
+        raise RuntimeError(f"could not find {description}")
+    if not isinstance(results[0], dict) or not results[0].get("pk"):
+        raise RuntimeError(f"invalid response for {description}")
+    return results[0]
+
+
+def ensure_scope_mapping(base: str, name: str, scope_name: str, expression: str) -> str:
+    mappings = api_or_raise(base, "GET", "/api/v3/propertymappings/provider/scope/")
+    for mapping in mappings.get("results", []):
+        if isinstance(mapping, dict) and mapping.get("scope_name") == scope_name:
+            return mapping["pk"]
+    mapping = api_or_raise(base, "POST", "/api/v3/propertymappings/provider/scope/", {
+        "name": name, "scope_name": scope_name, "expression": expression,
+        "description": f"Claims for {name}",
+    })
+    if not mapping.get("pk"):
+        raise RuntimeError(f"could not create scope mapping {scope_name}")
+    return mapping["pk"]
+
+
+def ensure_group(base: str, group_name: str):
+    groups = api_or_raise(base, "GET", f"/api/v3/core/groups/?name={group_name}")
+    if isinstance(groups.get("results"), list) and groups["results"]:
+        return groups["results"][0]["pk"]
+    group = api_or_raise(base, "POST", "/api/v3/core/groups/", {
+        "name": group_name, "is_superuser": False, "parents": [], "users": [], "attributes": {}, "roles": [],
+    })
+    if not group.get("pk"):
+        raise RuntimeError(f"could not create group {group_name}")
+    return group["pk"]
+
+
+def create_kubernetes_client_secret(namespace: str, name: str, key: str, value: str):
+    """Create the requested OIDC Secret without placing its value in command arguments or output."""
+    manifest = json.dumps({
+        "apiVersion": "v1", "kind": "Secret",
+        "metadata": {"name": name, "namespace": namespace,
+                     "labels": {"app.kubernetes.io/managed-by": "authentik-bootstrap"}},
+        "type": "Opaque", "stringData": {key: value},
+    })
+    kubectl(["apply", "--server-side", "--field-manager=authentik-bootstrap", "-f", "-"], data=manifest)
+
+
+def provision_oidc_app(args):
+    """Provision one confidential OIDC application for any Authentik deployment."""
+    base = args.base_url.rstrip("/")
+    token = identifier = None
+    try:
+        print(f"Using Authentik at {base}")
+        print("Creating a temporary API token...")
+        token, identifier = temporary_api_token(args.namespace, args.server_selector)
+        HEADERS["Authorization"] = f"Bearer {token}"
+
+        print("Resolving Authentik defaults and scopes...")
+        flows = api_or_raise(base, "GET", "/api/v3/flows/instances/")
+        by_slug = {flow.get("slug"): flow for flow in flows.get("results", []) if isinstance(flow, dict)}
+        authorization_flow = by_slug.get("default-provider-authorization-implicit-consent")
+        invalidation_flow = by_slug.get("default-provider-invalidation-flow")
+        if not authorization_flow or not invalidation_flow:
+            raise RuntimeError("required default Authentik provider flows are missing")
+        certificate = first_result(api_or_raise(
+            base, "GET", "/api/v3/crypto/certificatekeypairs/?name=authentik+Self-signed+Certificate"
+        ), "Authentik signing certificate")
+
+        ensure_group(base, args.allowed_group)
+        mappings = api_or_raise(base, "GET", "/api/v3/propertymappings/provider/scope/")
+        known = {mapping.get("scope_name"): mapping.get("pk") for mapping in mappings.get("results", [])
+                 if isinstance(mapping, dict)}
+        missing = [scope for scope in ("openid", "profile", "email") if not known.get(scope)]
+        if missing:
+            raise RuntimeError(f"required built-in scope mappings are missing: {', '.join(missing)}")
+        groups_mapping = ensure_scope_mapping(
+            base, f"{args.app_name} groups", "groups",
+            'return {"groups": [group.name for group in user.ak_groups.all()]}',
+        )
+
+        providers = api_or_raise(base, "GET", "/api/v3/providers/oauth2/")
+        provider = next((item for item in providers.get("results", [])
+                         if isinstance(item, dict) and item.get("client_id") == args.client_id), None)
+        client_secret = None
+        if provider is None:
+            print(f"Creating confidential provider {args.app_name!r}...")
+            client_secret = secrets.token_urlsafe(48)
+            provider = api_or_raise(base, "POST", "/api/v3/providers/oauth2/", {
+                "name": args.app_name,
+                "authorization_flow": authorization_flow["pk"],
+                "invalidation_flow": invalidation_flow["pk"],
+                "client_type": "confidential",
+                "client_id": args.client_id,
+                "client_secret": client_secret,
+                "grant_types": ["authorization_code", "refresh_token"],
+                "redirect_uris": [{"matching_mode": "strict", "url": args.redirect_uri,
+                                   "redirect_uri_type": "authorization"}],
+                "signing_key": certificate["pk"],
+                "access_code_validity": "minutes=10",
+                "access_token_validity": "hours=1",
+                "refresh_token_validity": "days=30",
+                "sub_mode": "hashed_user_id",
+                "issuer_mode": "per_provider",
+                "include_claims_in_id_token": True,
+                "property_mappings": [known["openid"], known["profile"], known["email"], groups_mapping],
+            })
+            if not provider.get("pk"):
+                raise RuntimeError("Authentik did not return the new provider")
+        applications = api_or_raise(base, "GET", f"/api/v3/core/applications/?slug={args.slug}")
+        if not applications.get("results"):
+            print(f"Creating application {args.slug!r}...")
+            api_or_raise(base, "POST", "/api/v3/core/applications/", {
+                "name": args.app_name, "slug": args.slug, "provider": provider["pk"],
+                "open_in_new_tab": False, "meta_launch_url": args.launch_url,
+            })
+        if client_secret is not None:
+            create_kubernetes_client_secret(args.secret_namespace, args.secret_name, args.secret_key, client_secret)
+            print(f"Created Kubernetes Secret {args.secret_namespace}/{args.secret_name}.")
+        else:
+            print("Provider already existed; no client secret was regenerated.")
+        print(f"OIDC application {args.slug!r} is ready; add authorized users to {args.allowed_group!r}.")
+    finally:
+        HEADERS.pop("Authorization", None)
+        if identifier is not None:
+            print("Deleting the temporary API token...")
+            delete_temporary_api_token(args.namespace, args.server_selector, identifier)
 
 
 def set_keyvault_secret(key: str, value: str):
@@ -470,12 +680,40 @@ def main():
         default="https://auth.bike-weather.com",
         help="Authentik base URL (default: https://auth.bike-weather.com)",
     )
+    parser.add_argument("--provision-oidc", action="store_true",
+                        help="provision one generic confidential OIDC application")
+    parser.add_argument("--namespace", default="authentik",
+                        help="Authentik Kubernetes namespace for --provision-oidc")
+    parser.add_argument("--server-selector", default="app=authentik-server",
+                        help="Authentik server pod selector for --provision-oidc")
+    parser.add_argument("--kube-context", help="explicit kubectl context for --provision-oidc")
+    parser.add_argument("--app-name", help="Authentik application/provider name for --provision-oidc")
+    parser.add_argument("--slug", help="Authentik application slug for --provision-oidc")
+    parser.add_argument("--client-id", help="OIDC client ID for --provision-oidc")
+    parser.add_argument("--redirect-uri", help="strict OIDC callback for --provision-oidc")
+    parser.add_argument("--launch-url", help="application launch URL for --provision-oidc")
+    parser.add_argument("--allowed-group", default="board-member",
+                        help="group claim ensured for --provision-oidc")
+    parser.add_argument("--secret-namespace", help="Kubernetes Secret namespace for a new client secret")
+    parser.add_argument("--secret-name", help="Kubernetes Secret name for a new client secret")
+    parser.add_argument("--secret-key", default="client-secret",
+                        help="Kubernetes Secret data key for a new client secret")
     parser.add_argument(
         "--skip-keyvault",
         action="store_true",
         help="Skip writing API token to Azure Key Vault",
     )
     args = parser.parse_args()
+    if args.provision_oidc:
+        global KUBECTL_CONTEXT
+        KUBECTL_CONTEXT = args.kube_context
+        required = ("app_name", "slug", "client_id", "redirect_uri", "launch_url",
+                    "secret_namespace", "secret_name")
+        missing = [field.replace("_", "-") for field in required if not getattr(args, field)]
+        if missing:
+            parser.error("--provision-oidc requires " + ", ".join("--" + field for field in missing))
+        provision_oidc_app(args)
+        return
     base = args.base_url.rstrip("/")
 
     print("=== Authentik Bootstrap for bike-weather (Homelab) ===\n")
