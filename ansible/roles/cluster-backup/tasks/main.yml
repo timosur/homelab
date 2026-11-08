@@ -45,7 +45,7 @@
 - name: Mount Synology SMB share  # noqa: command-instead-of-module
   ansible.builtin.shell: |
     mount -t cifs {{ backup_smb_share }} {{ backup_smb_mount_point }} \
-      -o credentials=/tmp/.smb-backup-credentials,vers=3.0,uid=$(id -u),gid=$(id -g)
+      -o credentials=/tmp/.smb-backup-credentials,vers=3.0,uid=$(id -u),gid=$(id -g),file_mode=0600,dir_mode=0700
   become: true
   changed_when: true
   when: already_mounted.rc != 0
@@ -82,11 +82,16 @@
     msg: "SMB share not mounted at {{ backup_smb_mount_point }}"
   when: not backup_base_stat.stat.isdir | default(false)
 
+- name: Warn if backup share exposes files to other local users
+  ansible.builtin.debug:
+    msg: "WARNING: The existing SMB mount grants group or other access. Restrict its mount permissions and Synology ACLs; backups contain sensitive data."
+  when: backup_base_stat.stat.mode[-2:] != '00'
+
 - name: Create backup directory
   ansible.builtin.file:
     path: "{{ backup_dir }}"
     state: directory
-    mode: "0755"
+    mode: "0700"
 
 - name: Check kubectl is available
   ansible.builtin.command: kubectl cluster-info
@@ -125,16 +130,14 @@
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      kubectl get clusters.postgresql.cnpg.io -A -o json 2>/dev/null | jq -c '
+      kubectl get clusters.postgresql.cnpg.io -A -o json | jq -c '
         [.items[] | {
           namespace: .metadata.namespace,
-          cluster: .metadata.name,
-          database: (.spec.bootstrap.initdb.database // "app")
+          cluster: .metadata.name
         }]'
     executable: /bin/bash
   register: cnpg_discovery
   changed_when: false
-  failed_when: false
 
 - name: Parse CNPG clusters
   ansible.builtin.set_fact:
@@ -145,29 +148,97 @@
     msg: "Found {{ cnpg_clusters | length }} CNPG cluster(s): {{ cnpg_clusters | map(attribute='namespace') | join(', ') }}"
 
 # ──────────────────────────────────────────────────────
-# Backup CNPG databases
+# Discover and back up every connectable CNPG database
 # ──────────────────────────────────────────────────────
 
-- name: Backup CNPG databases
+- name: Discover databases in each CNPG cluster
   ansible.builtin.shell: |
     set -eo pipefail
-    PRIMARY=$(kubectl get pods -n "{{ item.namespace }}" \
-      -l "cnpg.io/cluster={{ item.cluster }},cnpg.io/instanceRole=primary" \
+    PRIMARY=$(kubectl get pods -n {{ item.namespace | quote }} \
+      -l {{ ('cnpg.io/cluster=' + item.cluster + ',cnpg.io/instanceRole=primary') | quote }} \
       -o jsonpath='{.items[0].metadata.name}')
     if [ -z "$PRIMARY" ]; then
       echo "ERROR: No primary pod for {{ item.cluster }}" >&2
       exit 1
     fi
-    kubectl exec -n "{{ item.namespace }}" "$PRIMARY" -- \
-      pg_dump -U postgres -d "{{ item.database }}" --format=plain --clean --if-exists 2>/dev/null | \
-      gzip > "{{ backup_dir }}/cnpg-{{ item.namespace }}-{{ backup_timestamp }}.sql.gz"
+    kubectl exec -n {{ item.namespace | quote }} "$PRIMARY" -- \
+      psql -X -U postgres -d postgres -At -v ON_ERROR_STOP=1 -c \
+      "SELECT COALESCE(json_agg(datname ORDER BY datname), '[]'::json) FROM pg_database WHERE datallowconn"
   args:
     executable: /bin/bash
-  changed_when: true
+  changed_when: false
+  failed_when: false
   loop: "{{ cnpg_clusters }}"
   loop_control:
     label: "{{ item.namespace }}/{{ item.cluster }}"
+  register: cnpg_database_discovery
+
+- name: Build list of discovered CNPG databases
+  ansible.builtin.set_fact:
+    cnpg_discovered_clusters: "{{ cnpg_discovered_clusters | default([]) + [item.item | combine({'databases': item.stdout | from_json})] }}"
+  loop: "{{ cnpg_database_discovery.results }}"
+  loop_control:
+    label: "{{ item.item.namespace }}/{{ item.item.cluster }}"
+  when: item.rc == 0
+
+- name: Initialize CNPG database list
+  ansible.builtin.set_fact:
+    cnpg_discovered_clusters: "{{ cnpg_discovered_clusters | default([]) }}"
+    cnpg_discovery_failed: "{{ cnpg_database_discovery.results | selectattr('rc', 'ne', 0) | list | length > 0 }}"
+
+- name: Backup CNPG databases
+  ansible.builtin.shell: |
+    set -eo pipefail
+    umask 077
+    PRIMARY=$(kubectl get pods -n {{ item.0.namespace | quote }} \
+      -l {{ ('cnpg.io/cluster=' + item.0.cluster + ',cnpg.io/instanceRole=primary') | quote }} \
+      -o jsonpath='{.items[0].metadata.name}')
+    if [ -z "$PRIMARY" ]; then
+      echo "ERROR: No primary pod for {{ item.0.cluster }}" >&2
+      exit 1
+    fi
+    archive={{ (backup_dir + '/cnpg-' + item.0.namespace + '-' + item.0.cluster + '-' + (item.1 | hash('sha256')) + '-' + backup_timestamp + '.sql.gz') | quote }}
+    partial="${archive}.partial"
+    trap 'rm -f "$partial"' EXIT
+    kubectl exec -n {{ item.0.namespace | quote }} "$PRIMARY" -- \
+      pg_dump -U postgres --dbname={{ item.1 | quote }} --format=plain --clean --if-exists | gzip > "$partial"
+    gzip -t "$partial"
+    mv "$partial" "$archive"
+  args:
+    executable: /bin/bash
+  changed_when: true
+  failed_when: false
+  loop: "{{ cnpg_discovered_clusters | subelements('databases') }}"
+  loop_control:
+    label: "{{ item.0.namespace }}/{{ item.0.cluster }}/{{ item.1 }}"
   register: cnpg_backups
+
+- name: Backup CNPG cluster-wide roles and tablespaces
+  ansible.builtin.shell: |
+    set -eo pipefail
+    umask 077
+    PRIMARY=$(kubectl get pods -n {{ item.namespace | quote }} \
+      -l {{ ('cnpg.io/cluster=' + item.cluster + ',cnpg.io/instanceRole=primary') | quote }} \
+      -o jsonpath='{.items[0].metadata.name}')
+    if [ -z "$PRIMARY" ]; then
+      echo "ERROR: No primary pod for {{ item.cluster }}" >&2
+      exit 1
+    fi
+    archive={{ (backup_dir + '/cnpg-' + item.namespace + '-' + item.cluster + '-globals-' + backup_timestamp + '.sql.gz') | quote }}
+    partial="${archive}.partial"
+    trap 'rm -f "$partial"' EXIT
+    kubectl exec -n {{ item.namespace | quote }} "$PRIMARY" -- \
+      pg_dumpall -U postgres --globals-only | gzip > "$partial"
+    gzip -t "$partial"
+    mv "$partial" "$archive"
+  args:
+    executable: /bin/bash
+  changed_when: true
+  failed_when: false
+  loop: "{{ cnpg_clusters }}"
+  loop_control:
+    label: "{{ item.namespace }}/{{ item.cluster }}"
+  register: cnpg_globals_backups
 
 - name: Initialize CNPG manifest entries
   ansible.builtin.set_fact:
@@ -177,15 +248,27 @@
   ansible.builtin.set_fact:
     manifest_cnpg_entries: >-
       {{ manifest_cnpg_entries + [{
-        'namespace': item.item.namespace,
-        'cluster': item.item.cluster,
-        'database': item.item.database,
-        'file': 'cnpg-' + item.item.namespace + '-' + backup_timestamp + '.sql.gz'
+        'namespace': item.item.0.namespace,
+        'cluster': item.item.0.cluster,
+        'database': item.item.1,
+        'file': 'cnpg-' + item.item.0.namespace + '-' + item.item.0.cluster + '-' + (item.item.1 | hash('sha256')) + '-' + backup_timestamp + '.sql.gz'
       }] }}
   loop: "{{ cnpg_backups.results }}"
   loop_control:
+    label: "{{ item.item.0.namespace }}/{{ item.item.0.cluster }}/{{ item.item.1 }}"
+  when: item.rc == 0
+
+- name: Collect successful CNPG globals backup entries
+  ansible.builtin.set_fact:
+    manifest_cnpg_globals: "{{ manifest_cnpg_globals | default([]) + [{'namespace': item.item.namespace, 'cluster': item.item.cluster, 'file': 'cnpg-' + item.item.namespace + '-' + item.item.cluster + '-globals-' + backup_timestamp + '.sql.gz'}] }}"
+  loop: "{{ cnpg_globals_backups.results }}"
+  loop_control:
     label: "{{ item.item.namespace }}/{{ item.item.cluster }}"
   when: item.rc == 0
+
+- name: Record CNPG backup failures
+  ansible.builtin.set_fact:
+    cnpg_backup_failed: "{{ cnpg_discovery_failed or (cnpg_backups.results | selectattr('rc', 'ne', 0) | list | length > 0) or (cnpg_globals_backups.results | selectattr('rc', 'ne', 0) | list | length > 0) }}"
 
 # ──────────────────────────────────────────────────────
 # Discover local-path PVCs
@@ -335,6 +418,7 @@
       control_plane: "{{ inventory_hostname }}"
       k3s_state: "{{ manifest_k3s | default(None) }}"
       cnpg_databases: "{{ manifest_cnpg_entries | default([]) }}"
+      cnpg_globals: "{{ manifest_cnpg_globals | default([]) }}"
       pvc_volumes: "{{ manifest_pvc_entries | default([]) }}"
 
 # ──────────────────────────────────────────────────────
@@ -356,7 +440,9 @@
   loop: "{{ old_backups.files }}"
   loop_control:
     label: "{{ item.path | basename }}"
-  when: old_backups.files | length > 0
+  when:
+    - old_backups.files | length > 0
+    - not cnpg_backup_failed
 
 # ──────────────────────────────────────────────────────
 # Summary
@@ -388,7 +474,8 @@
       Timestamp:       {{ backup_timestamp }}
 
       k3s state:       {{ 'OK' if manifest_k3s is defined else 'FAILED' }}
-      CNPG databases:  {{ manifest_cnpg_entries | default([]) | length }}/{{ cnpg_clusters | length }}
+      CNPG databases:  {{ manifest_cnpg_entries | default([]) | length }}/{{ cnpg_backups.results | length }}
+      CNPG globals:    {{ manifest_cnpg_globals | default([]) | length }}/{{ cnpg_clusters | length }}
       PVC volumes:     {{ manifest_pvc_entries | default([]) | length }}/{{ local_pvcs | length }}
 
       Files: {{ backup_files.files | length }}
@@ -431,15 +518,16 @@
 
       ── Results ──────────────────────────────
       k3s state:       {{ 'OK' if manifest_k3s is defined else 'FAILED' }}
-      CNPG databases:  {{ manifest_cnpg_entries | default([]) | length }}/{{ cnpg_clusters | length }} succeeded
+      CNPG databases:  {{ manifest_cnpg_entries | default([]) | length }}/{{ cnpg_backups.results | length }} succeeded
+      CNPG globals:    {{ manifest_cnpg_globals | default([]) | length }}/{{ cnpg_clusters | length }} succeeded
       PVC volumes:     {{ manifest_pvc_entries | default([]) | length }}/{{ local_pvcs | length }} succeeded
 
       Files:           {{ backup_files.files | length }}
       Total size:      {{ backup_total_size.stdout }}
-      Old backups removed: {{ old_backups.files | length }}
+      Old backups removed: {{ 0 if cnpg_backup_failed else old_backups.files | length }}
 
-      {% if manifest_cnpg_entries | default([]) | length < cnpg_clusters | length %}
-      ⚠ Some CNPG backups failed!
+      {% if cnpg_backup_failed %}
+      ⚠ CNPG discovery or backup failed; old backups were retained!
       {% endif %}
       {% if manifest_pvc_entries | default([]) | length < local_pvcs | length %}
       ⚠ Some PVC backups failed!
@@ -452,7 +540,7 @@
   ansible.builtin.set_fact:
     backup_email_subject: >-
       {% if (manifest_k3s is defined) and
-            (manifest_cnpg_entries | default([]) | length == cnpg_clusters | length) and
+            not cnpg_backup_failed and
             (manifest_pvc_entries | default([]) | length == local_pvcs | length) %}
       [OK] Cluster Backup {{ backup_timestamp }}
       {% else %}
@@ -487,3 +575,8 @@
     state: unmounted
   become: true
   when: smb_mounted is changed
+
+- name: Fail if CNPG backups were incomplete
+  ansible.builtin.fail:
+    msg: "CNPG discovery or backup failed; old backups were retained. Check the backup report and task output."
+  when: cnpg_backup_failed

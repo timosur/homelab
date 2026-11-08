@@ -95,6 +95,14 @@ show_backup_summary() {
         jq -r '.cnpg_databases[] | "    \(.namespace)/\(.cluster) (db: \(.database))"' "$manifest"
     fi
 
+    local globals_count
+    globals_count=$(jq '(.cnpg_globals // []) | length' "$manifest")
+    if [ "$globals_count" -gt 0 ]; then
+        echo ""
+        echo "  CNPG globals (${globals_count}; manual restore only):"
+        jq -r '.cnpg_globals[] | "    \(.namespace)/\(.cluster): \(.file)"' "$manifest"
+    fi
+
     # PVCs
     local pvc_count
     pvc_count=$(jq '.pvc_volumes | length' "$manifest")
@@ -245,7 +253,7 @@ restore_cnpg_databases() {
         log_info "Restoring to pod: ${primary_pod}"
 
         if gunzip -c "$archive" | kubectl exec -i -n "$ns" "$primary_pod" -- \
-            psql -U postgres -d "$database" 2>/dev/null; then
+            psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database"; then
             log_success "Restored: ${ns}/${database}"
         else
             log_error "Failed: ${ns}/${database}"
