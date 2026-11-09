@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coder-config
+  namespace: coder
+data:
+  CODER_ACCESS_URL: https://coder.home.timosur.com
+  CODER_HTTP_ADDRESS: 0.0.0.0:7080
+  CODER_OIDC_ISSUER_URL: https://auth.timosur.com/application/o/coder/
+  CODER_OIDC_EMAIL_DOMAIN: timosur.com
+  CODER_EXTERNAL_AUTH_0_ID: github
+  CODER_EXTERNAL_AUTH_0_TYPE: github
+  CODER_EXTERNAL_AUTH_0_SCOPES: repo

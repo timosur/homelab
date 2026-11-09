@@ -1,0 +1,11 @@
+apiVersion: k8s.homelab.timosur.com/v1
+kind: AppDBClaim
+metadata:
+  name: coder-db
+  namespace: coder
+spec:
+  appName: coder
+  databaseName: coder
+  roleName: coder
+  compositionRef:
+    name: appdb-central-postgres

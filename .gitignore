@@ -3,3 +3,4 @@ _test
 backup
 __pycache__
 .env
+.terraform/
