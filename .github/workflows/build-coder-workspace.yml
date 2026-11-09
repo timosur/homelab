@@ -1,0 +1,99 @@
+name: Build Coder workspace image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-coder-workspace.yml'
+      - 'images/coder-workspace/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-coder-workspace.yml'
+      - 'images/coder-workspace/**'
+
+env:
+  IMAGE_NAME: ghcr.io/timosur/homelab/coder-workspace
+  LOCAL_IMAGE: coder-workspace:validation
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build workspace image
+        uses: docker/build-push-action@v7
+        with:
+          context: images/coder-workspace
+          load: true
+          platforms: linux/amd64
+          push: false
+          tags: ${{ env.LOCAL_IMAGE }}
+          cache-from: type=gha,scope=coder-workspace
+          cache-to: type=gha,mode=max,scope=coder-workspace
+
+      - name: Validate workspace tooling and credential-free image
+        run: |
+          docker run --rm --platform linux/amd64 --entrypoint sh "${LOCAL_IMAGE}" -ec '
+            test "$(id -un)" = coder
+            test "$(id -u)" = 1000
+            test "$(id -g)" = 1000
+            test "$(sudo -n id -u)" = 0
+            command -v apt-get ssh sshd git python3 uv node npm openspec kubectl helm ansible chezmoi
+            openspec --version
+            kubectl kustomize --help >/dev/null
+            test ! -e "$HOME/.ssh"
+            test ! -e "$HOME/.gitconfig"
+            test ! -e "$HOME/.kube/config"
+          '
+
+  publish:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish immutable amd64 image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: images/coder-workspace
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=coder-workspace
+          cache-to: type=gha,mode=max,scope=coder-workspace
+
+      - name: Report immutable template reference
+        run: |
+          echo '### Coder workspace image' >> "$GITHUB_STEP_SUMMARY"
+          echo "\`${IMAGE_NAME}:sha-${GITHUB_SHA}@${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
