@@ -19,7 +19,7 @@ spec:
         kubernetes.io/hostname: homelab-amd
       containers:
         - name: obscura
-          image: h4ckf0r0day/obscura:0.2.5@sha256:354c3d2a0fa2dd2939debe6903aa26c35d121329245dfa42aa7d1c292a209814
+          image: h4ckf0r0day/obscura:0.2.6@sha256:76522dd288b0c0186b360fd6e6133ef55908e1fc3b9c4b7ad6240bf8682d998c
           args:
             - mcp
             - --http
