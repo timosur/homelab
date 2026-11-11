@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Deliberately not referenced by an Argo application until the new wol-proxy image is published.
+# Deliberately not referenced by the Argo parent until the pinned wol-proxy image is deployed.
 resources:
   - admission-webhooks.yaml
   - rbac.yaml
