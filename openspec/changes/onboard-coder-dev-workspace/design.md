@@ -55,8 +55,8 @@ workspace adds overhead and couples this personal environment to the Dark Factor
 ### Per-board-member pool-scheduled persistent pod template
 
 The initial template lets each board member create an independent standard Kubernetes development
-pod with required node affinity for `homelab-amd-desktop` or `homelab-gpu` and a tolerance for
-`availability=daytime:NoSchedule`. It dynamically provisions one 100 GiB Synology CSI
+pod with required node affinity for `homelab-amd-desktop` or `homelab-gpu` and tolerations for
+`availability=daytime:NoSchedule` and `gpu=true:NoSchedule`. It dynamically provisions one 100 GiB Synology CSI
 ReadWriteOnce PVC per workspace and mounts it at that workspace user's home. The template's
 workload labels identify it as a Coder development workspace but do not grant it a Kubernetes
 service account beyond the default no-privilege identity.

@@ -99,6 +99,12 @@ resource "kubernetes_pod_v1" "workspace" {
 
   spec {
     automount_service_account_token = false
+    security_context {
+      run_as_user  = 1000
+      run_as_group = 1000
+      fs_group     = 1000
+    }
+
     affinity {
       node_affinity {
         required_during_scheduling_ignored_during_execution {
@@ -117,6 +123,13 @@ resource "kubernetes_pod_v1" "workspace" {
       key      = "availability"
       operator = "Equal"
       value    = "daytime"
+      effect   = "NoSchedule"
+    }
+
+    toleration {
+      key      = "gpu"
+      operator = "Equal"
+      value    = "true"
       effect   = "NoSchedule"
     }
 

@@ -17,7 +17,7 @@
 ## 3. Persistent Coder workspace template
 
 - [ ] 3.1 Add the version-pinned Coder Terraform template and provider/module dependencies; verify template validation and publication succeed from committed sources.
-- [ ] 3.2 Implement a per-board-member workspace resource with the immutable workspace-image digest, affinity restricted to `homelab-amd-desktop` and `homelab-gpu`, daytime-taint tolerance, unprivileged service account, and a dynamically provisioned 100 GiB Synology RWO home PVC per workspace; verify a fresh workspace schedules only to an approved worker, does not share another user's PVC, and uses neither hostPath/local-path nor Dark Factory storage.
+- [ ] 3.2 Implement a per-board-member workspace resource with the immutable workspace-image digest, affinity restricted to `homelab-amd-desktop` and `homelab-gpu`, both workers' taint tolerations, unprivileged service account, and a dynamically provisioned 100 GiB Synology RWO home PVC per workspace; verify a fresh workspace schedules only to an approved worker, does not share another user's PVC, and uses neither hostPath/local-path nor Dark Factory storage.
 - [ ] 3.3 Configure Coder's native dotfiles module with `default_dotfiles_uri` set to `https://github.com/timosur/dotfiles.git` and Coder's 30-minute inactivity stop policy; verify bootstrap succeeds without interactivity, workspace restart retains home data, and an inactive workspace stops while retaining its PVC.
 - [ ] 3.4 Document the board-member workspace lifecycle, image-versus-APT persistence boundary, GitHub external-auth flow, `coder login`/`coder config-ssh`, and `zed ssh://coder.<workspace>` connection path; verify the documented Zed connection opens the running workspace without direct desktop-host SSH.
 

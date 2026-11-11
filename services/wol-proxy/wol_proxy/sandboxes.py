@@ -12,6 +12,11 @@ from .coder_admission import GATE as CODER_GATE, RELEASE_TOKEN as CODER_RELEASE_
 from .interlock import Interlock
 from .workspace import WorkspaceBusy
 
+CODER_TOLERATED_TAINTS = frozenset({
+    ("availability", "daytime", "NoSchedule"),
+    ("gpu", "true", "NoSchedule"),
+})
+
 
 def pod_list(response: dict) -> list:
     items, metadata = response.get("items"), response.get("metadata", {})
@@ -243,9 +248,11 @@ class SandboxMonitor:
             raise ValueError("node taints are invalid")
         if spec.get("unschedulable", False) or not any(c.get("type") == "Ready" and c.get("status") == "True" for c in conditions):
             return False
-        return not any(t.get("effect") in ("NoSchedule", "NoExecute") and not (
-            t.get("key") == "availability" and t.get("value") == "daytime" and t.get("effect") == "NoSchedule"
-        ) for t in taints)
+        return not any(
+            t.get("effect") in ("NoSchedule", "NoExecute")
+            and (t.get("key"), t.get("value", ""), t.get("effect")) not in CODER_TOLERATED_TAINTS
+            for t in taints
+        )
 
     async def can_bind(self, name: str, uid: str) -> bool:
         namespace = quote(self.namespace, safe="")

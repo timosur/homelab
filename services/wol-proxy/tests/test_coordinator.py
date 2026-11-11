@@ -137,6 +137,94 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         await self.coordinator.tick()
         self.assertEqual(self.power.call.await_count, 1)
 
+    async def test_ungated_coder_pod_clears_reservation_on_later_tick(self):
+        await self.ready()
+        workspace = "11111111-1111-1111-1111-111111111111"
+        await self.interlock.coder_reservation(workspace, reserve=True)
+        self.proxy.cfg.coder_workspace_namespace = "coder"
+        self.monitor.any_workload.return_value = True
+        self.monitor.has_gated_pods.return_value = False
+        self.monitor.coder_pods = AsyncMock(return_value=[{"metadata": {"name": f"coder-{workspace}", "labels": {
+            "coder.workspace.id": workspace, "app.kubernetes.io/name": "coder-workspace",
+            "app.kubernetes.io/component": "development-workspace"}}, "spec": {"schedulingGates": []}}])
+        await self.coordinator.tick()
+        self.assertEqual((await self.interlock.read())["coder_starts"], [])
+        self.monitor.any_workload.return_value = False
+        self.monitor.coder_pods.return_value = []
+        self.proxy.idle_seconds = 301
+        await self.coordinator.tick()
+        self.assertEqual(self.power.call.await_args.args[0], "suspend")
+
+    async def test_cleanup_retries_after_transient_api_failure(self):
+        await self.ready()
+        workspace = "11111111-1111-1111-1111-111111111111"
+        await self.interlock.coder_reservation(workspace, reserve=True)
+        self.proxy.cfg.coder_workspace_namespace = "coder"
+        self.monitor.any_workload.return_value = True
+        self.monitor.coder_pods = AsyncMock(side_effect=[OSError("API unavailable"), [{
+            "metadata": {"name": f"coder-{workspace}", "labels": {
+                "coder.workspace.id": workspace, "app.kubernetes.io/name": "coder-workspace",
+                "app.kubernetes.io/component": "development-workspace"}}, "spec": {"schedulingGates": []},
+        }]])
+        with self.assertRaises(OSError):
+            await self.coordinator.tick()
+        self.assertEqual((await self.interlock.read())["coder_starts"], [workspace])
+        self.monitor.node_lease_revision.side_effect = ["lease-3", "lease-4"]
+        await self.coordinator.tick()
+        await self.coordinator.tick()
+        self.assertEqual((await self.interlock.read())["coder_starts"], [])
+
+    async def test_cleanup_keeps_reservation_without_ungated_pod(self):
+        await self.ready()
+        workspace = "11111111-1111-1111-1111-111111111111"
+        await self.interlock.coder_reservation(workspace, reserve=True)
+        self.proxy.cfg.coder_workspace_namespace = "coder"
+        self.monitor.coder_pods = AsyncMock(return_value=[])
+        await self.coordinator.tick()
+        self.assertEqual((await self.interlock.read())["coder_starts"], [workspace])
+        self.monitor.coder_pods.return_value = [{"metadata": {"name": f"coder-{workspace}", "labels": {
+            "coder.workspace.id": workspace, "app.kubernetes.io/name": "coder-workspace",
+            "app.kubernetes.io/component": "development-workspace"}},
+            "spec": {"schedulingGates": [{"name": "coder.home.timosur.com/pool-awake"}]}}]
+        await self.coordinator.tick()
+        self.assertEqual((await self.interlock.read())["coder_starts"], [workspace])
+        self.monitor.coder_pods.return_value[0]["spec"]["schedulingGates"] = []
+        self.monitor.coder_pods.return_value[0]["metadata"]["deletionTimestamp"] = "2026-11-11T00:00:00Z"
+        await self.coordinator.tick()
+        self.assertEqual((await self.interlock.read())["coder_starts"], [workspace])
+
+    async def test_reservation_discard_conflict_is_retried(self):
+        await self.ready()
+        workspace = "11111111-1111-1111-1111-111111111111"
+        await self.interlock.coder_reservation(workspace, reserve=True)
+        self.proxy.cfg.coder_workspace_namespace = "coder"
+        self.monitor.any_workload.return_value = True
+        self.monitor.coder_pods = AsyncMock(return_value=[{
+            "metadata": {"name": f"coder-{workspace}", "labels": {
+                "coder.workspace.id": workspace, "app.kubernetes.io/name": "coder-workspace",
+                "app.kubernetes.io/component": "development-workspace"}}, "spec": {"schedulingGates": []},
+        }])
+        reserve = self.interlock.coder_reservation
+        attempts = 0
+
+        async def conflict_once(workspace_id, *, reserve):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise ClientResponseError(None, (), status=409)
+            await original(workspace_id, reserve=reserve)
+
+        original = reserve
+        self.interlock.coder_reservation = conflict_once
+        with self.assertRaises(ClientResponseError):
+            await self.coordinator.tick()
+        self.assertEqual((await self.interlock.read())["coder_starts"], [workspace])
+        self.monitor.node_lease_revision.side_effect = ["lease-3", "lease-4"]
+        await self.coordinator.tick()
+        await self.coordinator.tick()
+        self.assertEqual(attempts, 2)
+        self.assertEqual((await self.interlock.read())["coder_starts"], [])
+
     async def test_uncertain_gate_patch_blocks_takeover(self):
         await self.ready()
         self.monitor.any_workload.return_value = True

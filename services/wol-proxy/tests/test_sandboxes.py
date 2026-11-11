@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -9,7 +10,7 @@ import yaml
 from wol_proxy.config import NodeGroupConfig, optional_boolean
 from wol_proxy.admission import GATE, RELEASE_TOKEN
 from wol_proxy.proxy import NodeGroupProxy
-from wol_proxy.sandboxes import SandboxMonitor
+from wol_proxy.sandboxes import CODER_TOLERATED_TAINTS, SandboxMonitor
 from wol_proxy.workspace import WorkspaceBusy
 from wol_proxy.coder_admission import GATE as CODER_GATE, RELEASE_TOKEN as CODER_RELEASE_TOKEN
 
@@ -126,6 +127,13 @@ class SandboxMonitorTests(unittest.IsolatedAsyncioTestCase):
         node["status"] = {}
         with self.assertRaises(ValueError):
             await self.monitor.nodes_schedulable()
+
+    async def test_real_gpu_worker_taint_is_schedulable_for_coder(self):
+        self.monitor._get = AsyncMock(return_value={
+            "spec": {"taints": [{"key": "gpu", "value": "true", "effect": "NoSchedule"}]},
+            "status": {"conditions": [{"type": "Ready", "status": "True"}]},
+        })
+        self.assertTrue(await self.monitor.nodes_schedulable())
 
     async def test_coder_gate_release_requires_current_reservation_and_token(self):
         workspace = "11111111-1111-1111-1111-111111111111"
@@ -372,6 +380,19 @@ class NodeGroupSandboxTests(unittest.IsolatedAsyncioTestCase):
 
 
 class PlainPodRbacTests(unittest.TestCase):
+    def test_coder_tolerations_match_preflight_and_worker_configuration(self):
+        root = Path(__file__).resolve().parents[3]
+        template = (root / "apps/coder/templates/board-member/main.tf").read_text()
+        tolerations = set()
+        for block in re.findall(r"\btoleration\s*\{([^{}]*)\}", template):
+            fields = dict(re.findall(r'^\s*(key|operator|value|effect)\s*=\s*"([^"]*)"', block, re.MULTILINE))
+            self.assertEqual(fields.get("operator"), "Equal")
+            tolerations.add((fields.get("key"), fields.get("value"), fields.get("effect")))
+        self.assertEqual(tolerations, CODER_TOLERATED_TAINTS)
+        gpu_config = (root / "ansible/roles/k3s-gpu-worker/tasks/main.yml").read_text()
+        self.assertIn('"gpu=true:NoSchedule"', gpu_config)
+        self.assertIn(("gpu", "true", "NoSchedule"), tolerations)
+
     def test_monitor_has_pod_and_claim_access_without_sandbox_crd_access(self):
         root = Path(__file__).resolve().parents[3]
         resources = list(yaml.safe_load_all((root / "apps/dark-factory-wake/rbac.yaml").read_text()))
