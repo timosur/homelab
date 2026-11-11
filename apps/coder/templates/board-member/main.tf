@@ -100,9 +100,10 @@ resource "kubernetes_pod_v1" "workspace" {
   spec {
     automount_service_account_token = false
     security_context {
-      run_as_user  = 1000
-      run_as_group = 1000
-      fs_group     = 1000
+      run_as_user            = 1000
+      run_as_group           = 1000
+      fs_group               = 1000
+      fs_group_change_policy = "OnRootMismatch"
     }
 
     affinity {

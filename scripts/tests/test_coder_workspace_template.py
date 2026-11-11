@@ -14,6 +14,7 @@ class WorkspaceTemplateTests(unittest.TestCase):
         self.assertIsNotNone(context, "workspace pod needs a security context for the home PVC")
         fields = dict(re.findall(r"^\s*(run_as_user|run_as_group|fs_group)\s*=\s*(\d+)", context.group(1), re.MULTILINE))
         self.assertEqual(fields, {"run_as_user": "1000", "run_as_group": "1000", "fs_group": "1000"})
+        self.assertRegex(context.group(1), r'(?m)^\s*fs_group_change_policy\s*=\s*"OnRootMismatch"')
 
 
 if __name__ == "__main__":
