@@ -13,8 +13,8 @@ Before enabling:
    are ready. The application excludes the live `data` of `coder/coder-power-trust` from
    reconciliation: `wol-proxy` writes its public admission CA there and keeps it current after
    rotation. Start with no ungated Coder workspaces.
-3. Enable both commented Coder settings in `apps/wol-proxy/configmap.yaml` and restart the proxy
-   so it reads them. Confirm the CA is populated and the Coder admission and preflight endpoints
+3. Enable both Coder settings in `apps/wol-proxy/configmap.yaml` and restart the proxy so it reads
+   them. Confirm the CA is populated and the Coder admission and preflight endpoints
    are available. While the webhooks are missing, the proxy fails closed: it cannot suspend the pool
    or coordinate other protected workload starts. Perform steps 3 and 4 in a maintenance window.
 4. Add `admission-webhooks.yaml` to this Kustomization and sync it. Confirm both webhook

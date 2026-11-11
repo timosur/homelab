@@ -38,9 +38,8 @@ data:
         kubernetesNode: homelab-amd-desktop
         sandboxAdmissionEnabled: true
         sandboxPowerInterlockEnabled: true
-        # Enable only after the new wol-proxy image and staged Coder gate are available.
-        # coderWorkspaceNamespace: coder
-        # coderPreflightTokenPath: /run/coder-preflight/token
+        coderWorkspaceNamespace: coder
+        coderPreflightTokenPath: /run/coder-preflight/token
         sandboxPool:
           backends: [ollama]
           workers:
