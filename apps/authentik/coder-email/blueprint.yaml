@@ -1,9 +1,6 @@
 version: 1
 metadata:
   name: Coder email verification
-  labels:
-    # Keep admission changes staged until the verification flow is tested.
-    blueprints.goauthentik.io/instantiate: "false"
 entries:
   - model: authentik_flows.flow
     id: flow
