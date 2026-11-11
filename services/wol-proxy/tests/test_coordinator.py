@@ -1,10 +1,11 @@
 import asyncio
+import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from aiohttp import ClientPayloadError, ClientResponseError, web
 
@@ -15,6 +16,7 @@ from wol_proxy.interlock import Interlock, InterlockError
 from wol_proxy.power_client import PowerClientError
 from wol_proxy.power_guard import GuardError, PowerGuard
 from wol_proxy.proxy import NodeGroupProxy
+from wol_proxy.sandboxes import SandboxMonitor
 from wol_proxy.workspace import WorkspaceBusy
 
 
@@ -109,6 +111,41 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         await self.coordinator.tick()
         self.assertEqual(self.client.data["phase"], "idle")
         self.assertEqual(self.power.call.await_count, 1)
+
+    async def test_coder_and_other_workloads_independently_block_sleep(self):
+        with patch.dict(os.environ, {"KUBERNETES_SERVICE_HOST": "kubernetes"}):
+            monitor = SandboxMonitor("sandboxes", "factory", "desktop", "coder")
+        workloads = {"sandboxes": [], "coder": []}
+
+        async def list_pods(path, *, params=None):
+            namespace = path.split("/")[4]
+            if namespace == "coder":
+                self.assertEqual(params, {"labelSelector": "app.kubernetes.io/name=coder-workspace,app.kubernetes.io/component=development-workspace"})
+            return {"items": workloads[namespace]}
+
+        monitor._get = AsyncMock(side_effect=list_pods)
+        monitor.verify_admission = AsyncMock()
+        monitor.node_ready = AsyncMock(return_value=True)
+        monitor.node_lease_revision = AsyncMock(side_effect=["lease-1", "lease-2"])
+        monitor.has_gated_pods = AsyncMock(return_value=False)
+        self.coordinator.monitor = monitor
+
+        await self.ready()
+        self.proxy.idle_seconds = 301
+        workloads["sandboxes"] = [{}]
+        workloads["coder"] = [{}]
+        await self.coordinator.tick()
+        workloads["sandboxes"] = []
+        await self.coordinator.tick()
+        workloads["sandboxes"] = [{}]
+        workloads["coder"] = []
+        await self.coordinator.tick()
+        self.assertEqual(self.client.data["phase"], "idle")
+        self.assertEqual(self.power.call.await_count, 1)  # Only the initial fence.
+
+        workloads["sandboxes"] = []
+        await self.coordinator.tick()
+        self.assertEqual(self.power.call.await_args.args[0], "suspend")
 
     async def test_coder_reservation_keeps_pool_awake_without_blocking_other_work(self):
         await self.ready()
