@@ -2,7 +2,11 @@
 
 This template creates one independently owned development workspace and 100 GiB Synology iSCSI
 home volume for each Coder workspace. The volume survives a workspace stop, while the Pod is
-created only while the workspace is running.
+created only while the workspace is running, on either approved worker in the shared power pool.
+
+Do not publish this template until the staged power coordination in
+[`../../power-coordination/README.md`](../../power-coordination/README.md) is deployed. Its
+authenticated preflight must succeed before workspace storage or its Pod can be created.
 
 Validate and publish from this directory after logging in to the private Coder instance:
 

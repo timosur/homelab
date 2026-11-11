@@ -52,10 +52,10 @@ workspace, access, and inactivity behavior. Direct host SSH is not a dev contain
 Using a host-managed VM would introduce an unimplemented libvirt/QEMU management plane. A Kata
 workspace adds overhead and couples this personal environment to the Dark Factory sandbox domain.
 
-### Per-board-member desktop-pinned persistent pod template
+### Per-board-member pool-scheduled persistent pod template
 
 The initial template lets each board member create an independent standard Kubernetes development
-pod with a node selector for `homelab-amd-desktop` and a tolerance for
+pod with required node affinity for `homelab-amd-desktop` or `homelab-gpu` and a tolerance for
 `availability=daytime:NoSchedule`. It dynamically provisions one 100 GiB Synology CSI
 ReadWriteOnce PVC per workspace and mounts it at that workspace user's home. The template's
 workload labels identify it as a Coder development workspace but do not grant it a Kubernetes
@@ -93,10 +93,18 @@ native dotfiles lifecycle and would require parallel update behavior.
 ### Power coordination is a bounded preflight and observation integration
 
 Add an authenticated internal `wol-proxy` development-workspace power interface. The Coder
-template invokes its start preflight before creating the Kubernetes workload; the proxy wakes
-`homelab-amd-desktop` and reports success only after the node is Ready and schedulable. The caller
+template invokes its start preflight before creating workspace storage or the Kubernetes workload;
+the proxy wakes the shared worker pool and reports success only after both workers are Ready and
+schedulable and the existing pool fence permits starts. The caller
 uses a narrowly scoped service credential, and the proxy validates only the named personal Coder
 workspace action.
+
+Serialize the preflight-to-pod handoff with suspension using a durable start reservation. An
+interrupted or uncertain handoff remains fail-closed across proxy restart. A separate fail-closed
+Coder pod admission gate prevents delayed pod creates from bypassing the shared pool interlock;
+only the wake controller may release that gate while holding the fenced release phase. Observation
+of existing, pending, or deleting Coder workspace pods also blocks pool suspension. Do not assume a
+successful preflight or an observed pod alone makes a later pod creation safe.
 
 Configure Coder's template activity policy to stop the workspace after 30 minutes with no active
 workspace activity. On stop, Coder removes the workload while preserving the PVC. `wol-proxy`
@@ -113,10 +121,10 @@ power guard.
 ## Risks / Trade-offs
 
 - [The desktop is asleep or fails to rejoin before a build deadline] → Wake before provisioning,
-  wait for Ready/schedulable state, report the failed build without creating or deleting the PVC,
+  wait for both workers' Ready/schedulable state, report the failed build without creating or deleting the PVC,
   and allow an explicit retry.
 - [A power API is called outside the approved Coder workflow] → Authenticate and authorize a
-  single named workspace action; deny all other node-power requests and audit accepted requests.
+  single named workspace action for the fixed pool; deny all other power requests and audit accepted requests.
 - [Coder inactivity detection does not see an expected client session] → Treat workspace stop as
   intentional/restartable, preserve the PVC, and document the 30-minute behavior before rollout.
 - [The Coder control plane or OAuth integration is compromised] → Keep it LAN-only, require

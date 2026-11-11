@@ -8,6 +8,9 @@ from aiohttp import web
 
 from .config import load_config
 from .admission import admission_app
+from .coder_admission import register as register_coder_admission
+from .coder_preflight import register as register_coder_preflight
+from .coder_trust import publish_trust
 from .proxy import NodeGroupProxy, ProxyBackend
 
 log = logging.getLogger("wol-proxy")
@@ -77,13 +80,17 @@ def build_admission_app(group):
     nodes = (tuple(worker.node for worker in cfg.sandbox_pool.workers)
              if cfg.sandbox_pool is not None else cfg.kubernetes_node)
     monitor = group._sandbox_monitor
-    return admission_app(
+    app = admission_app(
         cfg.sandbox_namespace, nodes, monitor.can_bind, monitor.can_release,
         workspace_instance=cfg.sandbox_instance,
         workspace_storage_class=cfg.sandbox_workspace_storage_class,
         workspace_delete_actor=cfg.sandbox_workspace_delete_actor,
         can_delete=monitor.can_delete_workspace,
     )
+    if cfg.coder_workspace_namespace:
+        register_coder_admission(app, cfg.coder_workspace_namespace, nodes, monitor.can_release_coder, monitor.coder_binding_pod)
+        register_coder_preflight(app, group, cfg.coder_preflight_token_path, timeout=cfg.wake_timeout_seconds)
+    return app
 
 
 async def run(config_path: str) -> None:
@@ -110,6 +117,12 @@ async def run(config_path: str) -> None:
         await web.TCPSite(admission_runner, "0.0.0.0", 9443, ssl_context=tls).start()
         runners.append(admission_runner)
         tasks.append(asyncio.create_task(reload_admission_tls(tls)))
+        if group.cfg.coder_workspace_namespace:
+            monitor = group._sandbox_monitor
+            primary = monitor.monitors[0] if group.cfg.sandbox_pool is not None else monitor
+            tasks.append(asyncio.create_task(publish_trust(
+                primary, group.cfg.coder_workspace_namespace, "/run/dark-factory-admission/ca.crt",
+            )))
 
     for backend in backends:
         backend_cfg = backend.cfg

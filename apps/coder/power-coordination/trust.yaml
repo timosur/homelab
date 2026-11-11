@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coder-power-trust
+  namespace: coder
+data:
+  # The wol-proxy service account synchronizes its public admission CA here.
+  ca.crt: ''

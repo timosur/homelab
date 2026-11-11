@@ -11,11 +11,11 @@ a repeatable development environment without exposing the desktop worker or Code
 - Onboard self-hosted Coder as the LAN-only personal development-workspace platform at
   `coder.home.timosur.com`, using Authentik OIDC and a dedicated central-CNPG database provisioned
   through an AppDBClaim.
-- Provide a Coder workspace template for each board member on the demand-woken
-  `homelab-amd-desktop` worker. Each workspace uses its own 100 GiB Synology RWO volume and a
+- Provide a Coder workspace template for each board member on either demand-woken worker,
+  `homelab-amd-desktop` or `homelab-gpu`. Each workspace uses its own 100 GiB Synology RWO volume and a
   purpose-built Debian/Ubuntu image with the homelab infrastructure toolchain and interactive APT
   access through passwordless `sudo`.
-- Integrate Coder workspace start and stop with `wol-proxy`: wake and await the desktop worker
+- Integrate Coder workspace start and stop with `wol-proxy`: wake and await the shared worker pool
   before provisioning, allow Coder's Zed-compatible SSH access, stop an inactive workspace after
   30 minutes, and request host suspension only after the workspace has stopped and existing power
   safeguards allow it.

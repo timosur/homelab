@@ -45,6 +45,13 @@ spec:
             limits:
               cpu: 1
               memory: 1Gi
+          volumeMounts:
+            - name: power-preflight
+              mountPath: /run/coder-power
+              readOnly: true
+            - name: power-trust
+              mountPath: /run/coder-power-ca
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /healthz
@@ -61,3 +68,12 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: [ALL]
+      volumes:
+        - name: power-preflight
+          secret:
+            secretName: coder-power-preflight
+            optional: true
+        - name: power-trust
+          configMap:
+            name: coder-power-trust
+            optional: true

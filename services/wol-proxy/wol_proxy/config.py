@@ -99,6 +99,9 @@ class NodeGroupConfig:
     kubernetes_node: str = ""
     sandbox_admission_enabled: bool = False
     sandbox_power_interlock_enabled: bool = False
+    # Staged only: pod observation alone cannot protect an in-flight start.
+    coder_workspace_namespace: str = ""
+    coder_preflight_token_path: str = ""
     power_ssh_user: str = "dark-factory-power"
     sandbox_pool: SandboxPoolConfig | None = None
 
@@ -191,6 +194,8 @@ def load_config(path: str) -> Config:
                 kubernetes_node=ng.get("kubernetesNode", ""),
                 sandbox_admission_enabled=optional_boolean(ng, "sandboxAdmissionEnabled"),
                 sandbox_power_interlock_enabled=optional_boolean(ng, "sandboxPowerInterlockEnabled"),
+                coder_workspace_namespace=ng.get("coderWorkspaceNamespace", ""),
+                coder_preflight_token_path=ng.get("coderPreflightTokenPath", ""),
                 power_ssh_user=ng.get("powerSshUser", "dark-factory-power"),
                 sandbox_pool=pool,
             )

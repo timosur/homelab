@@ -422,6 +422,12 @@ class NodeGroupProxy:
         self._proxied_requests = 0
         self._wake_requested = False
         sandbox_configured = any((cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node))
+        if not isinstance(cfg.coder_workspace_namespace, str):
+            raise ValueError("Coder workspace namespace must be a string")
+        if not isinstance(cfg.coder_preflight_token_path, str) or bool(cfg.coder_workspace_namespace) != bool(cfg.coder_preflight_token_path):
+            raise ValueError("Coder workspace admission and preflight must be configured together")
+        if cfg.coder_workspace_namespace and not cfg.sandbox_power_interlock_enabled:
+            raise ValueError("Coder workspace monitoring requires the power interlock")
         if cfg.sandbox_admission_enabled and not sandbox_configured:
             raise ValueError("sandbox admission requires sandbox monitoring")
         if cfg.sandbox_pool is not None:
@@ -437,11 +443,11 @@ class NodeGroupProxy:
             ):
                 raise ValueError("sandbox pool requires distinct, fully configured workers and a primary node")
             self._sandbox_monitor = PoolMonitor([
-                SandboxMonitor(cfg.sandbox_namespace, cfg.sandbox_instance, worker.node) for worker in workers
+                SandboxMonitor(cfg.sandbox_namespace, cfg.sandbox_instance, worker.node, cfg.coder_workspace_namespace) for worker in workers
             ])
         else:
             self._sandbox_monitor = (
-                SandboxMonitor(cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node)
+                SandboxMonitor(cfg.sandbox_namespace, cfg.sandbox_instance, cfg.kubernetes_node, cfg.coder_workspace_namespace)
                 if sandbox_configured else None
             )
         if cfg.sandbox_workspace_storage_class and self._sandbox_monitor is not None:

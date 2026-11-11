@@ -17,15 +17,15 @@
 ## 3. Persistent Coder workspace template
 
 - [ ] 3.1 Add the version-pinned Coder Terraform template and provider/module dependencies; verify template validation and publication succeed from committed sources.
-- [ ] 3.2 Implement a per-board-member workspace resource with the immutable workspace-image digest, `homelab-amd-desktop` selector, daytime-taint tolerance, unprivileged service account, and a dynamically provisioned 100 GiB Synology RWO home PVC per workspace; verify a fresh workspace schedules only to the desktop worker, does not share another user's PVC, and uses neither hostPath/local-path nor Dark Factory storage.
+- [ ] 3.2 Implement a per-board-member workspace resource with the immutable workspace-image digest, affinity restricted to `homelab-amd-desktop` and `homelab-gpu`, daytime-taint tolerance, unprivileged service account, and a dynamically provisioned 100 GiB Synology RWO home PVC per workspace; verify a fresh workspace schedules only to an approved worker, does not share another user's PVC, and uses neither hostPath/local-path nor Dark Factory storage.
 - [ ] 3.3 Configure Coder's native dotfiles module with `default_dotfiles_uri` set to `https://github.com/timosur/dotfiles.git` and Coder's 30-minute inactivity stop policy; verify bootstrap succeeds without interactivity, workspace restart retains home data, and an inactive workspace stops while retaining its PVC.
 - [ ] 3.4 Document the board-member workspace lifecycle, image-versus-APT persistence boundary, GitHub external-auth flow, `coder login`/`coder config-ssh`, and `zed ssh://coder.<workspace>` connection path; verify the documented Zed connection opens the running workspace without direct desktop-host SSH.
 
 ## 4. Desktop power coordination
 
-- [ ] 4.1 Add a narrowly authorized internal `wol-proxy` development-workspace preflight that wakes only `homelab-amd-desktop`, waits for Ready and schedulable state, audits accepted actions, and fails without creating/deleting workspace storage when state is unknown or readiness times out; verify authorized wake, denied caller, timeout, and retry behavior with tests.
-- [ ] 4.2 Invoke the preflight as an ordered dependency before the Coder template creates the workspace workload; verify starting from a sleeping desktop wakes the node before the workspace pod runs.
-- [ ] 4.3 Extend `wol-proxy` power-state observation to recognize the labeled Coder workspace and block suspension while it exists; verify the desktop remains awake for an active workspace and another protected workload, then becomes eligible for existing suspension handling only after the workspace stops.
+- [ ] 4.1 Add a narrowly authorized internal `wol-proxy` development-workspace preflight that wakes the fixed worker pool, waits for both workers' Ready and schedulable state, audits accepted actions, and fails without creating/deleting workspace storage when state is unknown or readiness times out; verify authorized wake, denied caller, timeout, and retry behavior with tests.
+- [ ] 4.2 Invoke the preflight as an ordered dependency before the Coder template creates workspace storage or workload; protect the handoff with a durable reservation and a separate fail-closed Coder scheduling gate, and verify starts from sleeping workers, interrupted starts, delayed pod creates, and suspension races.
+- [ ] 4.3 Extend `wol-proxy` power-state observation to recognize labeled Coder workspaces and block pool suspension while they exist; verify the pool remains awake for an active workspace and another protected workload, then becomes eligible for existing suspension handling only after the workspace stops.
 - [ ] 4.4 Run the documented end-to-end acceptance sequence: sleeping-node start, Authentik login, GitHub authorization, dotfiles bootstrap, Zed connection, persistent-data restart, 30-minute inactivity stop, and safe post-stop suspension; record results without exposing secret values.
 
 ## Workflow follow-up

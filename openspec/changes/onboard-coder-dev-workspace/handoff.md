@@ -21,7 +21,7 @@ desktop wake/suspension coordination. It is not deployed or ready to archive.
 - `apps/coder/templates/board-member/` contains a version-pinned Terraform template. It creates a
   separate 100 GiB `homelab-iscsi` RWO PVC per workspace, starts the Pod only while a workspace is
   running, requires Coder GitHub external authentication, pins the workspace image digest, targets
-  `homelab-amd-desktop`, tolerates `availability=daytime:NoSchedule`, and disables the workspace
+  either `homelab-amd-desktop` or `homelab-gpu`, tolerates `availability=daytime:NoSchedule`, and disables the workspace
   Pod service-account token.
 - `publish.sh` publishes the template and configures a 30-minute default autostop and activity bump.
 - `.terraform/` is ignored; the generated template `.terraform.lock.hcl` is intentionally tracked.
@@ -73,10 +73,13 @@ missing. `bash -n apps/coder/templates/board-member/publish.sh` passed instead.
 
 1. Complete Key Vault and GitHub OAuth configuration above, then deploy the ArgoCD application.
 2. Verify the AppDBClaim, ExternalSecret, Authentik login, and LAN-only route live.
-3. Run `apps/coder/templates/board-member/publish.sh` while logged in to Coder; create a
-   board-member workspace and verify its PVC, GitHub external auth, dotfiles bootstrap, and Zed SSH.
-4. Implement tasks 4.1–4.3: authenticated `wol-proxy` preflight, template integration, and
-   desktop-suspension protection for active Coder workspaces.
+3. Review and enable the staged power coordination. The authenticated pooled preflight,
+   durable interlock reservation, separate Coder scheduling gate, and workspace observation are
+   implemented locally but intentionally not enabled or deployed. Follow
+   `apps/coder/power-coordination/README.md` before publishing the template.
+4. Run `apps/coder/templates/board-member/publish.sh` while logged in to Coder; create a
+   board-member workspace and verify its PVC, GitHub external auth, dotfiles bootstrap, Zed SSH,
+   and live power coordination (tasks 4.1–4.3).
 5. Add the user-facing lifecycle documentation and perform the end-to-end acceptance sequence.
 6. Check and update `openspec/changes/onboard-coder-dev-workspace/tasks.md` only as the live checks
    complete; sync and archive the change only after all tasks pass.

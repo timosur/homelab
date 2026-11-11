@@ -41,7 +41,23 @@ module "dotfiles" {
   user                 = "coder"
 }
 
+resource "terraform_data" "power_preflight" {
+  count = data.coder_workspace.me.start_count
+
+  # Re-run on every start build, including retries after a partially completed build.
+  triggers_replace = timestamp()
+
+  provisioner "local-exec" {
+    command = "sh \"${path.module}/preflight.sh\""
+    environment = {
+      WORKSPACE_ID = data.coder_workspace.me.id
+    }
+  }
+}
+
 resource "kubernetes_persistent_volume_claim_v1" "home" {
+  depends_on = [terraform_data.power_preflight]
+
   metadata {
     name      = "coder-${data.coder_workspace.me.id}-home"
     namespace = "coder"
@@ -68,6 +84,8 @@ resource "kubernetes_persistent_volume_claim_v1" "home" {
 resource "kubernetes_pod_v1" "workspace" {
   count = data.coder_workspace.me.start_count
 
+  depends_on = [terraform_data.power_preflight]
+
   metadata {
     name      = "coder-${data.coder_workspace.me.id}"
     namespace = "coder"
@@ -81,8 +99,18 @@ resource "kubernetes_pod_v1" "workspace" {
 
   spec {
     automount_service_account_token = false
-    node_selector = {
-      "kubernetes.io/hostname" = "homelab-amd-desktop"
+    affinity {
+      node_affinity {
+        required_during_scheduling_ignored_during_execution {
+          node_selector_term {
+            match_expressions {
+              key      = "kubernetes.io/hostname"
+              operator = "In"
+              values   = ["homelab-amd-desktop", "homelab-gpu"]
+            }
+          }
+        }
+      }
     }
 
     toleration {

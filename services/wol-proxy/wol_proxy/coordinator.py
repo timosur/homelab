@@ -8,6 +8,8 @@ from aiohttp import ClientResponseError
 from .interlock import InterlockError
 from .power_client import PowerClientError
 from .workspace import WorkspaceBusy
+from .coder_admission import GATE as CODER_GATE, workspace_id
+from .admission import gates
 
 
 def leases_advanced(previous, current):
@@ -57,7 +59,7 @@ class SleepCoordinator:
             await self.interlock.retire_suspend_epoch()
             self.needs_retire = False
             state["epoch"] = self.interlock.epoch
-        active = await self.monitor.any_workload()
+        active = await self.monitor.any_workload() or bool(state["coder_starts"])
         demand = active or self.proxy._wake_requested or self.proxy._active_requests > 0
         if active:
             self.proxy.touch()
@@ -114,6 +116,12 @@ class SleepCoordinator:
                         await self.interlock.transition("releasing", "idle")
                     raise
                 await self.interlock.transition("releasing", "idle")
+                if getattr(self.proxy.cfg, "coder_workspace_namespace", ""):
+                    # A later create is gated too, so observation of this ungated
+                    # pod safely transfers protection from the reservation to the pod.
+                    for pod in await self.monitor.coder_pods():
+                        if not any(gate.get("name") == CODER_GATE for gate in gates(pod)):
+                            await self.interlock.coder_reservation(workspace_id(pod), reserve=False)
             return
 
         if active or self.proxy.idle_seconds < self.proxy.cfg.idle_timeout_minutes * 60:

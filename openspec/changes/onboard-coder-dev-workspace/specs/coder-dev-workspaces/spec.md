@@ -38,14 +38,14 @@ as plaintext in committed manifests.
 
 ### Requirement: Persistent desktop development workspace
 The system SHALL provide each board member a Coder workspace template that starts a standard
-Kubernetes development pod on `homelab-amd-desktop`, tolerates its daytime scheduling constraint,
+Kubernetes development pod on either `homelab-amd-desktop` or `homelab-gpu`, tolerates the applicable scheduling constraints,
 and mounts a dedicated 100 GiB Synology ReadWriteOnce volume as the development home directory.
 Stopping and restarting the workspace SHALL preserve that directory without sharing it with another
 board member's workspace.
 
 #### Scenario: Workspace starts after a normal stop
 - **WHEN** a board member's workspace is stopped and then started again
-- **THEN** it runs on `homelab-amd-desktop` and contains the prior development home-directory data
+- **THEN** it runs on one of the two approved workers and contains the prior development home-directory data
 
 #### Scenario: Workspace storage is provisioned
 - **WHEN** a board member's workspace is first created
@@ -84,15 +84,18 @@ integration without mounting a personal Git credential in the workspace.
 
 
 ### Requirement: Demand-woken workspace lifecycle
-The system SHALL coordinate personal workspace lifecycle with `wol-proxy`. A workspace start SHALL
-wake `homelab-amd-desktop` and wait for it to be schedulable before workspace provisioning proceeds.
-Coder SHALL stop the workspace after 30 minutes without workspace activity. `wol-proxy` SHALL only
-request desktop suspension after the workspace has stopped and its existing protected-workload and
-power-safety conditions permit suspension.
+The system SHALL use `wol-proxy` to wake the shared worker pool before workspace provisioning.
+The start handoff SHALL prevent suspension until the workload is safely observed. Coder SHALL stop
+the workspace after 30 minutes without activity. `wol-proxy` SHALL suspend the pool only when the
+workspace has stopped and existing power-safety conditions permit it.
 
-#### Scenario: Start while the desktop is asleep
-- **WHEN** the user starts the workspace while `homelab-amd-desktop` is asleep
-- **THEN** the desktop is woken and observed Ready before the workspace is allowed to run
+#### Scenario: Start while a pool worker is asleep
+- **WHEN** the user starts the workspace while either worker is asleep
+- **THEN** the pool is woken and both workers are observed Ready and schedulable before the workspace is allowed to run
+
+#### Scenario: Start races suspension
+- **WHEN** workspace start is in progress or its outcome is uncertain
+- **THEN** suspension remains blocked until the handoff to an observed workload is safe or an operator resolves the uncertainty
 
 #### Scenario: Workspace becomes inactive
 - **WHEN** no Coder workspace activity is detected for 30 minutes

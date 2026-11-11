@@ -110,6 +110,33 @@ class CoordinatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.client.data["phase"], "idle")
         self.assertEqual(self.power.call.await_count, 1)
 
+    async def test_coder_reservation_keeps_pool_awake_without_blocking_other_work(self):
+        await self.ready()
+        self.proxy.idle_seconds = 301
+        await self.interlock.coder_reservation("11111111-1111-1111-1111-111111111111", reserve=True)
+        await self.coordinator.tick()
+        self.assertTrue(self.coordinator.accepting)
+        self.assertEqual(self.client.data["phase"], "idle")
+        self.assertEqual(self.power.call.await_count, 1)
+
+    async def test_released_coder_pod_transfers_reservation_to_observed_workload(self):
+        await self.ready()
+        workspace = "11111111-1111-1111-1111-111111111111"
+        await self.interlock.coder_reservation(workspace, reserve=True)
+        self.proxy.cfg.coder_workspace_namespace = "coder"
+        self.monitor.any_workload.return_value = True
+        self.monitor.has_gated_pods.return_value = True
+        self.monitor.coder_pods = AsyncMock(return_value=[{"metadata": {"name": f"coder-{workspace}", "labels": {
+            "coder.workspace.id": workspace, "app.kubernetes.io/name": "coder-workspace",
+            "app.kubernetes.io/component": "development-workspace"}}, "spec": {"schedulingGates": []}}])
+        await self.coordinator.tick()
+        self.assertEqual((await self.interlock.read())["coder_starts"], [])
+        self.assertEqual(self.client.data["phase"], "idle")
+        self.proxy.idle_seconds = 301
+        self.monitor.has_gated_pods.return_value = False
+        await self.coordinator.tick()
+        self.assertEqual(self.power.call.await_count, 1)
+
     async def test_uncertain_gate_patch_blocks_takeover(self):
         await self.ready()
         self.monitor.any_workload.return_value = True

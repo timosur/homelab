@@ -11,6 +11,7 @@ from wol_proxy.admission import GATE, RELEASE_TOKEN
 from wol_proxy.proxy import NodeGroupProxy
 from wol_proxy.sandboxes import SandboxMonitor
 from wol_proxy.workspace import WorkspaceBusy
+from wol_proxy.coder_admission import GATE as CODER_GATE, RELEASE_TOKEN as CODER_RELEASE_TOKEN
 
 
 class SandboxMonitorTests(unittest.IsolatedAsyncioTestCase):
@@ -36,6 +37,27 @@ class SandboxMonitorTests(unittest.IsolatedAsyncioTestCase):
         self.monitor._get.assert_awaited_once_with("/api/v1/namespaces/sandboxes/pods")
         self.monitor._get = AsyncMock(return_value={"items": []})
         self.assertFalse(await self.monitor.any_workload())
+
+    async def test_coder_pods_including_pending_or_deleting_block_sleep(self):
+        self.monitor.coder_namespace = "coder"
+        for pod in ({"status": {"phase": "Pending"}}, {"metadata": {"deletionTimestamp": "now"}}):
+            with self.subTest(pod=pod):
+                self.monitor._get = AsyncMock(side_effect=[{"items": []}, {"items": [pod]}])
+                self.assertTrue(await self.monitor.any_workload())
+                self.monitor._get.assert_any_await(
+                    "/api/v1/namespaces/coder/pods",
+                    params={"labelSelector": "app.kubernetes.io/name=coder-workspace,app.kubernetes.io/component=development-workspace"},
+                )
+        self.monitor._get = AsyncMock(side_effect=[{"items": []}, {"items": []}])
+        self.assertFalse(await self.monitor.any_workload())
+
+    async def test_unknown_coder_pod_state_cannot_authorize_sleep(self):
+        self.monitor.coder_namespace = "coder"
+        for result in ({}, {"items": [], "metadata": {"continue": "next"}}, OSError("API unavailable")):
+            with self.subTest(result=result):
+                self.monitor._get = AsyncMock(side_effect=[{"items": []}, result])
+                with self.assertRaises((ValueError, OSError)):
+                    await self.monitor.any_workload()
 
     async def test_incomplete_response_is_not_treated_as_inactive(self):
         for response in ({}, {"items": [], "metadata": {"continue": "next-page"}}):
@@ -90,6 +112,89 @@ class SandboxMonitorTests(unittest.IsolatedAsyncioTestCase):
         self.monitor._get = AsyncMock(return_value={"status": {"conditions": [None]}})
         with self.assertRaises(ValueError):
             await self.monitor.node_ready()
+
+    async def test_schedulability_requires_ready_uncordoned_and_tolerated_taints(self):
+        node = {"spec": {"taints": [{"key": "availability", "value": "daytime", "effect": "NoSchedule"}]},
+                "status": {"conditions": [{"type": "Ready", "status": "True"}]}}
+        self.monitor._get = AsyncMock(return_value=node)
+        self.assertTrue(await self.monitor.nodes_schedulable())
+        node["spec"]["unschedulable"] = True
+        self.assertFalse(await self.monitor.nodes_schedulable())
+        node["spec"]["unschedulable"] = False
+        node["spec"]["taints"].append({"key": "other", "effect": "NoSchedule"})
+        self.assertFalse(await self.monitor.nodes_schedulable())
+        node["status"] = {}
+        with self.assertRaises(ValueError):
+            await self.monitor.nodes_schedulable()
+
+    async def test_coder_gate_release_requires_current_reservation_and_token(self):
+        workspace = "11111111-1111-1111-1111-111111111111"
+        pod = {"metadata": {"name": f"coder-{workspace}", "labels": {
+            "coder.workspace.id": workspace, "app.kubernetes.io/name": "coder-workspace",
+            "app.kubernetes.io/component": "development-workspace"},
+            "annotations": {CODER_RELEASE_TOKEN: "2:owner:anchor"}}}
+        self.monitor._get = AsyncMock(return_value={
+            "metadata": {"uid": "anchor", "resourceVersion": "7"},
+            "data": {"epoch": "2", "owner": "owner", "phase": "releasing", "http_active": "0",
+                     "coder_starts": f'["{workspace}"]'},
+        })
+        self.assertTrue(await self.monitor.can_release_coder(pod))
+        pod["metadata"]["annotations"][CODER_RELEASE_TOKEN] = "1:owner:anchor"
+        self.assertFalse(await self.monitor.can_release_coder(pod))
+
+    async def test_coder_admission_must_be_complete_and_fail_closed(self):
+        self.monitor.coder_namespace = "coder"
+        def hook(path, rules):
+            return {"webhooks": [{"failurePolicy": "Fail",
+                "namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "coder"}},
+                "clientConfig": {"caBundle": "Y2E=", "service": {
+                    "name": "dark-factory-admission", "namespace": "wol-proxy", "path": path, "port": 443}},
+                "rules": rules}]}
+        def rule(resources, operations):
+            return {"apiGroups": [""], "apiVersions": ["v1"], "resources": resources,
+                    "operations": operations, "scope": "Namespaced"}
+        mutate = hook("/coder/mutate", [rule(["pods"], ["CREATE"])])
+        binding = rule(["pods/binding", "bindings"], ["CREATE"])
+        validate = hook("/coder/validate", [rule(["pods"], ["CREATE", "UPDATE"]), binding])
+        self.monitor._get = AsyncMock(side_effect=[mutate, validate])
+        await self.monitor.verify_coder_admission()
+        validate["webhooks"][0]["rules"].remove(binding)
+        self.monitor._get = AsyncMock(side_effect=[mutate, validate])
+        with self.assertRaises(ValueError):
+            await self.monitor.verify_coder_admission()
+
+    async def test_coder_gate_patch_is_guarded_by_reservation_uid_and_revision(self):
+        self.monitor.coder_namespace = "coder"
+        workspace = "11111111-1111-1111-1111-111111111111"
+        pod = {"metadata": {"name": f"coder-{workspace}", "uid": "pod-uid", "resourceVersion": "3",
+                            "labels": {"coder.workspace.id": workspace, "app.kubernetes.io/name": "coder-workspace",
+                                       "app.kubernetes.io/component": "development-workspace"}},
+               "spec": {"schedulingGates": [{"name": CODER_GATE}]}}
+        state = {"metadata": {"uid": "anchor", "resourceVersion": "7"},
+                 "data": {"epoch": "2", "owner": "owner", "phase": "releasing", "http_active": "0",
+                          "coder_starts": f'["{workspace}"]'}}
+        self.monitor._get = AsyncMock(side_effect=[state, {"items": [pod]}])
+        self.monitor._patch = AsyncMock()
+        await self.monitor.release_coder_gates(2, "owner", "anchor")
+        path, patch = self.monitor._patch.await_args.args
+        self.assertEqual(path, f"/api/v1/namespaces/coder/pods/coder-{workspace}")
+        self.assertEqual(patch[0], {"op": "test", "path": "/metadata/uid", "value": "pod-uid"})
+        self.assertEqual(patch[1], {"op": "test", "path": "/metadata/resourceVersion", "value": "3"})
+        self.assertEqual(patch[-1]["path"], "/spec/schedulingGates/0")
+
+    async def test_delayed_coder_create_without_reservation_remains_gated(self):
+        self.monitor.coder_namespace = "coder"
+        workspace = "11111111-1111-1111-1111-111111111111"
+        pod = {"metadata": {"name": f"coder-{workspace}", "uid": "pod-uid", "resourceVersion": "3",
+                            "labels": {"coder.workspace.id": workspace, "app.kubernetes.io/name": "coder-workspace",
+                                       "app.kubernetes.io/component": "development-workspace"}},
+               "spec": {"schedulingGates": [{"name": CODER_GATE}]}}
+        state = {"metadata": {"uid": "anchor", "resourceVersion": "7"},
+                 "data": {"epoch": "2", "owner": "owner", "phase": "releasing", "http_active": "0"}}
+        self.monitor._get = AsyncMock(side_effect=[state, {"items": [pod]}])
+        self.monitor._patch = AsyncMock()
+        await self.monitor.release_coder_gates(2, "owner", "anchor")
+        self.monitor._patch.assert_not_awaited()
 
     async def test_releases_only_matching_gate_with_uid_and_version_checks(self):
         self.monitor._get = AsyncMock(return_value={"items": [{

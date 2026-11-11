@@ -101,6 +101,67 @@ class InterlockTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(InterlockError):
             await self.first.http_change(1)
 
+    async def test_coder_reservation_survives_takeover_and_blocks_suspend(self):
+        workspace = "11111111-1111-1111-1111-111111111111"
+        await self.first.claim()
+        await self.first.coder_reservation(workspace, reserve=True)
+        await self.first.coder_reservation(workspace, reserve=True)
+        with self.assertRaises(InterlockError):
+            await self.first.transition("idle", "suspending")
+        second = Interlock(self.client)
+        state = await second.claim()
+        self.assertEqual(state["coder_starts"], [workspace])
+        with self.assertRaises(InterlockError):
+            await second.transition("idle", "suspending")
+        await second.coder_reservation(workspace, reserve=False)
+        await second.transition("idle", "suspending")
+
+    async def test_coder_reservation_cannot_begin_during_suspend(self):
+        await self.first.claim()
+        await self.first.transition("idle", "suspending")
+        with self.assertRaises(InterlockError):
+            await self.first.coder_reservation("11111111-1111-1111-1111-111111111111", reserve=True)
+
+    async def test_invalid_coder_reservations_fail_closed(self):
+        await self.first.claim()
+        for value in ("not-json", "{}", '["not-a-uuid"]', '["11111111-1111-1111-1111-111111111111", "11111111-1111-1111-1111-111111111111"]'):
+            with self.subTest(value=value):
+                self.client.data["coder_starts"] = value
+                with self.assertRaises(InterlockError):
+                    await self.first.transition("idle", "suspending")
+
+    async def test_coder_reservation_rejects_invalid_identity_and_stale_owner(self):
+        await self.first.claim()
+        with self.assertRaises(InterlockError):
+            await self.first.coder_reservation("invalid", reserve=True)
+        second = Interlock(self.client)
+        await second.claim()
+        with self.assertRaises(InterlockError):
+            await self.first.coder_reservation("11111111-1111-1111-1111-111111111111", reserve=True)
+
+    async def test_coder_reservation_and_suspend_cannot_both_win(self):
+        await self.first.claim()
+        original_get = self.client._get
+        both_read = asyncio.Event()
+        count = 0
+
+        async def synchronized_get(path):
+            nonlocal count
+            snapshot = await original_get(path)
+            count += 1
+            if count == 2:
+                both_read.set()
+            await both_read.wait()
+            return snapshot
+
+        self.client._get = synchronized_get
+        results = await asyncio.gather(
+            self.first.coder_reservation("11111111-1111-1111-1111-111111111111", reserve=True),
+            self.first.transition("idle", "suspending"), return_exceptions=True,
+        )
+        self.assertEqual(sum(isinstance(result, Exception) for result in results), 1)
+        self.assertFalse(self.client.data["phase"] == "suspending" and self.client.data.get("coder_starts"))
+
     async def test_concurrent_claims_use_resource_version_as_cas(self):
         client = FakeKubernetes()
         original_get = client._get
