@@ -1,0 +1,6 @@
+email = request.user.email
+verified_address = request.user.attributes.get("email_verified_address")
+return {
+    "email": email,
+    "email_verified": bool(email and verified_address == email),
+}

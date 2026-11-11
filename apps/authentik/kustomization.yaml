@@ -15,3 +15,11 @@ resources:
   - worker-deployment.yaml
   - media-pvc.yaml
   - reference-grant.yaml
+
+configMapGenerator:
+  - name: authentik-coder-email
+    files:
+      - coder-email/blueprint.yaml
+      - coder-email/snapshot.expr
+      - coder-email/record.expr
+      - coder-email/scope.expr

@@ -1,0 +1,20 @@
+user = request.context.get("pending_user")
+token = request.context.get("is_restored")
+if not user or not user.pk or not token or token.user_id != user.pk:
+    return False
+if token.flow.slug != "coder-email-verification":
+    return False
+if not token.identifier.startswith("ak-email-stage-coder-email-confirmation-"):
+    return False
+
+# Use the token's original plan, not the current session's merged flow context.
+original = token.plan.context
+address = original.get("coder_verification_email")
+if not address or original.get("email") != address:
+    return False
+user.refresh_from_db(fields=["email", "attributes"])
+if user.email != address:
+    return False
+user.attributes["email_verified_address"] = address
+user.save(update_fields=["attributes"])
+return True

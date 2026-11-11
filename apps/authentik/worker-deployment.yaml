@@ -27,6 +27,11 @@ spec:
             - secretRef:
                 name: authentik-secrets
           env:
+            - name: AUTHENTIK_EMAIL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: AUTHENTIK_EMAIL__PASSWORD
             - name: AUTHENTIK_POSTGRESQL__USER
               valueFrom:
                 secretKeyRef:
@@ -40,6 +45,9 @@ spec:
           volumeMounts:
             - name: media
               mountPath: /media
+            - name: coder-email-blueprint
+              mountPath: /blueprints/coder-email
+              readOnly: true
           resources:
             requests:
               memory: "256Mi"
@@ -51,3 +59,6 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: authentik-media
+        - name: coder-email-blueprint
+          configMap:
+            name: authentik-coder-email

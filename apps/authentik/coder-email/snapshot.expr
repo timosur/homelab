@@ -1,0 +1,16 @@
+plan = request.context["flow_plan"]
+token = request.context.get("is_restored")
+if token:
+    return token.flow.slug == "coder-email-verification"
+
+user = request.user
+if not user.is_authenticated or not user.pk or not user.email:
+    return False
+
+user.refresh_from_db(fields=["email"])
+if not user.email:
+    return False
+plan.context["pending_user"] = user
+plan.context["coder_verification_email"] = user.email
+plan.context["email"] = user.email
+return True

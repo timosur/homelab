@@ -1,0 +1,100 @@
+version: 1
+metadata:
+  name: Coder email verification
+  labels:
+    # Keep admission changes staged until the verification flow is tested.
+    blueprints.goauthentik.io/instantiate: "false"
+entries:
+  - model: authentik_flows.flow
+    id: flow
+    identifiers:
+      slug: coder-email-verification
+    attrs:
+      name: Coder email verification
+      title: Verify your email address
+      designation: stage_configuration
+      authentication: require_authenticated
+  - model: authentik_stages_email.emailstage
+    id: email-stage
+    identifiers:
+      name: coder-email-confirmation
+    attrs:
+      use_global_settings: true
+      activate_user_on_success: false
+      token_expiry: minutes=30
+      template: email/account_confirmation.html
+  - model: authentik_stages_user_login.userloginstage
+    id: login-stage
+    identifiers:
+      name: coder-email-confirmation-login
+    attrs:
+      session_duration: seconds=0
+  - model: authentik_policies_expression.expressionpolicy
+    id: snapshot-policy
+    identifiers:
+      name: coder-email-verification-snapshot
+    attrs:
+      expression: !File /blueprints/coder-email/snapshot.expr
+  - model: authentik_policies_expression.expressionpolicy
+    id: record-policy
+    identifiers:
+      name: coder-email-verification-record
+    attrs:
+      expression: !File /blueprints/coder-email/record.expr
+  - model: authentik_flows.flowstagebinding
+    id: email-binding
+    identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf email-stage
+      order: 10
+    attrs:
+      evaluate_on_plan: false
+      re_evaluate_policies: true
+  - model: authentik_flows.flowstagebinding
+    id: login-binding
+    identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf login-stage
+      order: 20
+    attrs:
+      evaluate_on_plan: false
+      re_evaluate_policies: true
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf email-binding
+      order: 0
+    attrs:
+      policy: !KeyOf snapshot-policy
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf login-binding
+      order: 0
+    attrs:
+      policy: !KeyOf record-policy
+  - model: authentik_providers_oauth2.scopemapping
+    id: email-scope
+    identifiers:
+      name: Coder verified email
+    attrs:
+      scope_name: email
+      expression: !File /blueprints/coder-email/scope.expr
+  - model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      client_id: coder
+    attrs:
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'openid'"]]
+        - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'profile'"]]
+        - !Find [authentik_providers_oauth2.scopemapping, [name, "Dark Factory groups"]]
+        - !KeyOf email-scope
+  - model: authentik_core.application
+    identifiers:
+      slug: coder
+    attrs:
+      policy_engine_mode: all
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !Find [authentik_core.application, [slug, coder]]
+      order: 0
+    attrs:
+      group: !Find [authentik_core.group, [name, board-member]]
