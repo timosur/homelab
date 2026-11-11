@@ -11,6 +11,8 @@ a repeatable development environment without exposing the desktop worker or Code
 - Onboard self-hosted Coder as the LAN-only personal development-workspace platform at
   `coder.home.timosur.com`, using Authentik OIDC and a dedicated central-CNPG database provisioned
   through an AppDBClaim.
+- Verify OIDC email addresses through an isolated Authentik email-confirmation flow, reusing the
+  existing SMTP account and externally managed credential without changing unrelated login flows.
 - Provide a Coder workspace template for each board member on either demand-woken worker,
   `homelab-amd-desktop` or `homelab-gpu`. Each workspace uses its own 100 GiB Synology RWO volume and a
   purpose-built Debian/Ubuntu image with the homelab infrastructure toolchain and interactive APT
@@ -39,7 +41,7 @@ a repeatable development environment without exposing the desktop worker or Code
 ## Impact
 
 The change adds a Coder GitOps application, ArgoCD application, home HTTPS route, Authentik OIDC
-client configuration, Crossplane AppDBClaim, Coder workspace Terraform template, workspace-image
+client configuration and email verification, Crossplane AppDBClaim, Coder workspace Terraform template, workspace-image
 build and publication workflow, and narrowly scoped `wol-proxy` power-coordination API and policy.
 It also requires a separately reviewed change to `../dotfiles`. Coder, its workspace template, the
 workspace image, Coder's Terraform/provider modules, and GitHub OAuth become new operational

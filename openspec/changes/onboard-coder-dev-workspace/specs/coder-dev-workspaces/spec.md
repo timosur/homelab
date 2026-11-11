@@ -10,12 +10,24 @@ securely while coordinating the demand-woken desktop worker's power state.
 ### Requirement: Private authenticated Coder access
 The system SHALL provide the Coder control plane only at `coder.home.timosur.com` through the home
 HTTPS gateway. It SHALL authenticate users with the configured Authentik OIDC provider and SHALL
-not publish a Coder endpoint through Pangolin, Newt, or another internet-facing route.
+not publish a Coder endpoint through Pangolin, Newt, or another internet-facing route. Coder SHALL
+require confirmation of the user's current email address through an isolated Authentik verification
+flow without changing unrelated applications' login flows.
 
 #### Scenario: Authorized LAN user opens Coder
 - **WHEN** an authorized user visits `coder.home.timosur.com` from the home network
 - **THEN** the user is redirected to Authentik when unauthenticated and can reach Coder after a
   successful OIDC login
+
+#### Scenario: OIDC email verification
+- **WHEN** a user signs in through Authentik
+- **THEN** Coder accepts the email as verified only after the current address has been confirmed
+  through the isolated email-verification flow; an address different from the last confirmed one
+  is rejected
+
+#### Scenario: Previously confirmed email is restored
+- **WHEN** a user changes back to the last confirmed address before confirming a replacement
+- **THEN** the earlier confirmation remains valid
 
 #### Scenario: Public route reconciliation
 - **WHEN** internet-facing route configuration is rendered

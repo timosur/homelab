@@ -44,6 +44,16 @@ canonical HTTPS address. Provision an AppDBClaim for Coder and wire the resultin
 into Coder. Store OIDC and GitHub OAuth client secrets in Azure Key Vault and materialize them with
 External Secrets.
 
+Authentik's default email scope reports addresses as unverified. Keep Coder's verification check
+enabled and use a Coder-specific scope mapping that returns `email_verified` only when the current
+email matches an address confirmed through an isolated Authentik email-verification flow. That
+flow must require a successful email confirmation before recording the verified address, and must
+not alter unrelated applications' login flows. Reuse the existing iCloud SMTP account and its
+Key Vault `smtp-password` reference for homelab Authentik; never store the credential in Git.
+A different email is unverified until confirmed. If the user changes back to the last confirmed
+address before confirming its replacement, the earlier confirmation remains valid. This accepts the
+risk that the user may no longer control that previously confirmed mailbox.
+
 Coder owns workspace lifecycle, access proxying, SSH configuration, and activity tracking. A user
 authenticates with `coder login`, runs `coder config-ssh`, and opens `zed ssh://coder.<workspace>`.
 
