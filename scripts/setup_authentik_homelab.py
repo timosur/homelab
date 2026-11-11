@@ -409,8 +409,18 @@ def set_keyvault_secret(key: str, value: str):
         text=True,
     )
     if result.returncode != 0:
-        # CLI diagnostics may echo supplied values; never emit them to logs.
+        # Never echo arbitrary CLI diagnostics: they may contain secret values,
+        # including transformed or partial values. Report only known codes.
         print(f"  WARNING: Failed to set Key Vault secret {key}.")
+        for code, guidance in (
+            ("AKV10032", "Invalid issuer; check the Azure CLI tenant for this vault."),
+            ("ForbiddenByRbac", "Access denied; check Key Vault RBAC permissions."),
+            ("ForbiddenByPolicy", "Access denied; check Key Vault access policies."),
+            ("ForbiddenByFirewall", "Access denied; check Key Vault network access."),
+        ):
+            if code in result.stderr:
+                print(f"  Azure error {code}: {guidance}")
+                break
         return False
     return True
 

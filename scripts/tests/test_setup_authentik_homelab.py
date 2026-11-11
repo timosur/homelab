@@ -130,6 +130,28 @@ class OidcProvisioningTests(unittest.TestCase):
         self.assertNotIn("sensitive diagnostic", stderr.getvalue())
         self.assertNotIn("dummy-secret", stderr.getvalue())
 
+    def test_vault_error_reports_known_tenant_problem_without_leaking_diagnostics(self):
+        output = io.StringIO()
+        with patch.object(bootstrap.subprocess, "run", return_value=SimpleNamespace(
+                returncode=1, stderr="AKV10032: Invalid issuer. dummy-secret private diagnostic")), \
+             contextlib.redirect_stdout(output):
+            self.assertFalse(bootstrap.set_keyvault_secret("client-secret", "dummy-secret"))
+        self.assertIn("AKV10032", output.getvalue())
+        self.assertIn("tenant", output.getvalue().lower())
+        self.assertNotIn("dummy-secret", output.getvalue())
+        self.assertNotIn("private diagnostic", output.getvalue())
+
+    def test_vault_error_reports_rbac_without_echoing_encoded_secret(self):
+        output = io.StringIO()
+        with patch.object(bootstrap.subprocess, "run", return_value=SimpleNamespace(
+                returncode=1, stderr="ForbiddenByRbac: value=dummy%2Fsecret")), \
+             contextlib.redirect_stdout(output):
+            self.assertFalse(bootstrap.set_keyvault_secret("client-secret", "dummy/secret"))
+        self.assertIn("ForbiddenByRbac", output.getvalue())
+        self.assertIn("RBAC", output.getvalue())
+        self.assertNotIn("dummy%2Fsecret", output.getvalue())
+        self.assertNotIn("dummy/secret", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
