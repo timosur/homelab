@@ -276,8 +276,14 @@ def provision_oidc_app(args):
     token = identifier = None
     try:
         print(f"Using Authentik at {base}")
-        print("Creating a temporary API token...")
-        token, identifier = temporary_api_token(args.namespace, args.server_selector)
+        if args.api_token_env:
+            token = os.environ.get(args.api_token_env)
+            if not token:
+                raise RuntimeError(f"required environment variable {args.api_token_env!r} is unset")
+            print("Using API token from the configured environment variable.")
+        else:
+            print("Creating a temporary API token...")
+            token, identifier = temporary_api_token(args.namespace, args.server_selector)
         HEADERS["Authorization"] = f"Bearer {token}"
 
         print("Resolving Authentik defaults and scopes...")
@@ -306,11 +312,36 @@ def provision_oidc_app(args):
         providers = api_or_raise(base, "GET", "/api/v3/providers/oauth2/")
         provider = next((item for item in providers.get("results", [])
                          if isinstance(item, dict) and item.get("client_id") == args.client_id), None)
-        client_secret = None
+        client_secret = os.environ.get(args.client_secret_env) if args.client_secret_env else None
+        if args.client_secret_env and not client_secret:
+            raise RuntimeError(f"required environment variable {args.client_secret_env!r} is unset")
+        if provider is None:
+            client_secret = client_secret or secrets.token_urlsafe(48)
+        vault_configured = bool(args.keyvault_client_id_key and args.keyvault_client_secret_key)
+        vault_written = False
+        if client_secret is not None and vault_configured:
+            if not set_keyvault_secret(args.keyvault_client_id_key, args.client_id):
+                raise RuntimeError("could not store OIDC client ID in Azure Key Vault; verify vault state before retrying")
+            if not set_keyvault_secret(args.keyvault_client_secret_key, client_secret):
+                raise RuntimeError("could not store OIDC client secret in Azure Key Vault; verify vault state before retrying")
+            vault_written = True
+            print("Stored OIDC client configuration in Azure Key Vault.")
+
+        def write_provider(method: str, path: str, data: dict):
+            try:
+                result = api_or_raise(base, method, path, data)
+                if method == "POST" and (not isinstance(result, dict) or not result.get("pk")):
+                    raise RuntimeError("Authentik did not return the new provider")
+                return result
+            except Exception:
+                if vault_written:
+                    print("WARNING: Key Vault was updated but the Authentik provider update failed or is uncertain; "
+                          "reconcile both systems using the same client secret before retrying.", file=sys.stderr)
+                raise
+
         if provider is None:
             print(f"Creating confidential provider {args.app_name!r}...")
-            client_secret = secrets.token_urlsafe(48)
-            provider = api_or_raise(base, "POST", "/api/v3/providers/oauth2/", {
+            provider = write_provider("POST", "/api/v3/providers/oauth2/", {
                 "name": args.app_name,
                 "authorization_flow": authorization_flow["pk"],
                 "invalidation_flow": invalidation_flow["pk"],
@@ -329,8 +360,13 @@ def provision_oidc_app(args):
                 "include_claims_in_id_token": True,
                 "property_mappings": [known["openid"], known["profile"], known["email"], groups_mapping],
             })
-            if not provider.get("pk"):
-                raise RuntimeError("Authentik did not return the new provider")
+        elif client_secret is not None:
+            print(f"Updating confidential provider {args.app_name!r}...")
+            write_provider("PATCH", f"/api/v3/providers/oauth2/{provider['pk']}/", {
+                "client_secret": client_secret,
+                "redirect_uris": [{"matching_mode": "strict", "url": args.redirect_uri,
+                                   "redirect_uri_type": "authorization"}],
+            })
         applications = api_or_raise(base, "GET", f"/api/v3/core/applications/?slug={args.slug}")
         if not applications.get("results"):
             print(f"Creating application {args.slug!r}...")
@@ -339,8 +375,9 @@ def provision_oidc_app(args):
                 "open_in_new_tab": False, "meta_launch_url": args.launch_url,
             })
         if client_secret is not None:
-            create_kubernetes_client_secret(args.secret_namespace, args.secret_name, args.secret_key, client_secret)
-            print(f"Created Kubernetes Secret {args.secret_namespace}/{args.secret_name}.")
+            if not vault_configured:
+                create_kubernetes_client_secret(args.secret_namespace, args.secret_name, args.secret_key, client_secret)
+                print(f"Created Kubernetes Secret {args.secret_namespace}/{args.secret_name}.")
         else:
             print("Provider already existed; no client secret was regenerated.")
         print(f"OIDC application {args.slug!r} is ready; add authorized users to {args.allowed_group!r}.")
@@ -372,7 +409,18 @@ def set_keyvault_secret(key: str, value: str):
         text=True,
     )
     if result.returncode != 0:
-        print(f"  WARNING: Failed to set Key Vault secret {key}: {result.stderr}")
+        # Never echo arbitrary CLI diagnostics: they may contain secret values,
+        # including transformed or partial values. Report only known codes.
+        print(f"  WARNING: Failed to set Key Vault secret {key}.")
+        for code, guidance in (
+            ("AKV10032", "Invalid issuer; check the Azure CLI tenant for this vault."),
+            ("ForbiddenByRbac", "Access denied; check Key Vault RBAC permissions."),
+            ("ForbiddenByPolicy", "Access denied; check Key Vault access policies."),
+            ("ForbiddenByFirewall", "Access denied; check Key Vault network access."),
+        ):
+            if code in result.stderr:
+                print(f"  Azure error {code}: {guidance}")
+                break
         return False
     return True
 
@@ -698,6 +746,14 @@ def main():
     parser.add_argument("--secret-name", help="Kubernetes Secret name for a new client secret")
     parser.add_argument("--secret-key", default="client-secret",
                         help="Kubernetes Secret data key for a new client secret")
+    parser.add_argument("--api-token-env",
+                        help="read the Authentik API token from this environment variable")
+    parser.add_argument("--client-secret-env",
+                        help="read the confidential OIDC client secret from this environment variable")
+    parser.add_argument("--keyvault-client-id-key",
+                        help="Azure Key Vault key for the OIDC client ID")
+    parser.add_argument("--keyvault-client-secret-key",
+                        help="Azure Key Vault key for the OIDC client secret")
     parser.add_argument(
         "--skip-keyvault",
         action="store_true",
@@ -708,10 +764,12 @@ def main():
         global KUBECTL_CONTEXT
         KUBECTL_CONTEXT = args.kube_context
         required = ("app_name", "slug", "client_id", "redirect_uri", "launch_url",
-                    "secret_namespace", "secret_name")
+                     "secret_namespace", "secret_name")
         missing = [field.replace("_", "-") for field in required if not getattr(args, field)]
         if missing:
             parser.error("--provision-oidc requires " + ", ".join("--" + field for field in missing))
+        if bool(args.keyvault_client_id_key) != bool(args.keyvault_client_secret_key):
+            parser.error("--keyvault-client-id-key and --keyvault-client-secret-key must be supplied together")
         provision_oidc_app(args)
         return
     base = args.base_url.rstrip("/")

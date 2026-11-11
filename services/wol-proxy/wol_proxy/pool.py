@@ -44,6 +44,15 @@ class PoolMonitor:
     async def can_release(self, pod):
         return await self.monitors[0].can_release(pod)
 
+    async def can_release_coder(self, pod):
+        return await self.monitors[0].can_release_coder(pod)
+
+    async def coder_binding_pod(self, name, uid):
+        return await self.monitors[0].coder_binding_pod(name, uid)
+
+    async def coder_pods(self):
+        return await self.monitors[0].coder_pods()
+
     async def can_delete_workspace(self, claim):
         return await self.monitors[0].can_delete_workspace(claim)
 
@@ -57,6 +66,12 @@ class PoolMonitor:
         ready = await asyncio.gather(*(monitor.node_ready() for monitor in self.monitors))
         if not all(type(value) is bool for value in ready):
             raise ValueError("node readiness is unavailable")
+        return all(ready)
+
+    async def nodes_schedulable(self):
+        ready = await asyncio.gather(*(monitor.nodes_schedulable() for monitor in self.monitors))
+        if not all(type(value) is bool for value in ready):
+            raise ValueError("node schedulability is unavailable")
         return all(ready)
 
     async def node_lease_revision(self):

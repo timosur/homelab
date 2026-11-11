@@ -3,3 +3,5 @@ _test
 backup
 __pycache__
 .env
+.terraform/
+.local/coder-secrets/

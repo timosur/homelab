@@ -1,0 +1,18 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: coder-preflight-ingress
+  namespace: wol-proxy
+spec:
+  endpointSelector:
+    matchLabels:
+      app: wol-proxy
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: coder
+            app: coder
+      toPorts:
+        - ports:
+            - port: '9443'
+              protocol: TCP

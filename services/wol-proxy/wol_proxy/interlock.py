@@ -1,5 +1,6 @@
 """Durable, optimistic ownership for pod release and desktop suspension."""
 
+import json
 import uuid
 
 
@@ -33,7 +34,15 @@ class Interlock:
             or not isinstance(anchor, str) or not anchor
         ):
             raise InterlockError("interlock state is invalid")
-        return {"epoch": int(epoch), "owner": owner, "phase": phase, "http_active": int(http_active), "revision": revision, "anchor": anchor, "metadata": meta, "data": dict(data)}
+        try:
+            coder_starts = json.loads(data.get("coder_starts", "[]"))
+            if not isinstance(coder_starts, list) or any(
+                not isinstance(value, str) or str(uuid.UUID(value)) != value for value in coder_starts
+            ) or len(set(coder_starts)) != len(coder_starts):
+                raise ValueError("invalid Coder reservations")
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise InterlockError("Coder reservation state is invalid") from exc
+        return {"epoch": int(epoch), "owner": owner, "phase": phase, "http_active": int(http_active), "revision": revision, "anchor": anchor, "metadata": meta, "data": dict(data), "coder_starts": coder_starts}
 
     async def _replace(self, state, *, epoch, owner, phase, http_active=None):
         data = dict(state["data"])
@@ -77,9 +86,38 @@ class Interlock:
             raise InterlockError("ownership was lost")
         if state["phase"] != expected:
             raise InterlockError(f"interlock is {state['phase']}, not {expected}")
-        if target == "suspending" and state["http_active"]:
-            raise InterlockError("proxy requests are still active")
+        if target == "suspending" and (state["http_active"] or state["coder_starts"]):
+            raise InterlockError("proxy requests or Coder starts are still active")
         await self._replace(state, epoch=self.epoch, owner=self.owner, phase=target)
+
+    async def coder_reservation(self, workspace_id, *, reserve):
+        """Persist a workspace start until its handoff is confirmed safe.
+
+        The caller must verify safe release; an uncertain create must retain its
+        reservation. Resource-version CAS serializes this with suspend and takeover.
+        """
+        try:
+            if not isinstance(workspace_id, str) or str(uuid.UUID(workspace_id)) != workspace_id:
+                raise ValueError("invalid workspace ID")
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise InterlockError("invalid Coder workspace ID") from exc
+        if type(reserve) is not bool:
+            raise ValueError("reserve must be a boolean")
+        state = await self.read()
+        if self.epoch is None or state["owner"] != self.owner or state["epoch"] != self.epoch or state["anchor"] != self.anchor:
+            self.lost = True
+            raise InterlockError("ownership was lost")
+        if state["phase"] != "idle":
+            raise InterlockError("Coder reservation requires an idle interlock")
+        starts = set(state["coder_starts"])
+        if reserve:
+            starts.add(workspace_id)
+        else:
+            starts.discard(workspace_id)
+        if starts == set(state["coder_starts"]):
+            return
+        state["data"]["coder_starts"] = json.dumps(sorted(starts), separators=(",", ":"))
+        await self._replace(state, epoch=self.epoch, owner=self.owner, phase=state["phase"])
 
     async def retire_suspend_epoch(self):
         """Fence a suspend request that might still be in transit after SSH ends."""

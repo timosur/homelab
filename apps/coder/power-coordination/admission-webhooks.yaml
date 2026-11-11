@@ -1,0 +1,60 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: coder-workspace-gate
+  annotations:
+    cert-manager.io/inject-ca-from: wol-proxy/dark-factory-admission-tls
+webhooks:
+  - name: mutate.coder-workspace-gate.home.timosur.com
+    admissionReviewVersions: [v1]
+    sideEffects: None
+    failurePolicy: Fail
+    timeoutSeconds: 5
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: coder
+    clientConfig:
+      service:
+        name: dark-factory-admission
+        namespace: wol-proxy
+        path: /coder/mutate
+        port: 443
+    rules:
+      - apiGroups: ['']
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [pods]
+        scope: Namespaced
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: coder-workspace-gate
+  annotations:
+    cert-manager.io/inject-ca-from: wol-proxy/dark-factory-admission-tls
+webhooks:
+  - name: validate.coder-workspace-gate.home.timosur.com
+    admissionReviewVersions: [v1]
+    sideEffects: None
+    failurePolicy: Fail
+    timeoutSeconds: 5
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: coder
+    clientConfig:
+      service:
+        name: dark-factory-admission
+        namespace: wol-proxy
+        path: /coder/validate
+        port: 443
+    rules:
+      - apiGroups: ['']
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+        scope: Namespaced
+      - apiGroups: ['']
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [pods/binding, bindings]
+        scope: Namespaced

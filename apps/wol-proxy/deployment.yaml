@@ -112,6 +112,9 @@ spec:
             - name: gpu-power-key
               mountPath: /run/gpu-power-ssh
               readOnly: true
+            - name: coder-preflight
+              mountPath: /run/coder-preflight
+              readOnly: true
           livenessProbe:
             tcpSocket:
               port: 11434
@@ -160,3 +163,8 @@ spec:
         - name: gpu-power-key
           emptyDir:
             medium: Memory
+        - name: coder-preflight
+          secret:
+            secretName: coder-power-preflight
+            optional: true
+            defaultMode: 288
