@@ -17,6 +17,7 @@ resources:
   - cert-manager-csi-app.yaml
   - cloudnative-pg-app.yaml
   - coder-app.yaml
+  - coder-power-app.yaml
   - crossplane-app.yaml
   - dark-factory-app.yaml
   - dark-factory-prerequisites-app.yaml
