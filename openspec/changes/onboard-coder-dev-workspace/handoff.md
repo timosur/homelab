@@ -21,7 +21,7 @@ desktop wake/suspension coordination. It is not deployed or ready to archive.
 - `apps/coder/templates/board-member/` contains a version-pinned Terraform template. It creates a
   separate 100 GiB `homelab-iscsi` RWO PVC per workspace, starts the Pod only while a workspace is
   running, requires Coder GitHub external authentication, pins the workspace image digest, targets
-  either `homelab-amd-desktop` or `homelab-gpu`, tolerates `availability=daytime:NoSchedule`, and disables the workspace
+  either `homelab-amd-desktop` or `homelab-gpu`, tolerates both workers' taints, and disables the workspace
   Pod service-account token.
 - `publish.sh` publishes the template and configures a 30-minute default autostop and activity bump.
 - `.terraform/` is ignored; the generated template `.terraform.lock.hcl` is intentionally tracked.
@@ -49,6 +49,11 @@ provider and writes:
 
 - `coder-oidc-client-id`
 - `coder-oidc-client-secret`
+
+Key Vault writes happen before the Authentik provider changes, but rotation is not atomic across
+the two services. If either a Key Vault write or the provider update fails or times out, check both
+systems and reconcile them with the same secret before retrying; do not print the secret. For a
+generated secret, recover the stored Key Vault value securely rather than generating a new one.
 
 Create the GitHub OAuth client separately and add:
 

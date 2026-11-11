@@ -316,9 +316,32 @@ def provision_oidc_app(args):
         if args.client_secret_env and not client_secret:
             raise RuntimeError(f"required environment variable {args.client_secret_env!r} is unset")
         if provider is None:
-            print(f"Creating confidential provider {args.app_name!r}...")
             client_secret = client_secret or secrets.token_urlsafe(48)
-            provider = api_or_raise(base, "POST", "/api/v3/providers/oauth2/", {
+        vault_configured = bool(args.keyvault_client_id_key and args.keyvault_client_secret_key)
+        vault_written = False
+        if client_secret is not None and vault_configured:
+            if not set_keyvault_secret(args.keyvault_client_id_key, args.client_id):
+                raise RuntimeError("could not store OIDC client ID in Azure Key Vault; verify vault state before retrying")
+            if not set_keyvault_secret(args.keyvault_client_secret_key, client_secret):
+                raise RuntimeError("could not store OIDC client secret in Azure Key Vault; verify vault state before retrying")
+            vault_written = True
+            print("Stored OIDC client configuration in Azure Key Vault.")
+
+        def write_provider(method: str, path: str, data: dict):
+            try:
+                result = api_or_raise(base, method, path, data)
+                if method == "POST" and (not isinstance(result, dict) or not result.get("pk")):
+                    raise RuntimeError("Authentik did not return the new provider")
+                return result
+            except Exception:
+                if vault_written:
+                    print("WARNING: Key Vault was updated but the Authentik provider update failed or is uncertain; "
+                          "reconcile both systems using the same client secret before retrying.", file=sys.stderr)
+                raise
+
+        if provider is None:
+            print(f"Creating confidential provider {args.app_name!r}...")
+            provider = write_provider("POST", "/api/v3/providers/oauth2/", {
                 "name": args.app_name,
                 "authorization_flow": authorization_flow["pk"],
                 "invalidation_flow": invalidation_flow["pk"],
@@ -337,11 +360,9 @@ def provision_oidc_app(args):
                 "include_claims_in_id_token": True,
                 "property_mappings": [known["openid"], known["profile"], known["email"], groups_mapping],
             })
-            if not provider.get("pk"):
-                raise RuntimeError("Authentik did not return the new provider")
         elif client_secret is not None:
             print(f"Updating confidential provider {args.app_name!r}...")
-            api_or_raise(base, "PATCH", f"/api/v3/providers/oauth2/{provider['pk']}/", {
+            write_provider("PATCH", f"/api/v3/providers/oauth2/{provider['pk']}/", {
                 "client_secret": client_secret,
                 "redirect_uris": [{"matching_mode": "strict", "url": args.redirect_uri,
                                    "redirect_uri_type": "authorization"}],
@@ -354,13 +375,7 @@ def provision_oidc_app(args):
                 "open_in_new_tab": False, "meta_launch_url": args.launch_url,
             })
         if client_secret is not None:
-            if args.keyvault_client_id_key and args.keyvault_client_secret_key:
-                if not set_keyvault_secret(args.keyvault_client_id_key, args.client_id):
-                    raise RuntimeError("could not store OIDC client ID in Azure Key Vault")
-                if not set_keyvault_secret(args.keyvault_client_secret_key, client_secret):
-                    raise RuntimeError("could not store OIDC client secret in Azure Key Vault")
-                print("Stored OIDC client configuration in Azure Key Vault.")
-            else:
+            if not vault_configured:
                 create_kubernetes_client_secret(args.secret_namespace, args.secret_name, args.secret_key, client_secret)
                 print(f"Created Kubernetes Secret {args.secret_namespace}/{args.secret_name}.")
         else:
@@ -394,7 +409,8 @@ def set_keyvault_secret(key: str, value: str):
         text=True,
     )
     if result.returncode != 0:
-        print(f"  WARNING: Failed to set Key Vault secret {key}: {result.stderr}")
+        # CLI diagnostics may echo supplied values; never emit them to logs.
+        print(f"  WARNING: Failed to set Key Vault secret {key}.")
         return False
     return True
 
