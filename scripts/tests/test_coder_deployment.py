@@ -24,6 +24,19 @@ class CoderDeploymentTests(unittest.TestCase):
         deployment = (ROOT / "apps/coder/deployment.yaml").read_text()
         self.assertRegex(deployment, r'(?m)^        coder\.home\.timosur\.com/oidc-only: "enabled"$')
 
+    def test_workspace_gateway_ingress_is_scoped(self):
+        path = ROOT / "networking/cilium-network-policies/home"
+        policy = (path / "coder-workspace.yaml").read_text()
+        self.assertIn("gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-home", policy)
+        self.assertIn("k8s:io.kubernetes.pod.namespace: coder", policy)
+        self.assertIn("app.kubernetes.io/name: coder-workspace", policy)
+        self.assertIn("app.kubernetes.io/component: development-workspace", policy)
+        self.assertRegex(policy, r'(?m)^            - port: "10443"$')
+        self.assertEqual(policy.count("fromEndpoints:"), 1)
+        self.assertNotIn("fromEntities:", policy)
+        self.assertNotIn("fromCIDR:", policy)
+        self.assertIn("- coder-workspace.yaml", (path / "kustomization.yaml").read_text())
+
 
 if __name__ == "__main__":
     unittest.main()
