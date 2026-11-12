@@ -30,6 +30,15 @@ observe a fresh lease from each before opening sandbox gates, and sandbox or pro
 both hosts awake. Either worker being unavailable blocks new sandboxes. Code and placement are
 unverified on the live cluster; do not start sandbox workloads until the staged checks pass.
 
+When the pool is idle but a worker is NotReady, the coordinator can fence and suspend each
+remaining Ready worker independently, provided the admission, workload and activity checks pass.
+It does not treat the unavailable worker as asleep. Failed or unresolved host operations do not
+prevent an independent attempt on another eligible worker; idle retries are limited to once per
+minute. New workspace or HTTP activity remains blocked until all workers are Ready and fenced under
+the current epoch and their kubelet leases have advanced. Investigate an unreachable host or
+unresolved guard before expecting the pool to reopen; do not bypass the guard or reset interlock
+state to force recovery. Validate this behavior in a controlled window before relying on it live.
+
 Never delete, recreate, or reset the `dark-factory-interlock` ConfigMap or host guard state as a
 routine recovery step. An uncertain gate PATCH or an abandoned HTTP reservation stops takeover;
 an uncertain host suspend blocks its fence. Operator recovery must first fence the old controller,

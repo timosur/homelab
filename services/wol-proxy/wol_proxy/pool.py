@@ -5,6 +5,12 @@ workload or proxied activity keeps the entire pool awake.
 """
 
 import asyncio
+import logging
+
+from .power_client import PowerClientError
+
+
+log = logging.getLogger("wol-proxy")
 
 
 async def wake_all(wake_callbacks):
@@ -63,10 +69,13 @@ class PoolMonitor:
         return await self.monitors[0].release_gates(epoch, owner, anchor)
 
     async def node_ready(self):
+        return all(await self.readiness())
+
+    async def readiness(self):
         ready = await asyncio.gather(*(monitor.node_ready() for monitor in self.monitors))
         if not all(type(value) is bool for value in ready):
             raise ValueError("node readiness is unavailable")
-        return all(ready)
+        return tuple(ready)
 
     async def nodes_schedulable(self):
         ready = await asyncio.gather(*(monitor.nodes_schedulable() for monitor in self.monitors))
@@ -94,3 +103,21 @@ class PoolPowerClient:
         # the coordinator keeps the shared gate closed and retires the epoch.
         for client in self.clients:
             await client.call(operation, epoch, owner, anchor)
+
+    async def suspend_ready(self, readiness, epoch, owner, anchor):
+        if (not isinstance(readiness, tuple) or len(readiness) != len(self.clients)
+                or not all(type(value) is bool for value in readiness)):
+            raise ValueError("pool readiness does not match power clients")
+        for index, (client, ready) in enumerate(zip(self.clients, readiness)):
+            if not ready:
+                continue
+            worker = getattr(client, "host", index)
+            operation = "fence"
+            try:
+                await client.call("fence", epoch, owner, anchor)
+                operation = "suspend"
+                await client.call("suspend", epoch, owner, anchor)
+                log.info("Pool worker %s suspend requested", worker)
+            except (PowerClientError, OSError) as exc:
+                # The outcome may be unknown, but another fenced worker can still sleep.
+                log.warning("Pool worker %s %s failed or is unresolved: %s", worker, operation, exc)

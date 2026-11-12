@@ -6,6 +6,7 @@ import time
 from aiohttp import ClientResponseError
 
 from .interlock import InterlockError
+from .pool import PoolMonitor, PoolPowerClient
 from .power_client import PowerClientError
 from .workspace import WorkspaceBusy
 from .coder_admission import GATE as CODER_GATE, workspace_id
@@ -33,6 +34,7 @@ class SleepCoordinator:
         self.fenced_epoch = None
         self.lease_revision = None
         self.last_wake = float("-inf")
+        self.last_pool_sleep_attempt = float("-inf")
         self.needs_retire = False
 
     async def _wake_if_needed(self, demand):
@@ -50,6 +52,41 @@ class SleepCoordinator:
                 raise ValueError("invalid Coder pod metadata")
             if not metadata.get("deletionTimestamp") and not any(gate.get("name") == CODER_GATE for gate in gates(pod)):
                 await self.interlock.coder_reservation(workspace_id(pod), reserve=False)
+
+    async def _sleep_pool(self, readiness):
+        """Suspend eligible workers without opening gates for unavailable peers."""
+        if not any(readiness) or self.clock() - self.last_pool_sleep_attempt < 60:
+            return
+        async with self.proxy._activity_lock:
+            state = await self.interlock.claim()
+            if (state["coder_starts"] or state["http_active"] or self.proxy._active_requests
+                    or self.proxy._wake_requested
+                    or self.proxy.idle_seconds < self.proxy.cfg.idle_timeout_minutes * 60):
+                return
+            starting = state["phase"] == "idle"
+            if not starting and state["phase"] != "suspending":
+                raise InterlockError("interlock is not idle or suspending")
+            if starting:
+                await self.interlock.transition("idle", "suspending")
+            self.accepting = False
+            self.fenced_epoch = None
+            self.lease_revision = None
+            await self.monitor.verify_admission()
+            if await self.monitor.any_workload() or self.proxy._active_requests or self.proxy._wake_requested:
+                if starting:
+                    await self.interlock.transition("suspending", "idle")
+                return
+
+            self.needs_retire = True
+            self.last_pool_sleep_attempt = self.clock()
+
+        try:
+            await self.power.suspend_ready(
+                readiness, self.interlock.epoch, self.interlock.owner, self.interlock.anchor,
+            )
+        finally:
+            await self.interlock.retire_suspend_epoch()
+            self.needs_retire = False
 
     async def tick(self):
         try:
@@ -74,6 +111,17 @@ class SleepCoordinator:
         demand = active or self.proxy._wake_requested or self.proxy._active_requests > 0
         if active:
             self.proxy.touch()
+
+        if (isinstance(self.monitor, PoolMonitor) and isinstance(self.power, PoolPowerClient)
+                and not demand and not state["http_active"]
+                and self.proxy.idle_seconds >= self.proxy.cfg.idle_timeout_minutes * 60):
+            readiness = await self.monitor.readiness()
+            if not all(readiness):
+                self.accepting = False
+                self.fenced_epoch = None
+                self.lease_revision = None
+            await self._sleep_pool(readiness)
+            return
 
         if not await self.monitor.node_ready():
             self.accepting = False
