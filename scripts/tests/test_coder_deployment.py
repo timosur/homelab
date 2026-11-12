@@ -24,18 +24,18 @@ class CoderDeploymentTests(unittest.TestCase):
         deployment = (ROOT / "apps/coder/deployment.yaml").read_text()
         self.assertRegex(deployment, r'(?m)^        coder\.home\.timosur\.com/oidc-only: "enabled"$')
 
-    def test_workspace_gateway_ingress_is_scoped(self):
+    def test_workspaces_have_no_shared_gateway_ingress_allowance(self):
         path = ROOT / "networking/cilium-network-policies/home"
-        policy = (path / "coder-workspace.yaml").read_text()
-        self.assertIn("gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-home", policy)
-        self.assertIn("k8s:io.kubernetes.pod.namespace: coder", policy)
-        self.assertIn("app.kubernetes.io/name: coder-workspace", policy)
-        self.assertIn("app.kubernetes.io/component: development-workspace", policy)
-        self.assertRegex(policy, r'(?m)^            - port: "10443"$')
-        self.assertEqual(policy.count("fromEndpoints:"), 1)
-        self.assertNotIn("fromEntities:", policy)
-        self.assertNotIn("fromCIDR:", policy)
-        self.assertIn("- coder-workspace.yaml", (path / "kustomization.yaml").read_text())
+        kustomization = (path / "kustomization.yaml").read_text()
+        self.assertNotIn("- coder-workspace.yaml", kustomization)
+        self.assertIn("- coder-workspace-agent-gateway.yaml", kustomization)
+        shared_gateway_policies = []
+        for policy_path in path.glob("*.yaml"):
+            policy = policy_path.read_text()
+            if "gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-home" in policy:
+                shared_gateway_policies.append(policy_path)
+                self.assertNotIn("app.kubernetes.io/name: coder-workspace", policy, policy_path.name)
+        self.assertTrue(shared_gateway_policies)
 
 
 if __name__ == "__main__":
