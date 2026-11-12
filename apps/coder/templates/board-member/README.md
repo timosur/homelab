@@ -13,6 +13,57 @@ Do not publish this template until the staged power coordination in
 [`../../power-coordination/README.md`](../../power-coordination/README.md) is deployed. Its
 authenticated preflight must succeed before workspace storage or its Pod can be created.
 
+## Administrator: workspace isolation rollout
+
+The workspace egress policy applies to **existing** labeled pods as soon as Cilium reconciles it.
+Coordinate a maintenance window, stop the Coder workspaces normally, and keep users from starting
+them until the new policy, agent gateway and template are ready. Do not delete their home PVCs or
+bypass the existing workspace admission and power interlocks. Deprecating a Coder template alone
+does not prevent existing workspaces from starting; coordinate starts explicitly.
+
+1. From `ansible/`, run `ansible-playbook playbooks/coder-workspace-seccomp.yml --check --diff`,
+   then run it without `--check --diff`. Verify both eligible workers have the same root-owned
+   `/var/lib/kubelet/seccomp/coder-workspace.json` before publishing the template. Kubernetes will
+   refuse to start the workspace container if the selected node lacks that profile.
+2. Reconcile the networking and Tetragon applications. Verify the Coder-only Gateway is Programmed,
+   its HTTPRoute is Accepted/ResolvedRefs, `coder-agent-gateway` is a ClusterIP service, and
+   `coder-workspace-egress` and `coder-workspace-setns` exist. On each worker verify that its
+   Tetragon agent is Ready and `tetra tracingpolicy list` reports the policy enabled; also inspect
+   the Cilium endpoint's realized egress policy after a workspace starts.
+3. Publish the template and test a workspace on each worker before relying on isolation. Verify DNS,
+   public HTTPS, private Git over Coder authentication, `sudo`/APT, Zed/SSH and agent connectivity;
+   verify LAN, node, Kubernetes API and unrelated cluster services are blocked. Test a controlled
+   namespace-join attempt, inspect its attributed Tetragon event, and confirm ordinary container
+   startup and `kubectl exec` still work. Confirm the shared home gateway cannot be used with a
+   different SNI or HTTP Host. If any result or either worker's coverage is inconclusive, stop the
+   protected rollout and retain the workspace PVCs.
+
+The agent still uses `coder.home.timosur.com` with its existing TLS certificate. The template reads
+the Coder-only gateway Service IP at each start and maps that name to the isolated gateway inside
+the workspace. The gateway has only the Coder route; it is not the shared home gateway. If its
+Service is recreated with a different IP, restart the workspace after confirming the new gateway is
+ready. The Service read is start-only, so a missing gateway must not prevent a workspace stop.
+
+The seccomp profile is based on the workers' containerd 2.2.3 `RuntimeDefault`, with `setns`
+allowed so Tetragon can see the attempt. Compare it against a disposable pod's realized
+`RuntimeDefault` profile on **both** workers after any containerd upgrade; review differences
+before publishing an updated workspace template. Only inspect the `linux.seccomp` portion of a
+disposable pod's runtime specification, not an actual workspace's environment or credentials.
+The pod drops `SYS_ADMIN` and other host-management capabilities; this independent privilege check
+still matters if Tetragon is unavailable. Tetragon's signal does not guarantee every syscall had no
+effect. A shared-kernel exploit, a compromised allowed DNS/Coder service, or a public relay can
+bypass parts of this defense; this is not VM isolation.
+
+The changing home public IP is intentionally allowed as internet traffic. A workspace can reach
+the UniFi management interface through that address if the router exposes it; this exposure was
+explicitly accepted and is not prevented by the private-LAN deny policy.
+
+If the policy or profile breaks a workspace, stop it normally and coordinate a GitOps rollback of
+the template, policy and gateway together. Confirm the restored template and route before allowing
+starts; retain the PVCs and do not bypass the power guards. A rolled-back workspace is **not**
+protected by this isolation. Avoid collecting tokens, credentials or private repository contents
+in acceptance evidence or Tetragon logs.
+
 Validate and publish from this directory after logging in to the private Coder instance:
 
 ```sh

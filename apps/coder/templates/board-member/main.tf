@@ -21,6 +21,15 @@ data "coder_external_auth" "github" {
   id = "github"
 }
 
+data "kubernetes_service_v1" "coder_agent_gateway" {
+  count = data.coder_workspace.me.start_count
+
+  metadata {
+    name      = "coder-agent-gateway"
+    namespace = "envoy-gateway-system"
+  }
+}
+
 resource "coder_agent" "dev" {
   os   = "linux"
   arch = "amd64"
@@ -99,6 +108,13 @@ resource "kubernetes_pod_v1" "workspace" {
 
   spec {
     automount_service_account_token = false
+    host_network                    = false
+    host_pid                        = false
+    host_ipc                        = false
+    host_aliases {
+      ip        = data.kubernetes_service_v1.coder_agent_gateway[0].spec[0].cluster_ip
+      hostnames = ["coder.home.timosur.com"]
+    }
     security_context {
       run_as_user            = 1000
       run_as_group           = 1000
@@ -138,6 +154,21 @@ resource "kubernetes_pod_v1" "workspace" {
       name    = "dev"
       image   = "ghcr.io/timosur/homelab/coder-workspace:sha-fd710c66858d82b465d6c2973345dd248e4677c9@sha256:db6aa41f4886ebef94e6a7915c6299e83b4d6eb154c647c625ac524e3be3a102"
       command = ["sh", "-c", coder_agent.dev.init_script]
+
+      security_context {
+        privileged                 = false
+        allow_privilege_escalation = true # sudo needs its setuid transition
+
+        capabilities {
+          drop = ["ALL"]
+          add  = ["SETUID", "SETGID", "CHOWN", "DAC_OVERRIDE", "FOWNER"]
+        }
+
+        seccomp_profile {
+          type              = "Localhost"
+          localhost_profile = "coder-workspace.json"
+        }
+      }
 
       env {
         name  = "CODER_AGENT_TOKEN"

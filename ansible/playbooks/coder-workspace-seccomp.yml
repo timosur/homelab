@@ -1,0 +1,8 @@
+---
+- name: Install the Coder workspace seccomp profile
+  hosts: homelab-amd-desktop:homelab-gpu
+  serial: 1
+  become: true
+  gather_facts: false
+  roles:
+    - coder-workspace-seccomp

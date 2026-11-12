@@ -1,0 +1,27 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicyNamespaced
+metadata:
+  name: coder-workspace-setns
+  namespace: coder
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: coder-workspace
+      app.kubernetes.io/component: development-workspace
+  kprobes:
+    - call: sys_setns
+      syscall: true
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+      selectors:
+        # containerd/runc also calls setns while starting or exec'ing into a
+        # pod. Its own PID namespace is still the host's at that point.
+        - matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values: ["host_ns"]
+          matchActions:
+            - action: Sigkill

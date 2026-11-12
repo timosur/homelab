@@ -3,4 +3,6 @@ kind: Kustomization
 
 resources:
   - coder-workspace.yaml
+  - coder-workspace-agent-gateway.yaml
+  - coder-workspace-egress.yaml
   - gateway-lan-only.yaml

@@ -8,6 +8,7 @@ resources:
   - atuin-ai.yaml
   - atuin.yaml
   - coder.yaml
+  - coder-agent.yaml
   - garden.yaml
   - grafana.yaml
   - house-builder.yaml

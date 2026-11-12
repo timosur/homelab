@@ -1,0 +1,16 @@
+---
+- name: Ensure the kubelet seccomp directory exists
+  ansible.builtin.file:
+    path: /var/lib/kubelet/seccomp
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install the Coder workspace seccomp profile
+  ansible.builtin.copy:
+    src: coder-workspace.json
+    dest: /var/lib/kubelet/seccomp/coder-workspace.json
+    owner: root
+    group: root
+    mode: '0644'

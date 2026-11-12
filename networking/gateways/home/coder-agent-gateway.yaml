@@ -1,0 +1,72 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: coder-agent-proxy
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        name: coder-agent-gateway
+        type: ClusterIP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy-coder-agent
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: coder-agent-proxy
+    namespace: envoy-gateway-system
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: envoy-gateway-coder-agent
+  namespace: envoy-gateway-system
+spec:
+  gatewayClassName: envoy-coder-agent
+  listeners:
+    - name: https
+      port: 443
+      protocol: HTTPS
+      hostname: coder.home.timosur.com
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: coder
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: wildcard-home-timosur-com
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: coder-agent-gateway-read
+  namespace: envoy-gateway-system
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    resourceNames: ["coder-agent-gateway"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: coder-agent-gateway-read
+  namespace: envoy-gateway-system
+subjects:
+  - kind: ServiceAccount
+    name: coder
+    namespace: coder
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: coder-agent-gateway-read

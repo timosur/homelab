@@ -1,0 +1,21 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-coder-workspaces-agent-gateway
+  namespace: envoy-gateway-system
+spec:
+  endpointSelector:
+    matchLabels:
+      gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-coder-agent
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: coder
+            app.kubernetes.io/name: coder-workspace
+            app.kubernetes.io/component: development-workspace
+      toPorts:
+        - ports:
+            - port: "10443"
+              protocol: TCP

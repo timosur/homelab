@@ -1,0 +1,133 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: coder-workspace-egress
+  namespace: coder
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: coder-workspace
+      app.kubernetes.io/component: development-workspace
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+            k8s:gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-coder-agent
+      toPorts:
+        - ports:
+            - port: "10443"
+              protocol: TCP
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 0.0.0.0/8
+            - 10.0.0.0/8
+            - 100.64.0.0/10
+            - 127.0.0.0/8
+            - 169.254.0.0/16
+            - 172.16.0.0/12
+            - 192.0.0.0/24
+            - 192.0.2.0/24
+            - 192.168.0.0/16
+            - 198.18.0.0/15
+            - 198.51.100.0/24
+            - 203.0.113.0/24
+            - 224.0.0.0/4
+            - 240.0.0.0/4
+        - cidr: ::/0
+          except:
+            - ::/128
+            - ::1/128
+            - ::ffff:0:0/96
+            - 64:ff9b:1::/48
+            - 100::/64
+            - 2001:db8::/32
+            - fc00::/7
+            - fe80::/10
+            - ff00::/8
+  # Cilium allows are additive. Keep host and internal peers denied even if a
+  # later policy grants broad egress to this workspace.
+  egressDeny:
+    - toEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "1"
+              endPort: 52
+              protocol: ANY
+            - port: "54"
+              endPort: 65535
+              protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+            k8s:gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-coder-agent
+      toPorts:
+        - ports:
+            - port: "1"
+              endPort: 10442
+              protocol: ANY
+            - port: "10444"
+              endPort: 65535
+              protocol: ANY
+            - port: "10443"
+              protocol: UDP
+    - toCIDR:
+        - 0.0.0.0/8
+        - 10.0.0.0/8
+        - 100.64.0.0/10
+        - 127.0.0.0/8
+        - 169.254.0.0/16
+        - 172.16.0.0/12
+        - 192.0.0.0/24
+        - 192.0.2.0/24
+        - 192.168.0.0/16
+        - 198.18.0.0/15
+        - 198.51.100.0/24
+        - 203.0.113.0/24
+        - 224.0.0.0/4
+        - 240.0.0.0/4
+        - ::/128
+        - ::1/128
+        - ::ffff:0:0/96
+        - 64:ff9b:1::/48
+        - 100::/64
+        - 2001:db8::/32
+        - fc00::/7
+        - fe80::/10
+        - ff00::/8
+    - toEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: Exists
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: NotIn
+              values: ["kube-system", "envoy-gateway-system"]
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+          matchExpressions:
+            - key: k8s:k8s-app
+              operator: NotIn
+              values: ["kube-dns"]
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+          matchExpressions:
+            - key: k8s:gateway.envoyproxy.io/owning-gateway-name
+              operator: NotIn
+              values: ["envoy-gateway-coder-agent"]
