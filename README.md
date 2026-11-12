@@ -198,6 +198,42 @@ the power interlock for automatic sleep. The ArgoCD apps for it require manual
 sync, and automatic sleep is not yet enabled. See
 [docs/dark-factory-onboarding.md](docs/dark-factory-onboarding.md) before syncing.
 
+### Coder development workspaces
+
+Personal development workspaces are separate from Dark Factory's Kata sandboxes. From the home
+network, sign in at [coder.home.timosur.com](https://coder.home.timosur.com/) with Authentik and
+authorize GitHub if prompted. Select the existing `homelab` workspace, or create one using the
+`board-member` template.
+
+With the Coder CLI and Zed installed, use a separate CLI and SSH configuration to avoid replacing
+another Coder login:
+
+```bash
+mkdir -p "$HOME/.config/coder-homelab" "$HOME/.ssh"
+chmod 700 "$HOME/.config/coder-homelab"
+coder --global-config "$HOME/.config/coder-homelab" login https://coder.home.timosur.com
+coder --global-config "$HOME/.config/coder-homelab" list
+coder --global-config "$HOME/.config/coder-homelab" start homelab
+coder --global-config "$HOME/.config/coder-homelab" config-ssh \
+  --ssh-config-file "$HOME/.ssh/coder-homelab.conf" --ssh-host-prefix coder-home.
+```
+
+The separate CLI directory stores a session token in a file; keep it private and do not share it.
+In Zed, choose **Remote Projects → Connect New Server** and enter
+`ssh -F /absolute/path/to/.ssh/coder-homelab.conf coder-home.homelab`, replacing the path with
+your generated SSH config. Open `/home/coder` or a project beneath it. Replace `homelab` with your
+workspace name in the commands if different.
+
+Stop a workspace from Coder or run
+`coder --global-config "$HOME/.config/coder-homelab" stop homelab`. It also stops after 30 minutes
+without detected activity; an open SSH or Zed session can keep it active. `/home/coder` persists,
+but APT packages and other changes outside it do not survive a rebuild.
+
+Cilium blocks direct access to the private LAN, nodes, Kubernetes API and unrelated cluster
+services; public internet, DNS and Coder remain available. Tetragon adds runtime defenses, but
+these shared-kernel pods are not VM isolation. The home public IP remains reachable, including
+any UniFi management interface exposed there.
+
 ### User Applications
 
 | Application | Description | URL |
