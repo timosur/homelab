@@ -11,11 +11,18 @@ spec:
   kprobes:
     - call: sys_setns
       syscall: true
+      return: false
       args:
         - index: 0
           type: int
+          maxData: false
+          resolve: ""
+          returnCopy: false
         - index: 1
           type: int
+          maxData: false
+          resolve: ""
+          returnCopy: false
       selectors:
         # containerd/runc also calls setns while starting or exec'ing into a
         # pod. Its own PID namespace is still the host's at that point.
