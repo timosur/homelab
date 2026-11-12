@@ -27,8 +27,8 @@
 - User-confirmed Zed connections succeeded on each worker. The existing workspace was updated to
   `sandbox-final-20261112`, verified healthy, and returned to stopped state with its PVC retained.
   Forced-relay Coder ping and SSH succeeded. Starting the first probe woke both sleeping workers;
-  stopping one workspace while another ran kept both nodes Ready. Both disposable workspaces were
-  deleted after their checks.
+  stopping one workspace left the other running. Both disposable workspaces were deleted after
+  their checks; the workers later became NotReady after the workspaces were stopped.
 - The changing home public IP remains allowed at the user's request; a live test reached the UniFi
   management interface through it. The new GitOps resources were initially applied directly;
   verify ArgoCD has adopted them when reconciling the committed configuration.

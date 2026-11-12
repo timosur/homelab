@@ -29,7 +29,8 @@ does not prevent existing workspaces from starting; coordinate starts explicitly
    its HTTPRoute is Accepted/ResolvedRefs, `coder-agent-gateway` is a ClusterIP service, and
    `coder-workspace-egress` and `coder-workspace-setns` exist. On each worker verify that its
    Tetragon agent is Ready and `tetra tracingpolicy list` reports the policy enabled; also inspect
-   the Cilium endpoint's realized egress policy after a workspace starts.
+   the Cilium endpoint's realized egress policy after a workspace starts. Networking auto-sync is
+   currently disabled on the live cluster; use a manual ArgoCD sync without changing that setting.
 3. Publish the template and test a workspace on each worker before relying on isolation. Verify DNS,
    public HTTPS, private Git over Coder authentication, `sudo`/APT, Zed/SSH and agent connectivity;
    verify LAN, node, Kubernetes API and unrelated cluster services are blocked. Test a controlled
