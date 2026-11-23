@@ -1,5 +1,6 @@
 # Model onboarding inventory.
-# Local entries are pulled/aliased by the amd-gpu Ansible role.
+# Local entries are pulled/aliased by the amd-gpu Ansible role and served by Ollama
+# (Open WebUI); they are not exposed through Agent Gateway.
 # Agent Gateway and client model IDs use `id`; Ollama uses `source`.
 models:
   - id: qwen3-5-0-8b
@@ -30,15 +31,44 @@ models:
     local: true
     context: 8192
     max_output: 512
-  - id: claude-fable-5-1
-    name: Claude Fable 5.1
+  - id: claude-opus-5-5
+    name: Claude Opus 5.5
     provider: Anthropic
     local: false
-  - id: gpt-5-6-luna
-    name: GPT-5.6 Luna
+  - id: claude-haiku-5-5
+    name: Claude Haiku 5.5
+    provider: Anthropic
+    local: false
+  - id: gpt-6.1-terra
+    name: GPT-6.1 Terra
     provider: OpenAI
     local: false
-  - id: gpt-5-6-terra
-    name: GPT-5.6 Terra
+  - id: gpt-6-luna
+    name: GPT-6 Luna
     provider: OpenAI
     local: false
+  - id: gpt-6.2-sol
+    name: GPT-6.2 Sol
+    provider: OpenAI
+    local: false
+  - id: platform-lab-qwen38
+    name: Platform Lab qwen38
+    source: qwen38
+    provider: Platform Lab
+    local: false
+    context: 262144
+    max_output: 8192
+  - id: platform-lab-qwen38-macs
+    name: Platform Lab qwen38-macs
+    source: qwen38-macs
+    provider: Platform Lab
+    local: false
+    context: 262144
+    max_output: 8192
+  - id: platform-lab-qwen38-flash-spark
+    name: Platform Lab qwen38-flash-spark
+    source: qwen38-flash-spark
+    provider: Platform Lab
+    local: false
+    context: 262144
+    max_output: 8192

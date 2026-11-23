@@ -7,7 +7,7 @@ data:
   config.toml: |
     port = 8080
     endpoint = "https://inference.ai.home.timosur.com/v1"
-    default_model = "qwen3-5-9b"
+    default_model = "claude-haiku-5-5"
 
     [api_key]
     env = "CHAT_API_KEY"
@@ -16,43 +16,49 @@ data:
     stream_options = { include_usage = true }
 
     [[models]]
-    alias = "qwen3-5-9b"
-    name = "Qwen 3.5 9B"
-    description = "Qwen 3.5 9B via AgentGateway"
-    model = "qwen3-5-9b"
+    alias = "claude-haiku-5-5"
+    name = "Claude Haiku 5.5"
+    description = "Claude Haiku 5.5 via AgentGateway"
+    model = "claude-haiku-5-5"
 
     [[models]]
-    alias = "qwen3-5-0-8b"
-    name = "Qwen 3.5 0.8B"
-    description = "Qwen 3.5 0.8B via AgentGateway"
-    model = "qwen3-5-0-8b"
+    alias = "claude-opus-5-5"
+    name = "Claude Opus 5.5"
+    description = "Claude Opus 5.5 via AgentGateway"
+    model = "claude-opus-5-5"
 
     [[models]]
-    alias = "qwen3-8-27b"
-    name = "Qwen 3.8 27B"
-    description = "Qwen 3.8 27B via AgentGateway"
-    model = "qwen3-8-27b"
+    alias = "gpt-6-luna"
+    name = "GPT-6 Luna"
+    description = "GPT-6 Luna via AgentGateway"
+    model = "gpt-6-luna"
 
     [[models]]
-    alias = "mythos-9b-unhinged"
-    name = "Mythos 9B Unhinged"
-    description = "Mythos 9B Unhinged via AgentGateway"
-    model = "mythos-9b-unhinged"
+    alias = "gpt-6.1-terra"
+    name = "GPT-6.1 Terra"
+    description = "GPT-6.1 Terra via AgentGateway"
+    model = "gpt-6.1-terra"
 
     [[models]]
-    alias = "claude-fable-5-1"
-    name = "Claude Fable 5.1"
-    description = "Claude Fable 5.1 via AgentGateway"
-    model = "claude-fable-5-1"
+    alias = "gpt-6.2-sol"
+    name = "GPT-6.2 Sol"
+    description = "GPT-6.2 Sol via AgentGateway"
+    model = "gpt-6.2-sol"
 
     [[models]]
-    alias = "gpt-5-6-luna"
-    name = "GPT-5.6 Luna"
-    description = "GPT-5.6 Luna via AgentGateway"
-    model = "gpt-5-6-luna"
+    alias = "platform-lab-qwen38"
+    name = "Platform Lab Qwen 3.8 27B"
+    description = "Platform Lab Qwen 3.8 27B via AgentGateway"
+    model = "platform-lab-qwen38"
 
     [[models]]
-    alias = "gpt-5-6-sol-terra"
-    name = "GPT-5.6 Sol Terra"
-    description = "GPT-5.6 Sol Terra via AgentGateway"
-    model = "gpt-5-6-sol-terra"
+    alias = "platform-lab-qwen38-macs"
+    name = "Platform Lab Qwen 3.8 27B (Macs)"
+    description = "Platform Lab Qwen 3.8 27B (Macs) via AgentGateway"
+    model = "platform-lab-qwen38-macs"
+
+    [[models]]
+    alias = "platform-lab-qwen38-flash-spark"
+    name = "Platform Lab Qwen 3.8 Flash Spark"
+    description = "Platform Lab Qwen 3.8 Flash Spark via AgentGateway"
+    model = "platform-lab-qwen38-flash-spark"
