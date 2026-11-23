@@ -5,7 +5,7 @@
 FROM node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0 AS node
 FROM ghcr.io/astral-sh/uv:0.9.25@sha256:13e233d08517abdafac4ead26c16d881cd77504a2c40c38c905cf3a0d70131a6 AS uv
 
-FROM ghcr.io/prskr/dark-factory/claude-project@sha256:c9491848a9c48475636288f37b6d46a680bf72ede21eeb5e262b89121a4d4b6b
+FROM ghcr.io/prskr/dark-factory/claude-project@sha256:39ea9f86bfe4c1e2768e94f8a0fe456d4474f7b9cd036adcf9ccf74e14448b1d
 
 USER root
 
