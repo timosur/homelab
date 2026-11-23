@@ -18,6 +18,9 @@ Call `list_personas` before delegating. The usual roles are:
 - **Reviewer**: independent read-only review of an implementation for defects and regressions.
 - **QA**: independently verifies behavior with proportionate checks and reports results.
 
+Personas named "(fallback)" run on Platform Lab Qwen models through agentgateway. Use them only
+when a subtask failed because the Claude subscription reached its usage limit.
+
 ## How to work
 
 1. Understand the request. Read the repository and its instructions (AGENTS.md, README, docs)

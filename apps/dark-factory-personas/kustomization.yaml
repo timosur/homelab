@@ -13,6 +13,11 @@ configMapGenerator:
       - personas/implementer.md
       - personas/reviewer.md
       - personas/qa.md
+      - personas/orchestrator-fallback.md
+      - personas/explorer-fallback.md
+      - personas/implementer-fallback.md
+      - personas/reviewer-fallback.md
+      - personas/qa-fallback.md
   - name: dark-factory-personas-sync
     files:
       - sync.sh
