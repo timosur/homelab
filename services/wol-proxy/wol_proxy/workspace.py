@@ -158,7 +158,8 @@ class WorkspaceVerifier:
         metadata = pod.get("metadata") if isinstance(pod, dict) else None
         labels = metadata.get("labels") if isinstance(metadata, dict) else None
         key = labels.get("dark-factory.io/task-key") if isinstance(labels, dict) else None
-        if not isinstance(key, str) or re.fullmatch(r"[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,19}", key) is None:
+        # Task keys are `<PROJECT>-<n>`; chats (Dark Factory >= v2026.11.x) use `<PROJECT>-<n>-CHAT`.
+        if not isinstance(key, str) or re.fullmatch(r"[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,19}(-CHAT)?", key) is None:
             raise ValueError("invalid sandbox task identity")
         name = "task-" + key.lower()
         claim = await self.client._get(

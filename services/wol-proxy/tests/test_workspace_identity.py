@@ -109,10 +109,35 @@ class WorkspaceVerifierTests(unittest.IsolatedAsyncioTestCase):
         self.client._put.assert_not_awaited()
 
     async def test_invalid_pod_never_authorizes_a_workspace(self):
-        self.pod["metadata"]["labels"]["dark-factory.io/task-key"] = "../../invalid"
-        with self.assertRaises(ValueError):
-            await self.verifier.check(self.pod)
+        for key in ("../../invalid", "DF-1-chat", "DF-1-CHAT-CHAT", "DF-CHAT", "DF-0-CHAT"):
+            with self.subTest(key=key):
+                self.pod["metadata"]["labels"]["dark-factory.io/task-key"] = key
+                with self.assertRaises(ValueError):
+                    await self.verifier.check(self.pod)
         self.client._get.assert_not_awaited()
+
+    async def test_chat_sandbox_uses_its_own_workspace(self):
+        self.pod, self.claim = fixtures()
+        for obj in (self.pod, self.claim):
+            obj["metadata"]["labels"]["dark-factory.io/task-key"] = "DF-1-CHAT"
+        self.pod["metadata"]["name"] = "run-df-1-chat-1"
+        self.pod["spec"]["volumes"][0]["persistentVolumeClaim"]["claimName"] = "task-df-1-chat"
+        self.claim["metadata"]["name"] = "task-df-1-chat"
+        self.state["data"]["workspace_records"] = json.dumps({"task-df-1-chat": {
+            "claim_uid": "claim-uid", "pod_name": "run-df-1-chat-1", "pod_uid": "pod-uid",
+            "possible_nodes": ["desktop", "gpu"],
+        }})
+
+        async def get(path):
+            if path == "/api/v1/namespaces/sandboxes/persistentvolumeclaims/task-df-1-chat":
+                return copy.deepcopy(self.claim)
+            if path == "/api/v1/namespaces/wol-proxy/configmaps/dark-factory-interlock":
+                return copy.deepcopy(self.state)
+            raise AssertionError(f"unexpected path: {path}")
+
+        self.client._get = AsyncMock(side_effect=get)
+        self.assertTrue(await self.verifier.check(self.pod))
+        self.client._put.assert_not_awaited()
 
     async def test_previous_pod_uid_must_be_absent_or_replaced(self):
         previous = {"pod_name": "old-run", "pod_uid": "old-uid"}
