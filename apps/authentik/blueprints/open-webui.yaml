@@ -1,12 +1,16 @@
 # Open WebUI OIDC provider + application.
 # The client secret is read from the worker environment (!Env) and is never stored in Git.
 # It comes from ExternalSecret authentik-oidc-secrets (Key Vault: open-webui-oidc-client-secret).
+# Every entry has a condition on that variable: if it is unset or empty (secret not yet created),
+# the entries are skipped, so no provider with an empty/default secret is ever created.
 version: 1
 metadata:
   name: Open WebUI OIDC
 entries:
   - model: authentik_providers_oauth2.oauth2provider
     id: provider
+    conditions:
+      - !Env [OPEN_WEBUI_OIDC_CLIENT_SECRET, ""]
     identifiers:
       name: Open WebUI
     attrs:
@@ -23,10 +27,10 @@ entries:
         - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'openid'"]]
         - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'email'"]]
         - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'profile'"]]
-        # Shared groups scope mapping (also used by Coder and Dark Factory)
-        - !Find [authentik_providers_oauth2.scopemapping, [name, "Dark Factory groups"]]
   - model: authentik_core.application
     id: application
+    conditions:
+      - !Env [OPEN_WEBUI_OIDC_CLIENT_SECRET, ""]
     identifiers:
       slug: open-webui
     attrs:
@@ -35,6 +39,8 @@ entries:
       meta_launch_url: https://ai.timosur.com
       policy_engine_mode: any
   - model: authentik_policies.policybinding
+    conditions:
+      - !Env [OPEN_WEBUI_OIDC_CLIENT_SECRET, ""]
     identifiers:
       target: !KeyOf application
       order: 0
