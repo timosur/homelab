@@ -4,10 +4,17 @@ BEGIN;
 -- Fails (no rows for \gset) when the provider does not exist.
 SELECT id AS provider_id FROM model_providers WHERE name = :'provider' \gset
 
--- The model must be a model of the provider; register it without limits if it is missing.
-INSERT INTO model_provider_models (provider_id, model_id, wire_api)
-VALUES (:'provider_id', :'model', :'wire_api')
-ON CONFLICT (provider_id, model_id) DO NOTHING;
+-- The model must be a model of the provider; register it if it is missing. Limits are set when
+-- given (context and max_output together) and left alone otherwise.
+INSERT INTO model_provider_models (provider_id, model_id, wire_api, context_window_tokens, max_output_tokens)
+VALUES (:'provider_id', :'model', :'wire_api',
+        NULLIF(:'context', '')::bigint, NULLIF(:'max_output', '')::bigint)
+ON CONFLICT (provider_id, model_id) DO UPDATE SET
+    context_window_tokens = EXCLUDED.context_window_tokens,
+    max_output_tokens = EXCLUDED.max_output_tokens
+WHERE EXCLUDED.context_window_tokens IS NOT NULL
+  AND (model_provider_models.context_window_tokens, model_provider_models.max_output_tokens)
+      IS DISTINCT FROM (EXCLUDED.context_window_tokens, EXCLUDED.max_output_tokens);
 
 -- Dark Factory uses UUIDv7 ids; PostgreSQL 17 has no uuidv7(), so build one.
 INSERT INTO personas (id, name, description, system_prompt, harness, model, model_provider_id)

@@ -30,7 +30,18 @@ for file in /personas/*.md; do
   provider="$(field provider "$file")"
   model="$(field model "$file")"
   wire_api="$(field wire_api "$file")"
-  prompt="$(body "$file")"
+  context="$(field context "$file")"
+  max_output="$(field max_output "$file")"
+  prompt_from="$(field prompt_from "$file")"
+  if [ -n "$prompt_from" ]; then
+    prompt="$(body "/personas/$prompt_from")"
+  else
+    prompt="$(body "$file")"
+  fi
+  if { [ -n "$context" ] && [ -z "$max_output" ]; } || { [ -z "$context" ] && [ -n "$max_output" ]; }; then
+    echo "$file: set context and max_output together" >&2
+    exit 1
+  fi
   for required in name harness provider model prompt; do
     eval "value=\${$required}"
     if [ -z "$value" ]; then
@@ -47,6 +58,8 @@ for file in /personas/*.md; do
     -v provider="$provider" \
     -v model="$model" \
     -v wire_api="${wire_api:-anthropic-messages}" \
+    -v context="$context" \
+    -v max_output="$max_output" \
     -v prompt="$prompt" \
     -f /sync/upsert.sql
   echo "synced persona: $name ($harness, $model)"
