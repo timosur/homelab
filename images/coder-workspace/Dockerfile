@@ -2,7 +2,7 @@
 
 # Keep the toolchain bases pinned so published workspace-image digests are
 # reproducible and can be promoted into the Coder template unchanged.
-FROM node:24-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS node
+FROM node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0 AS node
 FROM ghcr.io/astral-sh/uv:0.9.25@sha256:13e233d08517abdafac4ead26c16d881cd77504a2c40c38c905cf3a0d70131a6 AS uv
 
 FROM debian:trixie-slim

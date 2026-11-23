@@ -2,7 +2,7 @@
 
 # The released base supplies the non-root dev user (UID/GID 1000), Git, and
 # the /workspace working directory used by Dark Factory projects.
-FROM node:24-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS node
+FROM node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0 AS node
 FROM ghcr.io/astral-sh/uv:0.9.25@sha256:13e233d08517abdafac4ead26c16d881cd77504a2c40c38c905cf3a0d70131a6 AS uv
 
 FROM ghcr.io/prskr/dark-factory/claude-project@sha256:c9491848a9c48475636288f37b6d46a680bf72ede21eeb5e262b89121a4d4b6b
