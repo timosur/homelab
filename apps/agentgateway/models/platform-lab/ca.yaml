@@ -1,0 +1,21 @@
+# Public root of the ITOT Platform Lab ("ITOT Platform Lab GitOps CA").
+# SHA-256 fingerprint: 03:D7:54:26:F1:FA:DE:FA:5D:00:1E:E3:79:65:B7:CF:55:26:D7:E9:E6:E3:B9:04:09:3C:36:80:16:F7:FC:59
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-lab-ca
+  namespace: agentgateway-system
+data:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIByzCCAXGgAwIBAgIUPDn8pDfteG4lt8dTY4bq0w303UMwCgYIKoZIzj0EAwIw
+    QjEaMBgGA1UECgwRSVRPVCBQbGF0Zm9ybSBMYWIxJDAiBgNVBAMMG0lUT1QgUGxh
+    dGZvcm0gTGFiIEdpdE9wcyBDQTAeFw0yNjExMTExMDIwNDVaFw0zNjExMDgxMDIw
+    NDVaMEIxGjAYBgNVBAoMEUlUT1QgUGxhdGZvcm0gTGFiMSQwIgYDVQQDDBtJVE9U
+    IFBsYXRmb3JtIExhYiBHaXRPcHMgQ0EwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNC
+    AASbTZ+kZaH72J78U2QH9KfaRqUbGnDSm3xvmyH2H5BKnLAn9v0cTBTzwzQLZCTZ
+    inUkWT7iNfmvh/76GkcD6psqo0UwQzASBgNVHRMBAf8ECDAGAQH/AgEAMA4GA1Ud
+    DwEB/wQEAwIBBjAdBgNVHQ4EFgQUUexsibsMVALi9FBhHLaxYHswpmQwCgYIKoZI
+    zj0EAwIDSAAwRQIgW5fRfGkEXaEIfs3MXPziLndU3jFsDR1QJydjqMAK1+MCIQCd
+    Rs67Q+8SLBvvp3cY9895A0nD2SwVzlnJI5ltVjM/YA==
+    -----END CERTIFICATE-----
