@@ -6,7 +6,7 @@ My HomeLab running on a local K3s cluster with GitOps workflow.
 
 - **Cluster**: K3s on local hardware (control plane `homelab-amd`, two ARM workers, a GPU worker `homelab-gpu` and a desktop worker `homelab-amd-desktop`, provisioned via Ansible)
 - **CNI**: Cilium with Gateway API support and L2 announcements
-- **GitOps**: ArgoCD with automated sync (App of Apps pattern)
+- **GitOps**: ArgoCD (App of Apps pattern), automated sync for most apps
 - **Ingress**: Envoy Gateway for home/LAN services; Pangolin and Newt for internet services
 - **TLS**: cert-manager for the home gateway; Pangolin for internet services
 - **DNS**: Pi-hole for local DNS; public domains configured for Pangolin
@@ -220,8 +220,8 @@ Dark Factory runs autonomous agent workspaces in Kata sandboxes. `wol-proxy`
 (`services/wol-proxy`) wakes the desktop on demand and enforces workspace
 ownership and admission; `dark-factory-wake` provides the admission webhooks and
 the power interlock for automatic sleep. The `dark-factory`, `dark-factory-prerequisites`
-and `dark-factory-wake` ArgoCD apps require manual sync; `wol-proxy` (and `coder-power`)
-auto-sync. Automatic sleep is not yet enabled. See
+and `dark-factory-wake` ArgoCD apps (as well as `agent-sandbox`) require manual sync;
+`wol-proxy`, `dark-factory-personas` and `coder-power` auto-sync. Automatic sleep is not yet enabled. See
 [docs/dark-factory-onboarding.md](docs/dark-factory-onboarding.md) before syncing.
 
 Up to 8 sandboxes run concurrently, of which 2 can be chats (`apps/dark-factory/values.yaml`).
@@ -272,8 +272,8 @@ any UniFi management interface exposed there.
 | **bike-weather** | Bike weather app | `bike-weather.com` |
 | **garden** | Garden management and planning | `garden.home.timosur.com` |
 | **givgroov** | Music sharing platform | `givgroov.de` |
-| **home-assistant** | Home automation | `ha.home.timosur.com` |
 | **grafana** | Dashboards (monitoring) | `grafana.home.timosur.com` |
+| **home-assistant** | Home automation | `ha.home.timosur.com` |
 | **house-builder** | House builder app | `house.home.timosur.com` |
 | **mealie** | Recipe management and meal planning | `mealie.timosur.com` |
 | **open-webui** | Modern interface for LLMs | `ai.timosur.com` |
