@@ -4,9 +4,9 @@ My HomeLab running on a local K3s cluster with GitOps workflow.
 
 ## Architecture
 
-- **Cluster**: K3s on local hardware (1 control plane + 2 workers, provisioned via Ansible)
+- **Cluster**: K3s on local hardware (control plane `homelab-amd`, two ARM workers, a GPU worker `homelab-gpu` and a desktop worker `homelab-amd-desktop`, provisioned via Ansible)
 - **CNI**: Cilium with Gateway API support and L2 announcements
-- **GitOps**: ArgoCD with automated sync (App of Apps pattern)
+- **GitOps**: ArgoCD (App of Apps pattern), automated sync for most apps
 - **Ingress**: Envoy Gateway for home/LAN services; Pangolin and Newt for internet services
 - **TLS**: cert-manager for the home gateway; Pangolin for internet services
 - **DNS**: Pi-hole for local DNS; public domains configured for Pangolin
@@ -25,21 +25,36 @@ homelab/
 ├── ansible/                    # Ansible playbooks and roles for cluster provisioning
 │   ├── inventory.yml
 │   ├── playbooks/
+│   │   ├── amd-gpu.yml
+│   │   ├── amdgpu-runtime-pm.yml
 │   │   ├── argocd-gitops-setup.yml
 │   │   ├── cluster-backup.yml
+│   │   ├── coder-workspace-seccomp.yml
+│   │   ├── dark-factory-kata.yml
+│   │   ├── dark-factory-power-guard.yml
+│   │   ├── home-mount.yml
 │   │   ├── k3s-cluster.yml
 │   │   ├── k3s-update.yml
 │   │   └── node-hardening.yml
 │   └── roles/
+│       ├── amd-gpu/
+│       ├── amdgpu-runtime-pm/
 │       ├── argocd-install/
 │       ├── cilium/
 │       ├── cluster-backup/
+│       ├── coder-workspace-seccomp/
+│       ├── dark-factory-kata/
+│       ├── dark-factory-power-guard/
 │       ├── gitops-setup/
 │       ├── gpu-blacklist/
+│       ├── home-mount/
 │       ├── k3s-control-plane/
+│       ├── k3s-desktop-worker/
+│       ├── k3s-gpu-worker/
 │       ├── k3s-update/
 │       ├── k3s-worker/
-│       └── node-hardening/
+│       ├── node-hardening/
+│       └── wakeonlan/
 ├── apps/                       # Application definitions and ArgoCD apps
 │   ├── _argocd/               # ArgoCD Application manifests
 │   ├── root.yaml              # Root ArgoCD Application (App of Apps)
@@ -52,8 +67,10 @@ homelab/
 │   ├── bike-weather*/         # Bike weather app (backend, auth, preview)
 │   ├── cert-manager/          # Certificate management (DNS-01)
 │   ├── cloudnative-pg/        # PostgreSQL operator
+│   ├── coder/                 # Coder development workspaces (board-member template)
 │   ├── crossplane/            # Crossplane app database composition
 │   ├── dark-factory/          # Dark Factory chart values, runtime class, alerts
+│   ├── dark-factory-personas/ # Git-owned Dark Factory personas
 │   ├── dark-factory-wake/     # Sandbox admission webhooks and power interlock
 │   ├── external-secrets/      # External secrets operator
 │   ├── garden/                # Garden management app
@@ -86,9 +103,13 @@ homelab/
 │   │   └── home/              #   *.home.timosur.com (HTTPS, LAN only)
 │   └── httproutes/            # HTTPRoute definitions
 │       └── home/              #   LAN-only service routes
-├── docs/                       # Docs, plans and specs (e.g. dark-factory-onboarding.md)
-├── images/                     # Container images (dark-factory-project)
+├── docs/                       # Docs (e.g. dark-factory-onboarding.md)
+│   ├── adr/                   # Architecture decision records
+│   ├── plans/                 # Plans
+│   └── specs/                 # Design specs
+├── images/                     # Container images (dark-factory-project, coder-workspace)
 ├── openspec/                   # OpenSpec specs and change records
+├── product/                    # Product glossary (GLOSSARY.md)
 ├── scripts/                    # Utility scripts
 ├── services/                   # Custom services (wol-proxy)
 ├── models.yaml                 # Model definitions
@@ -188,15 +209,22 @@ The homelab runs several applications managed through ArgoCD:
 - **crossplane**: Provisions per-application databases (`appdb`)
 - **monitoring, tetragon, trivy-operator, kured**: Observability, runtime security, vulnerability scanning, node reboots
 - **authentik, vaultwarden**: Identity and password management
+- **postgres**: Shared CloudNativePG clusters (e.g. `central-postgres`)
+- **coder, coder-power**: Coder development workspaces and their power coordination
+- **dark-factory, dark-factory-prerequisites, dark-factory-wake, dark-factory-personas, wol-proxy**: Dark Factory (see below)
+- **agent-sandbox**: Agent sandbox controller
 
 ### Dark Factory
 
 Dark Factory runs autonomous agent workspaces in Kata sandboxes. `wol-proxy`
 (`services/wol-proxy`) wakes the desktop on demand and enforces workspace
 ownership and admission; `dark-factory-wake` provides the admission webhooks and
-the power interlock for automatic sleep. The ArgoCD apps for it require manual
-sync, and automatic sleep is not yet enabled. See
+the power interlock for automatic sleep. The `dark-factory`, `dark-factory-prerequisites`
+and `dark-factory-wake` ArgoCD apps (as well as `agent-sandbox`) require manual sync;
+`wol-proxy`, `dark-factory-personas` and `coder-power` auto-sync. Automatic sleep is not yet enabled. See
 [docs/dark-factory-onboarding.md](docs/dark-factory-onboarding.md) before syncing.
+
+Up to 8 sandboxes run concurrently, of which 2 can be chats (`apps/dark-factory/values.yaml`).
 
 ### Coder development workspaces
 
@@ -239,15 +267,21 @@ any UniFi management interface exposed there.
 | Application | Description | URL |
 |---|---|---|
 | **actual** | Budget and financial management | `finance.home.timosur.com` |
+| **affine** | Knowledge base and notes | `affine.home.timosur.com` |
+| **atuin** | Shell history sync | `atuin.home.timosur.com` |
+| **bike-weather** | Bike weather app | `bike-weather.com` |
 | **garden** | Garden management and planning | `garden.home.timosur.com` |
 | **givgroov** | Music sharing platform | `givgroov.de` |
+| **grafana** | Dashboards (monitoring) | `grafana.home.timosur.com` |
 | **home-assistant** | Home automation | `ha.home.timosur.com` |
+| **house-builder** | House builder app | `house.home.timosur.com` |
 | **mealie** | Recipe management and meal planning | `mealie.timosur.com` |
 | **open-webui** | Modern interface for LLMs | `ai.timosur.com` |
-| **paperless** | Document management system | `docs.home.timosur.com` |
+| **paperless** | Document management system | `docs.timosur.com` |
 | **penpot** | Design and prototyping | `penpot.home.timosur.com` |
 | **pi-hole** | DNS-level ad blocking | `pihole.home.timosur.com` |
 | **portfolio** | Personal portfolio website | `timosur.com` |
+| **vaultwarden** | Password manager | `vault.home.timosur.com` |
 | **vinyl-manager** | Vinyl record collection manager | `vinyl.home.timosur.com` |
 
 ## Networking
@@ -326,7 +360,7 @@ kubectl get svc -A | grep LoadBalancer
 
 ```bash
 # Check PostgreSQL clusters
-kubectl get postgresql -A
+kubectl get clusters.postgresql.cnpg.io -A
 kubectl get pooler -A
 
 # Connect to database
