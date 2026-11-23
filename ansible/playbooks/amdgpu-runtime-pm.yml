@@ -1,0 +1,7 @@
+---
+- name: Keep AMD GPUs out of runtime suspend on desktop workers
+  hosts: desktop_workers
+  gather_facts: false
+  become: true
+  roles:
+    - amdgpu-runtime-pm

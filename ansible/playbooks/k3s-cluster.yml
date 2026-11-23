@@ -48,6 +48,7 @@
   become: true
   roles:
     - node-hardening
+    - amdgpu-runtime-pm
     - k3s-desktop-worker
 
 - name: Install and configure Cilium

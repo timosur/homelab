@@ -1,0 +1,31 @@
+---
+# Keep AMD GPUs out of runtime suspend. On the desktop's RX 580 (Polaris), periodic sysfs reads
+# woke the GPU from runtime suspend every ~30 s after an S3 resume, and the host hard-froze
+# within ~20 minutes (2026-11-12 and 2026-11-23). The GPU worker uses the same rule in amd-gpu.
+- name: Keep AMD GPUs powered on boot
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/99-amdgpu-runtime-pm.rules
+    content: |
+      # Prevent runtime suspend/resume churn of AMD GPUs (hard freezes after S3 resume).
+      ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x1002", ATTR{class}=="0x030000", ATTR{power/control}="on"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Keep AMD GPUs powered now
+  ansible.builtin.shell: |
+    set -eu
+    changed=0
+    for dev in /sys/bus/pci/devices/*; do
+      [ "$(cat "$dev/vendor")" = 0x1002 ] || continue
+      [ "$(cat "$dev/class")" = 0x030000 ] || continue
+      if [ "$(cat "$dev/power/control")" != on ]; then
+        echo on > "$dev/power/control"
+        changed=1
+      fi
+    done
+    echo "changed=$changed"
+  args:
+    executable: /bin/sh
+  register: amdgpu_runtime_pm
+  changed_when: "'changed=1' in amdgpu_runtime_pm.stdout"
