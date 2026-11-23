@@ -49,6 +49,7 @@
   roles:
     - node-hardening
     - amdgpu-runtime-pm
+    - home-mount
     - k3s-desktop-worker
 
 - name: Install and configure Cilium

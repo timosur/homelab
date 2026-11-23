@@ -1,0 +1,7 @@
+---
+- name: Mount /home by disk ID
+  hosts: desktop_workers
+  gather_facts: false
+  become: true
+  roles:
+    - home-mount

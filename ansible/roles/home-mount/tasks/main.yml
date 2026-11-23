@@ -1,0 +1,39 @@
+---
+# Mount /home by the disk's hardware ID instead of the filesystem UUID. After an unclean
+# shutdown, systemd-fsck replays the journal; udev's re-probe of the disk then lost the
+# filesystem, removed /dev/disk/by-uuid/<uuid> and with it the mount's device, so /home was
+# silently not mounted (2026-11-23). The by-id link comes from the disk serial and survives.
+- name: Require the /home device
+  ansible.builtin.assert:
+    that:
+      - home_mount_device is defined
+      - home_mount_device is match('^/dev/disk/by-id/')
+
+- name: Resolve the configured device
+  ansible.builtin.stat:
+    path: "{{ home_mount_device }}"
+  register: home_mount_device_stat
+
+- name: Find the current /home source
+  ansible.builtin.command: findmnt --noheadings --output SOURCE --mountpoint /home
+  register: home_mount_current
+  changed_when: false
+  check_mode: false
+
+- name: Refuse a device that is not the mounted /home disk
+  ansible.builtin.assert:
+    that:
+      - home_mount_device_stat.stat.exists
+      - home_mount_device_stat.stat.lnk_source == home_mount_current.stdout
+    fail_msg: >-
+      {{ home_mount_device }} resolves to {{ home_mount_device_stat.stat.lnk_source | default('nothing') }},
+      but /home is mounted from {{ home_mount_current.stdout | default('nothing') }}; mount /home first.
+
+- name: Mount /home by disk ID
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^\S+\s+/home\s+'
+    line: "{{ home_mount_device }} /home ext4 defaults 0 2"
+    backup: true
+    validate: findmnt --verify --tab-file %s
+  notify: Reload systemd for fstab

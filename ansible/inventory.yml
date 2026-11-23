@@ -44,5 +44,6 @@ all:
           hosts:
             homelab-amd-desktop:
               ansible_host: 192.168.2.241
+              home_mount_device: /dev/disk/by-id/ata-APPLE_HDD_TOSHIBA_MK5065GSXF_82LJC616T
               node_ip: "{{ lookup('pipe', 'ssh homelab-amd-desktop hostname -I | awk \"{print \\$1}\"') }}"
               wol_mac: "30:9c:23:8a:30:e3"
