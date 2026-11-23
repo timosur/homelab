@@ -3,6 +3,12 @@ kind: RuntimeClass
 metadata:
   name: kata-dark-factory
 handler: kata
+# Host cost of the Kata VM itself (measured ~770MiB idle RSS per sandbox), so the scheduler and the
+# sandbox quota account for it.
+overhead:
+  podFixed:
+    cpu: 250m
+    memory: 1Gi
 scheduling:
   nodeSelector:
     dark-factory.home.timosur.com/sandbox-worker: 'true'

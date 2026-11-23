@@ -48,24 +48,28 @@ sandboxNamespace:
   storageClass: dark-factory-nfs
   pvcSize: 20Gi
   resourceQuota:
-    # Four concurrent sandboxes (tasks and chats share them), each limited to 2 CPU / 4Gi.
-    pods: '4'
+    # Eight concurrent sandboxes (tasks and chats share them). Each Kata VM gets 1 + 2 vCPUs, so
+    # eight saturate the 24 cores of both workers. Quotas include the RuntimeClass overhead
+    # (250m / 1Gi per pod): requests 8 x (500m, 2Gi), limits 8 x (2.25 CPU, 5Gi).
+    pods: '8'
     requestsCpu: '4'
-    requestsMemory: 8Gi
-    limitsCpu: '8'
-    limitsMemory: 16Gi
-    requestsStorage: 200Gi
+    requestsMemory: 16Gi
+    limitsCpu: '18'
+    limitsMemory: 40Gi
+    # 20Gi per claim; the NFS export has a 500 GiB aggregate cap.
+    requestsStorage: 400Gi
     # Retained per-task workspaces are independent of the concurrent sandbox slots.
-    persistentVolumeClaims: '10'
+    persistentVolumeClaims: '20'
   limitRange:
     defaultCpu: '2'
     defaultMemory: 4Gi
     defaultRequestCpu: 250m
-    defaultRequestMemory: 512Mi
+    # Realistic agent working set, so the scheduler spreads sandboxes across both workers.
+    defaultRequestMemory: 1Gi
 
 # Matches the sandbox quota above; chats count against the same quota.
 runs:
-  maxConcurrent: 4
+  maxConcurrent: 8
   maxConcurrentChats: 2
 
 plugins:
