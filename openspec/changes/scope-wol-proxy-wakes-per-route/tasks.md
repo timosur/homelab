@@ -1,33 +1,41 @@
 # Tasks
 
-## 1. Configuration and validation (stage 1)
+## 1. Configuration and validation
 
-- [ ] 1.1 `config.py`: add optional `workers: list[str] | None` to `BackendConfig` and `NodeGroupBackend`; parse `workers` (`load_config`) as non-empty distinct strings.
-- [ ] 1.2 `server.py` (~lines 27-53): validate backend `workers` against the pool's worker names, require the backend's own worker (matching target host/MAC) to be included, reject `workers` on backends outside a pool.
-- [ ] 1.3 `proxy.py` `NodeGroupProxy.__init__` (~426-455): validate each `NodeGroupBackend.workers` as a non-empty subset of pool workers; reject for non-pool groups; resolve defaults to the full tuple.
-- [ ] 1.4 Tests: extend config/server/pool-wiring tests for valid, default, unknown, duplicate, empty, self-excluding and no-pool cases.
+- [ ] 1.1 `config.py`: add optional `workers: list[str] | None` to `BackendConfig` and `NodeGroupBackend`; parse it in `load_config` as non-empty, distinct strings.
+- [ ] 1.2 `server.py` (~lines 27-53): for port backends in `sandboxPool.backends`, validate `workers` against pool worker names and require the worker matching the backend's `targetHost`/`wolMac` to be included. Reject `workers` on a port backend outside every pool. Do not apply the self-inclusion check to node-group backends (Service DNS targets).
+- [ ] 1.3 `proxy.py` `NodeGroupProxy.__init__` (~426-455): validate each `NodeGroupBackend.workers` as a non-empty subset of pool workers; reject for non-pool groups; reject `workers` on any backend when `sandboxPowerInterlockEnabled` is false; resolve defaults to a frozenset of all workers.
+- [ ] 1.4 Tests: valid, default (all), unknown worker, duplicate, empty, port backend excluding its own host (rejected), node-group backend with a subset not containing any specific host (accepted), `workers` outside a pool (rejected), `workers` with the interlock disabled (rejected).
 
-## 2. Per-worker gate and targeted wake (stage 1)
+## 2. Gate state, close helpers and failure isolation
 
-- [ ] 2.1 `pool.py`: add `node_ready(workers=None)`/`readiness(workers)` and `nodes_schedulable(workers)`; keep the all-workers default for existing callers. Update `test_pool.py`.
-- [ ] 2.2 `coordinator.py`: replace `accepting`, `fenced_epoch`, `lease_revision` by per-worker gate state; add `accepting_for(workers)`; keep `accepting` as the all-workers view; make `last_wake` per host; make `_wake_if_needed` take the required set. Update `test_coordinator.py` (gate opens per worker; all-workers gate still needs every worker; failed fence on one worker does not close an unrelated open worker; lease advance per worker).
-- [ ] 2.3 `proxy.py`: `_send_desktop_wake(workers=None)` sends packets only to not-Ready workers in the set; `wake_and_wait`/`check_node_health`/`/wol-proxy/status` use the route's required set; `_wake_requested` becomes a worker set. Update `tests/test_pool_wiring.py` (`test_pool_wake_targets_both_hosts` at lines 55-59 must be split: all-workers wake still targets both; GPU-only and desktop-only wakes target one host; Ready workers get no packet).
-- [ ] 2.4 `ProxyBackend.handle_request` (Ollama) gate on `accepting_for(GPU)`; desktop `NodeGroupProxy.handle_request` gate on `accepting_for(route set)`. Update `test_coordinated_backend.py` (Ollama served with the desktop down; desktop route served with the GPU down; both closed paths still wake only their set).
-- [ ] 2.5 `coder_preflight.py` and gate release keep `accepting_for(all)`; add tests that a partially open pool never reserves a Coder start or releases sandbox/Coder gates (`test_coder_preflight.py`, `test_workspace_gate.py`/`test_sandboxes.py` as applicable).
-- [ ] 2.6 Regression test for wake rate limit per host and failure of one wake packet not raising into other routes.
+- [ ] 2.1 `pool.py`: `PoolMonitor.readiness(workers=None)`, `node_ready(workers=None)`, `nodes_schedulable(workers=None)`, and `node_lease_revision(workers=None)` returning a node -> revision mapping; keep all-workers defaults for existing callers. Update `test_pool.py`.
+- [ ] 2.2 `pool.py`/`coordinator.py`: per-worker lease comparison (`leases_advanced` per worker) and `PoolPowerClient.fence(workers, epoch, owner, anchor)` that fences only the named workers (existing `call` keeps fencing all). Tests for both worker orders and a failed fence on one worker.
+- [ ] 2.3 `coordinator.py`: replace `accepting`, `fenced_epoch`, `lease_revision` with per-worker gate state; add `accepting_for(workers)`; keep `accepting` as the all-workers view. Add `close(workers)` / `close_all()`.
+- [ ] 2.4 Replace the scattered `accepting = False` writes with `close_all()`/`close(workers)`: `proxy.py:298,315,689,706`, `coder_preflight.py:50`, and the coordinator's own resets. Add a test helper (for example `open_gates(coordinator, *nodes)`) that opens specific gates, and use it in `test_coordinator.py`, `test_coordinated_backend.py`, `test_coder_preflight.py` and `test_pool_wiring.py`.
+- [ ] 2.5 Narrow `tick()`'s blanket reset: worker-local errors (that worker's readiness/lease lookup, its fence failing) close only that worker's gate; shared errors (`verify_admission`, interlock, `any_workload`, `coder_pods`, unknown exceptions) call `close_all()`. Tests for each class, including an unknown exception closing everything.
 
-## 3. Per-worker idle sleep (stage 2; blocked on open question 1)
+## 3. `suspending` -> `idle` after pool or degraded sleep
 
-- [ ] 3.1 Get approval of the interlock/host-guard contract change; then design the versioned interlock record with a backward-compatible read and a rollback path.
-- [ ] 3.2 `interlock.py`: per-worker suspend epoch, phase and `http_active`; keep ownership epoch/anchor semantics; migration and takeover tests (`test_interlock.py`).
-- [ ] 3.3 `power_client.py`/`power_guard.py` call sites: pass per-worker epoch; guard rejects stale epoch per worker; update `test_power_client.py`, `test_power_guard.py`.
-- [ ] 3.4 `coordinator.py` `_sleep_pool`: per-worker eligibility (no demand, no in-flight, no pending wake, no protected work, own idle timer); recheck under activity lock; retire only the affected worker's epoch. Tests: Ollama-only idle sleeps GPU while desktop stays open; sandbox or Coder activity pins all; demand arriving during preparation aborts; uncertain suspend keeps only that worker closed; both worker orders (`test_coordinator.py`, `test_pool.py`).
-- [ ] 3.5 Per-worker in-flight accounting in `ProxyBackend`/`NodeGroupProxy` request handlers; tests that http_active counts only the route's required workers.
+- [ ] 3.1 `coordinator.py` `_tick`: when the first worker gate opens (Ready, fenced under the current epoch, lease advanced) and `needs_retire` is false, transition `suspending` -> `idle` under the activity lock. Keep `_sleep_pool` accepting both phases.
+- [ ] 3.2 Make `release_gates`, Coder reservations and `can_release*` reachable only when `accepting_for(all workers)`, independent of phase.
+- [ ] 3.3 Tests: Ollama served after a degraded sleep while the desktop is NotReady (`http_change` no longer raises); no gate release attempted and no Coder reservation made in that state; release happens only after all workers open; a restart during `suspending` re-fences and transitions correctly; a stale-epoch fence failure keeps the worker's gate closed (`test_coordinator.py`, `test_coordinated_backend.py`, `test_interlock.py`).
 
-## 4. Config, docs and verification
+## 4. Targeted wake and route gating
 
-- [ ] 4.1 `apps/wol-proxy/configmap.yaml`: add `workers: [homelab-gpu]` to the `ollama` backend and `workers: [homelab-amd-desktop]` to the desktop routes, after the code is deployed.
-- [ ] 4.2 `docs/dark-factory-onboarding.md`: fix the stale sentence at ~line 21 that the settings in `apps/wol-proxy/configmap.yaml` are "deliberately commented out" (they are enabled) and the ~line 28 "two-worker proxy configuration remains commented out" / "Ollama proxy can suspend the GPU independently" statements; replace the "one conservative pool" paragraph (~lines 21-58) with the per-route model: sandboxes and Coder still need all workers fenced and freshly leased, other routes need only their worker, Ollama no longer wakes the desktop and vice versa; keep the degraded-pool paragraph and add that idle sleep is per worker only when no route requiring it has demand.
-- [ ] 4.3 Run the full `services/wol-proxy` test suite, linters and `openspec validate scope-wol-proxy-wakes-per-route --strict`.
-- [ ] 4.4 Controlled-window verification plan (no routine state resets): GPU-only wake from Ollama, desktop-only wake from vinyl, sandbox blocked while one worker is down, per-worker idle sleep (stage 2).
-- [ ] 4.5 After `suspend-degraded-worker-pool` is archived, archive this change.
+- [ ] 4.1 `proxy.py`: `_send_desktop_wake(workers=None)` sends packets only to not-Ready workers in the set; a failed readiness lookup wakes the whole required set; per-host 15 s rate limit in the coordinator; `NodeGroupProxy.wake_and_wait`, `check_node_health` and `/wol-proxy/status` use the route's set; `_wake_requested` becomes a set of workers. `ProxyBackend.wake_and_wait` stays unchanged.
+- [ ] 4.2 `ProxyBackend.handle_request` (Ollama) gates on `accepting_for(its set)`; `NodeGroupProxy.handle_request` gates on `accepting_for(backend set)`.
+- [ ] 4.3 `coder_preflight.py:47`: `_wake_requested` becomes all workers, the approval check uses `accepting_for(all)`. Test that a Coder preflight with a partially open pool wakes every NotReady worker and makes no reservation (`test_coder_preflight.py`).
+- [ ] 4.4 Tests: split `tests/test_pool_wiring.py:55-59` (`test_pool_wake_targets_both_hosts`) into all-workers, GPU-only, desktop-only and Ready-worker-skipped cases; rate limit per host; a failed packet for one worker leaves other routes served; `test_coordinated_backend.py` covers Ollama served with the desktop down and a desktop route served with the GPU down.
+
+## 5. Configuration, docs and verification
+
+- [ ] 5.1 `apps/wol-proxy/configmap.yaml`: add `workers: [homelab-gpu]` to the `ollama` backend and `workers: [homelab-amd-desktop]` to the desktop node-group backends, only after the code is deployed. Extend `tests/test_pool_wiring.py:99-121` (`test_enabled_gitops_pool_uses_the_power_coordinator`) to assert the resolved sets from the real manifest.
+- [ ] 5.2 `docs/dark-factory-onboarding.md`:
+  - line 21: replace "deliberately commented out until the checks below pass" (the settings are enabled);
+  - lines 23-27: remove "the two-worker proxy configuration remains commented out" and fix the Ollama sentence (the coordinator sleeps the GPU, not an independent proxy);
+  - lines 28-31: replace the "one conservative pool" paragraph with the per-route model: sandboxes and Coder need all workers fenced and freshly leased; Ollama and desktop routes need only their worker; one route no longer wakes or waits for the other's worker; idle sleep remains pool-wide;
+  - line 37: HTTP activity is no longer blocked on all workers (only new workspace/sandbox activity is); update the degraded-pool paragraph accordingly.
+- [ ] 5.3 Run the full `services/wol-proxy` test suite and `openspec validate scope-wol-proxy-wakes-per-route --strict`.
+- [ ] 5.4 Controlled-window verification (no routine interlock or guard resets): GPU-only wake from Ollama, desktop-only wake from vinyl, Ollama served after a degraded sleep with the desktop down, a sandbox stays gated while a worker is down.
+- [ ] 5.5 After the implementation is merged and `suspend-degraded-worker-pool` is archived, archive this change. Every requirement here is delivered by sections 1-5; per-worker idle sleep is a separate follow-up proposal and must not be archived into the spec here.
