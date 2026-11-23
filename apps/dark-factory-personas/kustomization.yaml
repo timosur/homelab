@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dark-factory
+
+# Persona definitions are the source of truth: every change syncs them into the Dark Factory
+# database (matched by name). Edits made in the UI are overwritten on the next sync.
+configMapGenerator:
+  - name: dark-factory-personas
+    files:
+      - personas/orchestrator.md
+      - personas/explorer.md
+      - personas/implementer.md
+      - personas/reviewer.md
+      - personas/qa.md
+  - name: dark-factory-personas-sync
+    files:
+      - sync.sh
+      - upsert.sql
+
+resources:
+  - job.yaml

@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dark-factory-personas-sync
+  namespace: dark-factory
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dark-factory-personas-sync
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 26
+        runAsGroup: 26
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: sync
+          image: ghcr.io/cloudnative-pg/postgresql:17.0@sha256:0a198589e4edca8f169399dd4d082e18de47d289c5f2b7670c9d7bbd9e6f323b
+          command: [sh, /sync/sync.sh]
+          env:
+            - name: PGHOST
+              valueFrom:
+                secretKeyRef: { name: dark-factory-db-connection, key: host }
+            - name: PGPORT
+              valueFrom:
+                secretKeyRef: { name: dark-factory-db-connection, key: port }
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef: { name: dark-factory-db-connection, key: dbname }
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef: { name: dark-factory-db-connection, key: username }
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef: { name: dark-factory-db-connection, key: password }
+            - name: PGSSLMODE
+              valueFrom:
+                secretKeyRef: { name: dark-factory-db-connection, key: sslmode }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - { name: sync, mountPath: /sync, readOnly: true }
+            - { name: personas, mountPath: /personas, readOnly: true }
+      volumes:
+        - name: sync
+          configMap:
+            name: dark-factory-personas-sync
+        - name: personas
+          configMap:
+            name: dark-factory-personas

@@ -21,6 +21,7 @@ resources:
   - crossplane-app.yaml
   - dark-factory-app.yaml
   - dark-factory-prerequisites-app.yaml
+  - dark-factory-personas-app.yaml
   - dark-factory-wake-app.yaml
   - envoy-gateway-app.yaml
   - external-secrets-app.yaml
