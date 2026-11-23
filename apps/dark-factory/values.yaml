@@ -1,15 +1,19 @@
 fullnameOverride: dark-factory
 
+publicUrl: https://factory.home.timosur.com
+
 image:
   controlPlane:
-    digest: sha256:8b0eeb0b84e8698d98efb4b7ed3d2bf1b8b67d090f2a83c09b82dc7dc16f5ff3
+    digest: sha256:4c9db10e7f072a8bbccbbf29f8fe53e0f734fc4b9b8a529718d840cb5b712b01
   runtime:
-    digest: sha256:edfe67804857a7345c3ba3a7537da9a7004ffff9b2e6fc008233c72c909ec975
+    digest: sha256:1165b9b2070877fbc5ee9882f921c5d42d5491ce23bb39932003c08fea5d843b
   harness:
     claudeCode:
-      digest: sha256:528c382e92527df7f85c019272060254e6885f63dc97e3d9f511edba280061f0
+      digest: sha256:efb64fb7a783b93b82463b4f60dfd5ccfb52418fe2316761561815674e4cef73
+    opencode:
+      digest: sha256:ecdceafb62298ec94bbf87e8e0a7db2ff4f70013d3c5f6e4b877c7129bf9c3d2
   testProject:
-    digest: sha256:e8d3ae9416e7dc893c6f8ccba6d935dcfcd98cf4a93cea4a7dd8ed66a6117c1f
+    digest: sha256:1c90e3a692f9af891b7049b3d0f7da5163d1b21a0dab69b0aae45c9ad2d81836
 
 database:
   host: central-postgres-rw.postgres.svc.cluster.local
@@ -28,7 +32,6 @@ oidc:
   issuerUrl: https://auth.timosur.com/application/o/dark-factory/
   clientId: dark-factory
   existingSecret: dark-factory-oidc
-  publicUrl: https://factory.home.timosur.com
   rolesClaim: groups
   extraScopes: [groups]
 
@@ -64,7 +67,7 @@ plugins:
   forgejo: null
   github:
     image:
-      digest: sha256:b46b87da22e639dd80f066013b0ad4b8cbca2a43f8bf587880bb227515749339
+      digest: sha256:282f75e57f717a14a0f1b0928dd2fa4a2fa5e665f4747882f91ae586199d4d3f
 
 controlPlane:
   resources:
@@ -72,6 +75,8 @@ controlPlane:
       cpu: '1'
 
 gateway:
+  # The chart default dropped to 1 in v2026.11.x; keep the previous two for HA.
+  replicas: 2
   resources:
     limits:
       cpu: 500m

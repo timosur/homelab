@@ -122,15 +122,20 @@ suspend can require manual recovery; do not assume an SSH disconnect means suspe
 6. Sync `dark-factory-prerequisites`. Wait until its AppDBClaim, PostgreSQL runtime Role,
    ExternalSecrets, and generated owner/runtime connection Secrets are ready. The owner and app
    roles must be distinct; neither should have `CREATEROLE`. Verify database backup and restore.
-7. Pin image digests in `apps/dark-factory/values.yaml` to upstream release `v2026.11.1`, source
-   commit `e42d4da438ec8ddbe5d7bc82403f3e0a7a0add2d`. The successful upstream release workflow
-   built from that commit, and the published chart pins the harness digest. The image registry
-   does not provide an independent source attestation. Both amd64 and arm64 are present. The
-   workspace renderer and PVC/Pod snapshots are unchanged from the previously tested candidate;
-   its 13 existing SQL migrations are unchanged and one migration was added. The user skipped the
-   proposed isolated migration test and authorized the live migration of a new database. Verify
-   the migration result, image interoperability, and Git-proxy credential isolation; an old smoke
-   check is not evidence for the released images.
+7. Pin image digests in `apps/dark-factory/values.yaml` to upstream release `v2026.11.7`, source
+   commit `628b546f35cca77c1f960ed70b9963d359d99d3c` (upgraded from `v2026.11.1` /
+   `e42d4da438ec8ddbe5d7bc82403f3e0a7a0add2d`). ArgoCD renders the chart from Git, where
+   `appVersion` is `0.0.0`, so every first-party image, both harness images (Claude Code `0.107.0`,
+   OpenCode `2.2.5`) and the GitHub plugin are pinned by digest; the harness digests match those
+   pinned by the published `2026.11.7` OCI chart. The image registry does not provide an
+   independent source attestation. Sandbox pod and PVC rendering only gained `DF_LANDLOCK` and
+   optional pod `imagePullSecrets`. The release adds 18 SQL migrations (through
+   `20261120000001`), including the model-provider conversion that fails if a persona lacks a
+   harness credential or model. Back up the database first; migrations cannot be rolled back.
+   Breaking value changes handled: `oidc.publicUrl` moved to top-level `publicUrl`, and
+   `gateway.replicas` is pinned to `2` because the chart default dropped to `1`. `sandbox.landlock`
+   defaults to `enforce`, which needs Landlock ABI 6 (Linux 6.12+) in the Kata guest kernel;
+   otherwise runs fail with `sandbox.landlock_unavailable`.
 
 ## Staged installation
 
@@ -188,12 +193,14 @@ suspend can require manual recovery; do not assume an SSH disconnect means suspe
   `dark-factory-github` and `dark-factory-claude` in the UI, and configure the GitHub project for
   `https://github.com/timosur/homelab`. Build the credential-free, amd64-only
   `ghcr.io/timosur/homelab-dark-factory-project` image from the released
-  `claude-project:2026.11.1` base. Pull requests validate it without publishing; `main` publishes
+  `claude-project:2026.11.7` base (previously `2026.11.1`). Pull requests validate it without
+  publishing; `main` publishes
   `sha-<commit>` and `latest`. The first published SHA tag resolves to
   `sha256:5f5c70cb625703f4422afbd40cf1b3053b63fec9803180645e17cf01e9bac1ae`; configure
   the project with `ghcr.io/timosur/homelab-dark-factory-project` at that immutable digest, never
   `latest`. The released upstream base was observed at digest
-  `sha256:c9491848a9c48475636288f37b6d46a680bf72ede21eeb5e262b89121a4d4b6b`.
+  `sha256:39ea9f86bfe4c1e2768e94f8a0fe456d4474f7b9cd036adcf9ccf74e14448b1d` (`2026.11.7`); after the
+  rebuilt image publishes, update the project's image digest in the UI.
 - Verify branch protection requires human review, prevents direct pushes and PAT bypass, and
   prohibits agent merges. Review PR-triggered workflows. The Git proxy is not a substitute for
   repository branch protection.
