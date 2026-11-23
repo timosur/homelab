@@ -80,6 +80,27 @@ spec:
                 secretKeyRef:
                   name: open-webui-secrets
                   key: webui-secret-key
+            # SSO via authentik (provider declared in apps/authentik/blueprints/open-webui.yaml).
+            # Local login stays enabled (break-glass admin): do not set ENABLE_LOGIN_FORM=false.
+            - name: WEBUI_URL
+              value: "https://ai.timosur.com"
+            - name: ENABLE_OAUTH_SIGNUP
+              value: "true"
+            - name: OAUTH_PROVIDER_NAME
+              value: "authentik"
+            - name: OPENID_PROVIDER_URL
+              value: "https://auth.timosur.com/application/o/open-webui/.well-known/openid-configuration"
+            - name: OPENID_REDIRECT_URI
+              value: "https://ai.timosur.com/oauth/oidc/callback"
+            - name: OAUTH_CLIENT_ID
+              value: "open-webui"
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: oidc-client-secret
+            - name: OAUTH_SCOPES
+              value: "openid email profile groups"
             - name: TERMINAL_SERVER_CONNECTIONS
               valueFrom:
                 secretKeyRef:
