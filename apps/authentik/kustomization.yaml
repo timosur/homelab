@@ -7,6 +7,7 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - external-secret.yaml
+  - oidc-external-secret.yaml
   - appdb.yaml
   - redis-deployment.yaml
   - redis-service.yaml
@@ -23,3 +24,6 @@ configMapGenerator:
       - coder-email/snapshot.expr
       - coder-email/record.expr
       - coder-email/scope.expr
+  - name: authentik-oidc-blueprints
+    files:
+      - blueprints/open-webui.yaml

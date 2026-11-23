@@ -42,11 +42,19 @@ spec:
                 secretKeyRef:
                   name: authentik-db-connection
                   key: password
+            - name: OPEN_WEBUI_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-oidc-secrets
+                  key: OPEN_WEBUI_OIDC_CLIENT_SECRET
           volumeMounts:
             - name: media
               mountPath: /media
             - name: coder-email-blueprint
               mountPath: /blueprints/coder-email
+              readOnly: true
+            - name: oidc-blueprints
+              mountPath: /blueprints/oidc
               readOnly: true
           resources:
             requests:
@@ -62,3 +70,6 @@ spec:
         - name: coder-email-blueprint
           configMap:
             name: authentik-coder-email
+        - name: oidc-blueprints
+          configMap:
+            name: authentik-oidc-blueprints
