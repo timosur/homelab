@@ -9,7 +9,7 @@ ConfigMap and runs a `PostSync` Job that upserts them into the database by name.
 persona file changes the ConfigMap hash, which makes the auto-synced application run the Job again.
 
 - Personas defined here are owned by Git: UI edits are overwritten on the next sync.
-- Personas not defined here (e.g. CEO, Engineer, Security Tester) are left alone.
+- Personas not defined here (created in the UI) are left alone.
 - Removing a file does not delete the persona, since tasks reference it. Delete it in the UI.
 - A missing model is registered on the provider without token limits. The provider must exist.
 - The Job writes directly to the Dark Factory schema with the owner role. Upstream is pre-MVP;
