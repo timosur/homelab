@@ -23,6 +23,9 @@ Blueprints must not depend on objects created by `scripts/setup_authentik_homela
    Customization > Blueprints, or run `ak apply_blueprint /blueprints/oidc/<app>.yaml` in the worker
    (`kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/open-webui.yaml`).
 
+Rotating the secret (new Key Vault value, ExternalSecret refresh, worker restart) also needs this manual
+apply, because the blueprint file hash does not change. Restart the app pod too.
+
 Safety: the worker's `secretKeyRef` is `optional: true` (the worker uses `Recreate`, so a missing
 Key Vault entry must not block it), and every blueprint entry has `conditions: [!Env [VAR, ""]]`,
 so while the variable is unset or empty the entries are skipped and no provider with an empty
@@ -46,12 +49,13 @@ the app ExternalSecret errors and the app's new `oidc-client-secret` key is abse
 - New SSO users are created as `pending` until an admin approves them. `DEFAULT_USER_ROLE` is left
   unchanged because local signup on the public URL inherits it.
 - Local login stays enabled (break-glass admin).
-- Open WebUI keeps some settings as PersistentConfig: once an admin has saved such a setting in the
-  admin UI (for example `WEBUI_URL`), the stored value overrides the env var and later env changes are
-  ignored for it. The OIDC client settings (`OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`,
-  `OPENID_PROVIDER_URL`, ...) are not editable in the admin UI, so they are not affected that way;
-  verify after changing them. `ENABLE_PERSISTENT_CONFIG=false` would make env vars always win, but it
-  applies to **all** settings (web search, etc.), so it is not set here, and I found no OAuth-only variant.
+- PersistentConfig: on current Open WebUI the `oauth.*` settings are read from the env vars unless
+  `ENABLE_OAUTH_PERSISTENT_CONFIG` is `true` (default `false`), so the database does not override the
+  OIDC env vars here. Do not set `ENABLE_OAUTH_PERSISTENT_CONFIG=true`. Only `WEBUI_URL` stays in the
+  database once an admin has saved it in the UI; after that the stored value wins over the env var.
+- `/oauth/oidc/callback` is a legacy route on Open WebUI `main` (the current one is
+  `/oauth/oidc/login/callback`); the old route still works, so it is kept. If the route is ever changed,
+  the blueprint's `redirect_uris` and `OPENID_REDIRECT_URI` must change together.
 
 ## Add the next app
 
