@@ -108,13 +108,65 @@
     create_home: true
     shell: /bin/sh
 
+# The key lives outside /home: the worker's /home is a separate disk, and power fencing must keep
+# working when it is not mounted. Root owns the file so the account cannot change its own key.
+- name: Create the root-owned authorized keys directory
+  ansible.builtin.file:
+    path: /etc/ssh/authorized_keys
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Install its dedicated SSH public key
-  ansible.posix.authorized_key:
-    user: dark-factory-power
-    key: "{{ dark_factory_power_authorized_key }}"
-    key_options: 'restrict,command="/usr/local/bin/dark-factory-power-command"'
-    exclusive: true
-    state: present
+  ansible.builtin.copy:
+    dest: /etc/ssh/authorized_keys/dark-factory-power
+    content: |
+      restrict,command="/usr/local/bin/dark-factory-power-command" {{ dark_factory_power_authorized_key }}
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Read the power account's keys only from that file
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/50-dark-factory-power.conf
+    content: |
+      # Managed by Ansible (dark-factory-power-guard). Match is scoped to this included file.
+      Match User dark-factory-power
+          AuthorizedKeysFile /etc/ssh/authorized_keys/%u
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload ssh
+
+- name: Validate the SSH daemon configuration
+  ansible.builtin.command: /usr/sbin/sshd -t
+  changed_when: false
+
+- name: Read the effective key file of the power account
+  ansible.builtin.command: /usr/sbin/sshd -T -C user=dark-factory-power,host=wol-proxy,addr=192.168.2.100
+  register: power_guard_sshd_effective
+  changed_when: false
+
+- name: Read the effective key file of other accounts
+  ansible.builtin.command: /usr/sbin/sshd -T -C user=root,host=wol-proxy,addr=192.168.2.100
+  register: power_guard_sshd_others
+  changed_when: false
+
+- name: Require the override to apply only to the power account
+  ansible.builtin.assert:
+    that:
+      - "'authorizedkeysfile /etc/ssh/authorized_keys/%u' in power_guard_sshd_effective.stdout_lines"
+      - "'authorizedkeysfile /etc/ssh/authorized_keys/%u' not in power_guard_sshd_others.stdout_lines"
+  when: not ansible_check_mode
+
+- name: Apply the SSH daemon change before removing the old key
+  ansible.builtin.meta: flush_handlers
+
+- name: Remove the superseded key from the home directory
+  ansible.builtin.file:
+    path: /home/dark-factory-power/.ssh/authorized_keys
+    state: absent
 
 - name: Mark the managed account
   ansible.builtin.file:

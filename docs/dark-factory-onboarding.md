@@ -93,7 +93,9 @@ suspend can require manual recovery; do not assume an SSH disconnect means suspe
 3. Generate a **dedicated** Ed25519 key for the `dark-factory-power` desktop account. Put the
   base64-encoded private key in Azure Key Vault as `wol-proxy-desktop-power-ssh-key` and the
   independently verified desktop SSH host-key line in `wol-proxy-desktop-known-hosts`. Supply
-  the public key to the Ansible role as `dark_factory_power_authorized_key`; never put the private
+  the public key to the Ansible role as `dark_factory_power_authorized_key`. The role installs it
+  root-owned at `/etc/ssh/authorized_keys/dark-factory-power`, outside the workers' separate `/home`
+  disks, so fencing keeps working when `/home` is not mounted; never put the private
    key in Git, command arguments, or logs. The key is copied into an in-memory volume at pod start;
    restart the proxy pod after rotating it. From `ansible/`, run
    `ansible-playbook playbooks/dark-factory-power-guard.yml --limit homelab-amd-desktop` with that public-key variable after
