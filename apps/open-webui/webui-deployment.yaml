@@ -100,7 +100,7 @@ spec:
                   name: open-webui-secrets
                   key: oidc-client-secret
             - name: OAUTH_SCOPES
-              value: "openid email profile groups"
+              value: "openid email profile"
             - name: TERMINAL_SERVER_CONNECTIONS
               valueFrom:
                 secretKeyRef:
