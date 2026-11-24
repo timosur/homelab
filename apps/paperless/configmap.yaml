@@ -15,3 +15,9 @@ data:
   PAPERLESS_ALLOWED_HOSTS: "docs.timosur.com,paperless,paperless.paperless.svc.cluster.local,localhost"
   PAPERLESS_CORS_ALLOWED_HOSTS: "https://docs.timosur.com"
   PAPERLESS_TRUSTED_PROXIES: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+  # SSO: local login stays (break-glass); no local self-signup; first SSO login creates the account
+  PAPERLESS_ACCOUNT_ALLOW_SIGNUPS: "false"
+  PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
+  PAPERLESS_SOCIAL_AUTO_SIGNUP: "true"
+  PAPERLESS_DISABLE_REGULAR_LOGIN: "false"
+  PAPERLESS_SOCIAL_ACCOUNT_SYNC_GROUPS: "false"

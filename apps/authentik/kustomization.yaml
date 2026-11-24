@@ -27,3 +27,4 @@ configMapGenerator:
   - name: authentik-oidc-blueprints
     files:
       - blueprints/open-webui.yaml
+      - blueprints/paperless.yaml

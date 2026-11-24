@@ -5,6 +5,7 @@ resources:
   - namespace.yaml
   - appdb.yaml
   - secret.yaml
+  - oidc-external-secret.yaml
   - configmap.yaml
   - pvc.yaml
   - deployment.yaml
