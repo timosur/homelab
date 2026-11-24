@@ -15,6 +15,9 @@ entries:
       name: Open WebUI
     attrs:
       client_type: confidential
+      grant_types:
+        - authorization_code
+        - refresh_token
       client_id: open-webui
       client_secret: !Env OPEN_WEBUI_OIDC_CLIENT_SECRET
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
