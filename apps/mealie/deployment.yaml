@@ -31,6 +31,13 @@ spec:
                 secretKeyRef:
                   name: mealie-db-connection
                   key: password
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-oidc
+                  key: OIDC_CLIENT_SECRET
+                  # Optional: if the Key Vault entry is missing Mealie starts without SSO (local login only).
+                  optional: true
           volumeMounts:
             - name: mealie-data
               mountPath: /app/data
