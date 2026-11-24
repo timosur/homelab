@@ -32,6 +32,14 @@ so while the variable is unset or empty the entries are skipped and no provider 
 secret is created. Also create the secret *before* the app's own sync: if the entry is missing,
 the app ExternalSecret errors and the app's new `oidc-client-secret` key is absent.
 
+## Shared ExternalSecret: create Key Vault secrets before the PR syncs
+
+`authentik-oidc-secrets` is one ExternalSecret with one entry per app. If any Key Vault entry (for example
+`paperless-oidc-client-secret`) is missing, the **whole** ExternalSecret fails to sync. That also blocks refreshing
+the other keys (Open WebUI) and, on a fresh cluster, the Open WebUI key is never created. The worker's `optional: true`
+does not help here, since the Secret itself is not produced or updated. So the Key Vault secret must exist before
+the PR that adds the entry is synced. This pattern is intentionally unchanged.
+
 ## Verify the apply
 
 - Worker logs: `kubectl -n authentik logs deploy/authentik-worker | grep -i blueprint`
@@ -70,9 +78,11 @@ the app ExternalSecret errors and the app's new `oidc-client-secret` key is abse
   group sync off); grant permissions in Paperless afterwards.
 - Existing local accounts are not merged or connected by email. An SSO user whose email matches a local account
   does not get linked.
-- Rollout: the Key Vault secret must exist **before** ArgoCD syncs; otherwise `paperless-oidc` fails to build and the
-  Paperless pod cannot start (it mounts the secret via `envFrom`). Then follow the rollout order above
+- Rollout: the Key Vault secret must exist **before** ArgoCD syncs (see "Shared ExternalSecret" below). The
+  `paperless-oidc` `secretRef` in the Paperless deployment is `optional: true`, so if the secret is still missing
+  Paperless starts without SSO (local login only) instead of failing. Then follow the rollout order above
   (restart worker, apply `/blueprints/oidc/paperless.yaml`), restart Paperless and check `.well-known` for slug `paperless`.
+- The client secret is inserted into the provider JSON with `toJson`, so `"` or `\` in the value cannot break it.
 
 ## Add the next app
 

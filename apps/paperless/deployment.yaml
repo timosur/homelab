@@ -145,6 +145,8 @@ spec:
                 name: paperless-secret-key
             - secretRef:
                 name: paperless-oidc
+                # Optional: a missing Key Vault entry means Paperless runs without SSO instead of failing to start.
+                optional: true
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
