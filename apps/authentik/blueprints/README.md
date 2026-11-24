@@ -114,7 +114,9 @@ Checked against the Mealie v3.30.0 source (`mealie/routes/auth/auth.py`, `mealie
 - **Required safeguard (manual, before rollout):** the local Mealie admin must use a username and email that no authentik user
   has (for example `admin@mealie.local`), so no SSO login can link to the admin account.
 - Board-member accounts need a non-empty `name` in authentik (Mealie requires the `name` claim). SSO usernames
-  (`preferred_username`) must not collide with local Mealie usernames, or the SSO user is linked to that local account.
+  (`preferred_username`) must not collide with local Mealie usernames. Mealie matches existing users only on the
+  `OIDC_USER_CLAIM` value (email), so a colliding `preferred_username` does **not** link the accounts: creating the new user
+  fails on the unique username, and the login returns 401 with only a log entry.
 - Rollout (no checksum annotation in this repo, and `envFrom` does not roll the pod on ConfigMap/Secret changes):
   1. Create the Key Vault secret `mealie-oidc-client-secret` **before** the sync (`openssl rand -hex 32`). If it is missing,
      the whole shared `authentik-oidc-secrets` ExternalSecret fails.
