@@ -4,4 +4,5 @@ kind: Kustomization
 resources:
   - coder-workspace-agent-gateway.yaml
   - coder-workspace-egress.yaml
+  - dark-factory-webhook-gateway.yaml
   - gateway-lan-only.yaml

@@ -4,7 +4,7 @@ kind: Kustomization
 namespace: argocd
 
 resources:
-  - https://github.com/argoproj/argo-cd/manifests/cluster-install?ref=v3.5.7
+  - https://github.com/argoproj/argo-cd/manifests/cluster-install?ref=v3.6.2
 
 patches:
   - target:

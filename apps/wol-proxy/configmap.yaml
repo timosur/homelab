@@ -66,6 +66,8 @@ data:
         idleTimeoutMinutes: 5
         wakeTimeoutSeconds: 120
         backends:
+          - hostname: "docs.timosur.com"
+            target: "paperless.paperless.svc.cluster.local:8000"
           - hostname: "vinyl.home.timosur.com"
             target: "vinyl-frontend.vinyl-manager.svc.cluster.local:3000"
             pathRoutes:

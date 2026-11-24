@@ -15,9 +15,19 @@ data:
   PAPERLESS_ALLOWED_HOSTS: "docs.timosur.com,paperless,paperless.paperless.svc.cluster.local,localhost"
   PAPERLESS_CORS_ALLOWED_HOSTS: "https://docs.timosur.com"
   PAPERLESS_TRUSTED_PROXIES: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+  # allauth defaults the proxy count to len(TRUSTED_PROXIES) (=3 CIDRs), but only
+  # the gateway sits in front, so X-Forwarded-For has a single hop.
+  PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT: "1"
   # SSO: local login stays (break-glass); no local self-signup; first SSO login creates the account
   PAPERLESS_ACCOUNT_ALLOW_SIGNUPS: "false"
   PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: "true"
   PAPERLESS_SOCIAL_AUTO_SIGNUP: "true"
   PAPERLESS_DISABLE_REGULAR_LOGIN: "false"
   PAPERLESS_SOCIAL_ACCOUNT_SYNC_GROUPS: "false"
+  # Traffic arrives via wol-proxy, which rewrites Host to the service name.
+  # Use X-Forwarded-Host (set by Pangolin) so OIDC redirect URIs stay on docs.timosur.com.
+  PAPERLESS_USE_X_FORWARD_HOST: "true"
+  # Paperless sizes workers from the host core count (12 on the desktop), not the
+  # container CPU limit. Pin to 2 workers x 2 threads to match the 4 CPU limit.
+  PAPERLESS_TASK_WORKERS: "2"
+  PAPERLESS_THREADS_PER_WORKER: "2"

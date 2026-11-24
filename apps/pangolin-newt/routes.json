@@ -50,9 +50,9 @@
       "subdomain": "docs",
       "public": true,
       "service": {
-        "namespace": "paperless",
-        "name": "paperless",
-        "port": 8000
+        "namespace": "wol-proxy",
+        "name": "desktop-proxy",
+        "port": 8080
       }
     },
     {
@@ -119,6 +119,17 @@
         "namespace": "bike-weather-auth",
         "name": "bike-weather-auth-server",
         "port": 9000
+      }
+    },
+    {
+      "name": "Kubernetes Dark Factory Webhooks",
+      "domain": "timosur.com",
+      "subdomain": "factory-hooks",
+      "public": true,
+      "service": {
+        "namespace": "envoy-gateway-system",
+        "name": "dark-factory-webhook-gateway",
+        "port": 80
       }
     }
   ]
