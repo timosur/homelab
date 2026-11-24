@@ -217,7 +217,7 @@ The homelab runs several applications managed through ArgoCD:
 ### Dark Factory
 
 Dark Factory runs autonomous agent workspaces in Kata sandboxes. `wol-proxy`
-(`services/wol-proxy`) wakes the desktop on demand and enforces workspace
+(`services/wol-proxy`) wakes the desktop and GPU workers on demand and enforces workspace
 ownership and admission; `dark-factory-wake` provides the admission webhooks and
 the power interlock for automatic sleep. The `dark-factory`, `dark-factory-prerequisites`
 and `dark-factory-wake` ArgoCD apps (as well as `agent-sandbox`) require manual sync;
