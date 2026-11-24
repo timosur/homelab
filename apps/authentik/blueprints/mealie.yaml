@@ -1,0 +1,54 @@
+# Mealie OIDC provider + application.
+# The client secret is read from the worker environment (!Env) and is never stored in Git.
+# It comes from ExternalSecret authentik-oidc-secrets (Key Vault: mealie-oidc-client-secret).
+# Every entry has a condition on that variable: if it is unset or empty (secret not yet created),
+# the entries are skipped, so no provider with an empty/default secret is ever created.
+version: 1
+metadata:
+  name: Mealie OIDC
+entries:
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider
+    conditions:
+      - !Env [MEALIE_OIDC_CLIENT_SECRET, ""]
+    identifiers:
+      name: Mealie
+    attrs:
+      client_type: confidential
+      grant_types:
+        - authorization_code
+        - refresh_token
+      client_id: mealie
+      client_secret: !Env MEALIE_OIDC_CLIENT_SECRET
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      redirect_uris:
+        # Mealie sends redirect_uri=<BASE_URL>/login; /login?direct=1 is used after RP-initiated logout.
+        - matching_mode: strict
+          url: https://mealie.timosur.com/login
+        - matching_mode: strict
+          url: https://mealie.timosur.com/login?direct=1
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'openid'"]]
+        - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'email'"]]
+        - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'profile'"]]
+  - model: authentik_core.application
+    id: application
+    conditions:
+      - !Env [MEALIE_OIDC_CLIENT_SECRET, ""]
+    identifiers:
+      slug: mealie
+    attrs:
+      name: Mealie
+      provider: !KeyOf provider
+      meta_launch_url: https://mealie.timosur.com
+      policy_engine_mode: any
+  - model: authentik_policies.policybinding
+    conditions:
+      - !Env [MEALIE_OIDC_CLIENT_SECRET, ""]
+    identifiers:
+      target: !KeyOf application
+      order: 0
+    attrs:
+      group: !Find [authentik_core.group, [name, board-member]]
