@@ -57,6 +57,23 @@ the app ExternalSecret errors and the app's new `oidc-client-secret` key is abse
   `/oauth/oidc/login/callback`); the old route still works, so it is kept. If the route is ever changed,
   the blueprint's `redirect_uris` and `OPENID_REDIRECT_URI` must change together.
 
+## Paperless-ngx user behaviour
+
+- Blueprint `paperless.yaml`, Key Vault secret `paperless-oidc-client-secret`, slug `paperless`, restricted to
+  group `board-member`. Paperless builds its config in ExternalSecret `paperless-oidc` (namespace `paperless`):
+  `PAPERLESS_APPS` and `PAPERLESS_SOCIALACCOUNT_PROVIDERS` (JSON containing the secret) with allauth provider id `authentik`.
+- Callback route: `https://docs.timosur.com/accounts/oidc/authentik/login/callback/` (`/accounts/oidc/<provider_id>/login/callback/`).
+  The blueprint's strict `redirect_uris` and the `provider_id` must change together. `PAPERLESS_URL` must stay `https://docs.timosur.com`.
+- Local login stays enabled (break-glass) and local self-signup stays off (`PAPERLESS_ACCOUNT_ALLOW_SIGNUPS=false`).
+  The first SSO login creates the account (`PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS`/`PAPERLESS_SOCIAL_AUTO_SIGNUP` true).
+  New accounts get no superuser/staff rights and no default groups (`PAPERLESS_SOCIAL_ACCOUNT_DEFAULT_GROUPS` unset;
+  group sync off); grant permissions in Paperless afterwards.
+- Existing local accounts are not merged or connected by email. An SSO user whose email matches a local account
+  does not get linked.
+- Rollout: the Key Vault secret must exist **before** ArgoCD syncs; otherwise `paperless-oidc` fails to build and the
+  Paperless pod cannot start (it mounts the secret via `envFrom`). Then follow the rollout order above
+  (restart worker, apply `/blueprints/oidc/paperless.yaml`), restart Paperless and check `.well-known` for slug `paperless`.
+
 ## Add the next app
 
 1. **Create the secret in Key Vault** (human step, never in Git):
