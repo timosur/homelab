@@ -50,9 +50,9 @@
       "subdomain": "docs",
       "public": true,
       "service": {
-        "namespace": "paperless",
-        "name": "paperless",
-        "port": 8000
+        "namespace": "wol-proxy",
+        "name": "desktop-proxy",
+        "port": 8080
       }
     },
     {
