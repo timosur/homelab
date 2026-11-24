@@ -45,6 +45,10 @@ metadata:
   namespace: paperless
 spec:
   replicas: 1
+  # Never run two pods against the same volumes: overlapping pods fight over
+  # data/migration_lock ("s6-setlock: Resource busy") during rollouts.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: paperless
@@ -79,10 +83,17 @@ spec:
               mkdir -p /usr/src/paperless/export
               mkdir -p /usr/src/paperless/consume
 
-              # Set permissions (ownership will be handled by fsGroup)
-              echo "Setting permissions..."
-              chown -R 1000:1000 /usr/src/paperless
-              chmod -R 755 /usr/src/paperless
+              # No chown/chmod here: the volumes are CIFS mounts (uid=0,
+              # file_mode/dir_mode=0777, noperm), so ownership can't be changed
+              # and a recursive walk over media only slows down startup.
+
+              # celery beat keeps its schedule in a sqlite dbm file in the data
+              # dir, but sqlite locking doesn't work on CIFS ("database is
+              # locked"). Point it at a local emptyDir via a symlink (the mount
+              # uses mfsymlinks). The schedule is ephemeral state.
+              echo "Linking celery beat schedule to local storage..."
+              rm -f /usr/src/paperless/data/celerybeat-schedule.db*
+              ln -s /usr/src/paperless/beat/celerybeat-schedule.db /usr/src/paperless/data/celerybeat-schedule.db
 
               # Verify directories exist and are accessible
               echo "Verifying directory structure..."
@@ -108,7 +119,6 @@ spec:
               done
 
               echo "Directory initialization completed successfully!"
-              echo "Note: File ownership will be managed by Kubernetes fsGroup"
           volumeMounts:
             - name: paperless-data
               mountPath: /usr/src/paperless/data
@@ -159,12 +169,14 @@ spec:
               mountPath: /usr/src/paperless/export
             - name: paperless-consume
               mountPath: /usr/src/paperless/consume
+            - name: celery-beat
+              mountPath: /usr/src/paperless/beat
           resources:
             limits:
               memory: "2Gi"
               cpu: "1000m"
             requests:
-              memory: "500m"
+              memory: "500Mi"
               cpu: "200m"
           startupProbe:
             tcpSocket:
@@ -196,3 +208,5 @@ spec:
         - name: paperless-consume
           persistentVolumeClaim:
             claimName: paperless-consume
+        - name: celery-beat
+          emptyDir: {}
