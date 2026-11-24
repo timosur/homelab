@@ -11,4 +11,5 @@ resources:
   - service-desktop.yaml
   - allow-ingress-from-open-webui.yaml
   - allow-ingress-from-envoy.yaml
+  - allow-ingress-from-newt.yaml
   - reference-grant.yaml

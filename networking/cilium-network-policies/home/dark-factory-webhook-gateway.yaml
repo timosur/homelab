@@ -1,0 +1,21 @@
+# Only the Pangolin Newt tunnel (and kubelet probes) may reach the public webhook gateway.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: dark-factory-webhook-gateway-newt-only
+  namespace: envoy-gateway-system
+spec:
+  endpointSelector:
+    matchLabels:
+      gateway.envoyproxy.io/owning-gateway-name: envoy-gateway-dark-factory-webhook
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: newt
+      toPorts:
+        - ports:
+            # Envoy Gateway maps listener port 80 to container port 10080.
+            - port: "10080"
+              protocol: TCP

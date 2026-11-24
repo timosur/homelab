@@ -1,0 +1,51 @@
+# Internet-facing entry for Dark Factory forge webhooks. Pangolin terminates TLS for
+# factory-hooks.timosur.com and tunnels plain HTTP through Newt to this ClusterIP-only
+# gateway, which forwards nothing but the routes attached from the dark-factory namespace.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: dark-factory-webhook-proxy
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        name: dark-factory-webhook-gateway
+        type: ClusterIP
+      envoyDeployment:
+        pod:
+          # Envoy's tcmalloc crashes on the ARM node (48-bit VA assumption).
+          nodeSelector:
+            kubernetes.io/arch: amd64
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy-dark-factory-webhook
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: dark-factory-webhook-proxy
+    namespace: envoy-gateway-system
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: envoy-gateway-dark-factory-webhook
+  namespace: envoy-gateway-system
+spec:
+  gatewayClassName: envoy-dark-factory-webhook
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      hostname: factory-hooks.timosur.com
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: dark-factory

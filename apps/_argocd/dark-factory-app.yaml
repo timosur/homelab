@@ -7,7 +7,7 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/prskr/dark-factory.git
-      targetRevision: 628b546f35cca77c1f960ed70b9963d359d99d3c
+      targetRevision: 3089ad9e2d4eba98f2421a978bf814acfabf05e4
       path: deploy/helm/dark-factory
       helm:
         releaseName: dark-factory

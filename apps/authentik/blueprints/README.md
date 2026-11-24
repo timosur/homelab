@@ -82,6 +82,12 @@ the PR that adds the entry is synced. This pattern is intentionally unchanged.
   `paperless-oidc` `secretRef` in the Paperless deployment is `optional: true`, so if the secret is still missing
   Paperless starts without SSO (local login only) instead of failing. Then follow the rollout order above
   (restart worker, apply `/blueprints/oidc/paperless.yaml`), restart Paperless and check `.well-known` for slug `paperless`.
+- Proxy settings required for OIDC (lessons from the live rollout, both in `apps/paperless/configmap.yaml`):
+  - `PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT: "1"` is required. Without it allauth defaults the count to the number of
+    `PAPERLESS_TRUSTED_PROXIES` entries (3 CIDRs), but `X-Forwarded-For` has only one hop, so every OIDC login raises
+    `ImproperlyConfigured`.
+  - `PAPERLESS_USE_X_FORWARD_HOST: "true"` is needed because wol-proxy rewrites the Host header. It keeps the
+    redirect URIs on `docs.timosur.com`.
 - The client secret is inserted into the provider JSON with `toJson`, so `"` or `\` in the value cannot break it.
 
 ## Mealie user behaviour
