@@ -78,7 +78,7 @@ the PR that adds the entry is synced. This pattern is intentionally unchanged.
   group sync off); grant permissions in Paperless afterwards.
 - Existing local accounts are not merged or connected by email. An SSO user whose email matches a local account
   does not get linked.
-- Rollout: the Key Vault secret must exist **before** ArgoCD syncs (see "Shared ExternalSecret" below). The
+- Rollout: the Key Vault secret must exist **before** ArgoCD syncs (see "Shared ExternalSecret" above). The
   `paperless-oidc` `secretRef` in the Paperless deployment is `optional: true`, so if the secret is still missing
   Paperless starts without SSO (local login only) instead of failing. Then follow the rollout order above
   (restart worker, apply `/blueprints/oidc/paperless.yaml`), restart Paperless and check `.well-known` for slug `paperless`.
