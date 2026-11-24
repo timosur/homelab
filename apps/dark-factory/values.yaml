@@ -67,10 +67,17 @@ sandboxNamespace:
     requestsMemory: 16Gi
     limitsCpu: '18'
     limitsMemory: 40Gi
-    # 20Gi per claim; the NFS export has a 500 GiB aggregate cap.
-    requestsStorage: 400Gi
+    # 20Gi per claim (40 workspaces). NFS does not enforce the claim size, so this overcommits the
+    # dedicated export; its 500 GiB Synology quota caps real usage of git-checkout workspaces.
+    requestsStorage: 800Gi
     # Retained per-task workspaces are independent of the concurrent sandbox slots.
     persistentVolumeClaims: '80'
+
+# Task volumes only cache the checkout; the next run re-clones. Keep them short-lived so the
+# storage quota is not filled by stale or failed tasks (failed tasks only expire via idleTtl).
+volumes:
+  retainAfterCloseSeconds: 86400 # 1 day after completed/cancelled/archived
+  idleTtlSeconds: 604800 # 7 days after the last run of any task
 
 # Matches the sandbox quota above; chats count against the same quota.
 runs:
