@@ -8,3 +8,4 @@ resources:
   - external-secrets.yaml
   - runtime-class.yaml
   - alerts.yaml
+  - webhook-route.yaml
