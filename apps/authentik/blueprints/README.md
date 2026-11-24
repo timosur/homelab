@@ -64,8 +64,9 @@ the app ExternalSecret errors and the app's new `oidc-client-secret` key is abse
    az keyvault secret set --vault-name homelab-timosur \
      --name <app>-oidc-client-secret --value "$(openssl rand -hex 32)"
    ```
-2. Copy `open-webui.yaml` to `<app>.yaml`; change the provider name, `client_id`, `redirect_uris`
-   (strict), application slug/name/launch URL and the `!Env` variable name. Rename that variable in
+2. Copy `open-webui.yaml` to `<app>.yaml`; change the provider name, `client_id`, `grant_types`,
+   `redirect_uris` (strict), application slug/name/launch URL and the `!Env` variable name. Keep
+   `grant_types: [authorization_code, refresh_token]` (see "Known failure mode" below). Rename that variable in
    **every** entry's `conditions` too, not only in `client_secret`; otherwise the entries are gated on
    the wrong secret.
 3. Add the file to the `authentik-oidc-blueprints` generator in `../kustomization.yaml`.
@@ -77,3 +78,15 @@ the app ExternalSecret errors and the app's new `oidc-client-secret` key is abse
    was first applied with all entries skipped, apply the blueprint manually (see rollout step 4).
 
 Blueprints are mounted at `/blueprints/oidc/`; the worker discovers `/blueprints` recursively.
+
+## Known failure mode: empty `grant_types`
+
+Symptom: the app redirects to authentik and comes straight back with
+`/oauth/oidc/callback?error=invalid_request&error_description=The request is otherwise malformed`,
+while `.well-known/openid-configuration` for the provider returns `200` and advertises every grant type.
+
+Cause: `grant_types` was left out of the blueprint, so the provider stores an empty list. A blueprint keeps the
+Django model default (`ArrayField(default=list)`), not the web UI form default that a provider created in the
+Admin UI gets. Authentik's authorize view resolves `response_type=code` to `authorization_code`, checks it
+against `provider.grant_types` and raises `invalid_request` to the redirect URI when it is absent. Discovery is
+global and per-instance, so it never shows the per-provider list. Fix: set `grant_types` explicitly.
