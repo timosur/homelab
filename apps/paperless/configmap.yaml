@@ -27,3 +27,7 @@ data:
   # Traffic arrives via wol-proxy, which rewrites Host to the service name.
   # Use X-Forwarded-Host (set by Pangolin) so OIDC redirect URIs stay on docs.timosur.com.
   PAPERLESS_USE_X_FORWARD_HOST: "true"
+  # Paperless sizes workers from the host core count (12 on the desktop), not the
+  # container CPU limit. Pin to 2 workers x 2 threads to match the 4 CPU limit.
+  PAPERLESS_TASK_WORKERS: "2"
+  PAPERLESS_THREADS_PER_WORKER: "2"

@@ -191,11 +191,11 @@ spec:
               mountPath: /usr/src/paperless/beat
           resources:
             limits:
-              memory: "2Gi"
-              cpu: "1000m"
+              memory: "4Gi"
+              cpu: "4"
             requests:
-              memory: "500Mi"
-              cpu: "200m"
+              memory: "1Gi"
+              cpu: "500m"
           startupProbe:
             tcpSocket:
               port: 8000
