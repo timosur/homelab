@@ -24,3 +24,6 @@ data:
   PAPERLESS_SOCIAL_AUTO_SIGNUP: "true"
   PAPERLESS_DISABLE_REGULAR_LOGIN: "false"
   PAPERLESS_SOCIAL_ACCOUNT_SYNC_GROUPS: "false"
+  # Traffic arrives via wol-proxy, which rewrites Host to the service name.
+  # Use X-Forwarded-Host (set by Pangolin) so OIDC redirect URIs stay on docs.timosur.com.
+  PAPERLESS_USE_X_FORWARD_HOST: "true"
