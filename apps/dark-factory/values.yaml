@@ -59,7 +59,7 @@ sandboxNamespace:
     # 20Gi per claim; the NFS export has a 500 GiB aggregate cap.
     requestsStorage: 400Gi
     # Retained per-task workspaces are independent of the concurrent sandbox slots.
-    persistentVolumeClaims: '20'
+    persistentVolumeClaims: '80'
   limitRange:
     defaultCpu: '2'
     defaultMemory: 4Gi
