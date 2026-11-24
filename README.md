@@ -221,7 +221,9 @@ Dark Factory runs autonomous agent workspaces in Kata sandboxes. `wol-proxy`
 ownership and admission; `dark-factory-wake` provides the admission webhooks and
 the power interlock for automatic sleep. The `dark-factory`, `dark-factory-prerequisites`
 and `dark-factory-wake` ArgoCD apps (as well as `agent-sandbox`) require manual sync;
-`wol-proxy`, `dark-factory-personas` and `coder-power` auto-sync. Automatic sleep is not yet enabled. See
+`wol-proxy`, `dark-factory-personas` and `coder-power` auto-sync. Sandbox admission and the
+power interlock are enabled in `apps/wol-proxy/configmap.yaml`; `wol-proxy` wakes and sleeps the
+desktop and GPU workers (`homelab-amd-desktop`, `homelab-gpu`) as a pool. See
 [docs/dark-factory-onboarding.md](docs/dark-factory-onboarding.md) before syncing.
 
 Up to 8 sandboxes run concurrently, of which 2 can be chats (`apps/dark-factory/values.yaml`).
@@ -266,7 +268,6 @@ any UniFi management interface exposed there.
 
 | Application | Description | URL |
 |---|---|---|
-| **actual** | Budget and financial management | `finance.home.timosur.com` |
 | **affine** | Knowledge base and notes | `affine.home.timosur.com` |
 | **atuin** | Shell history sync | `atuin.home.timosur.com` |
 | **bike-weather** | Bike weather app | `bike-weather.com` |
@@ -361,7 +362,6 @@ kubectl get svc -A | grep LoadBalancer
 ```bash
 # Check PostgreSQL clusters
 kubectl get clusters.postgresql.cnpg.io -A
-kubectl get pooler -A
 
 # Connect to database
 kubectl exec -it <postgresql-pod> -n <namespace> -- psql
