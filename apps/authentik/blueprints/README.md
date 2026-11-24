@@ -103,14 +103,29 @@ Checked against the Mealie v3.30.0 source (`mealie/routes/auth/auth.py`, `mealie
 - **Deviation: existing accounts ARE matched by username/email and this cannot be turned off.** On OIDC login Mealie looks
   up a user by the `OIDC_USER_CLAIM` value (default `email`) first as `username`, then as `email` (case-insensitive) and, if found,
   logs the SSO user into that existing account, including local and admin accounts, keeping its role. It never creates a duplicate.
-  There is no setting to disable linking. Mitigations in place: Mealie requires `email_verified=true`
-  (`OIDC_REQUIRES_EMAIL_VERIFICATION` default true, kept; authentik's default email mapping sets it) and authentik emails are admin-managed.
-  Consequence: a `board-member` whose authentik email (or username) equals a local Mealie account, such as the admin, signs in as that account.
-  Keep authentik emails of board members unique and correct. The board member should decide whether this is acceptable.
-- Rollout: the pod does not restart on ConfigMap/Secret changes (`envFrom`, no checksum annotation in this repo). After the blueprint
-  is applied, run `kubectl -n mealie rollout restart deploy/mealie`. Verify with
-  `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/mealie/.well-known/openid-configuration` (200),
-  an SSO login as a `board-member` (lands non-admin) and a local login.
+  There is no setting to disable linking. Keep the merge-by-email warning in mind: a `board-member` whose authentik email
+  (or username) equals a local Mealie account signs in as that account, including its role.
+- **Email verification (how it really works).** Mealie rejects logins unless the `email_verified` claim is `true`
+  (`OIDC_REQUIRES_EMAIL_VERIFICATION`, default true, kept). authentik 2026.8.6's default `email` mapping returns
+  `email_verified: False`, so the blueprint uses its own scope mapping `Mealie: email (admin-managed, verified)` that always
+  asserts `true`. This is safe **only because authentik users cannot edit their own email** (confirmed by the board member).
+  If self-service email editing is ever enabled in authentik, this mapping becomes an account-takeover path, because Mealie links
+  SSO logins to existing accounts by username or email. Do not enable it without removing or reworking this mapping.
+- **Required safeguard (manual, before rollout):** the local Mealie admin must use a username and email that no authentik user
+  has (for example `admin@mealie.local`), so no SSO login can link to the admin account.
+- Board-member accounts need a non-empty `name` in authentik (Mealie requires the `name` claim). SSO usernames
+  (`preferred_username`) must not collide with local Mealie usernames, or the SSO user is linked to that local account.
+- Rollout (no checksum annotation in this repo, and `envFrom` does not roll the pod on ConfigMap/Secret changes):
+  1. Create the Key Vault secret `mealie-oidc-client-secret` **before** the sync (`openssl rand -hex 32`). If it is missing,
+     the whole shared `authentik-oidc-secrets` ExternalSecret fails.
+  2. Change the local Mealie admin's username and email (see safeguard above).
+  3. Sync.
+  4. Restart the authentik worker: `kubectl -n authentik rollout restart deploy/authentik-worker`.
+  5. Apply the blueprint: `kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/mealie.yaml`.
+  6. Check `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/mealie/.well-known/openid-configuration` returns `200`.
+  7. `kubectl -n mealie rollout restart deploy/mealie`. The sync may have restarted the pod before the `mealie-oidc` Secret
+     existed, so this restart is still needed.
+  8. Verify that a `board-member` SSO login works and lands as a non-admin, and that local login still works.
 
 ## Add the next app
 
