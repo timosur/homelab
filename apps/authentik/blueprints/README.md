@@ -84,6 +84,34 @@ the PR that adds the entry is synced. This pattern is intentionally unchanged.
   (restart worker, apply `/blueprints/oidc/paperless.yaml`), restart Paperless and check `.well-known` for slug `paperless`.
 - The client secret is inserted into the provider JSON with `toJson`, so `"` or `\` in the value cannot break it.
 
+## Mealie user behaviour
+
+Checked against the Mealie v3.30.0 source (`mealie/routes/auth/auth.py`, `mealie/core/security/providers/openid_provider.py`,
+`mealie/core/settings/settings.py`) and its OIDC docs. Env var names are verified against `settings.py`; the
+`.well-known` and sign-in behaviour were not tested against a live cluster.
+
+- Blueprint `mealie.yaml`, Key Vault secret `mealie-oidc-client-secret`, slug/client_id `mealie`, restricted to group
+  `board-member`. Mealie reads the secret from ExternalSecret `mealie-oidc` (key `OIDC_CLIENT_SECRET`, `secretKeyRef` is
+  `optional: true`, so a missing secret means Mealie starts without SSO). Non-secret settings are in ConfigMap `mealie-config`.
+- Callback: Mealie sends `redirect_uri=<BASE_URL>/login`, i.e. `https://mealie.timosur.com/login` (strict). `/login?direct=1`
+  is also registered (return after RP-initiated logout; listed in the Mealie docs). `BASE_URL` must stay `https://mealie.timosur.com`.
+- First SSO login creates the Mealie account (`OIDC_SIGNUP_ENABLED=true`) as a regular **non-admin** user (`admin` is only set
+  from `OIDC_ADMIN_GROUP`, which is deliberately unset, as is `OIDC_USER_GROUP`; access is gated in authentik by the `board-member` binding).
+- `ALLOW_SIGNUP=false` does **not** block OIDC signup: in v3.30.0 it is only checked by the public registration endpoint
+  (`routes/users/registration.py`). The OIDC path only checks `OIDC_SIGNUP_ENABLED`.
+- Local password login stays on and `OIDC_AUTO_REDIRECT=false` (break-glass).
+- **Deviation: existing accounts ARE matched by username/email and this cannot be turned off.** On OIDC login Mealie looks
+  up a user by the `OIDC_USER_CLAIM` value (default `email`) first as `username`, then as `email` (case-insensitive) and, if found,
+  logs the SSO user into that existing account, including local and admin accounts, keeping its role. It never creates a duplicate.
+  There is no setting to disable linking. Mitigations in place: Mealie requires `email_verified=true`
+  (`OIDC_REQUIRES_EMAIL_VERIFICATION` default true, kept; authentik's default email mapping sets it) and authentik emails are admin-managed.
+  Consequence: a `board-member` whose authentik email (or username) equals a local Mealie account, such as the admin, signs in as that account.
+  Keep authentik emails of board members unique and correct. The board member should decide whether this is acceptable.
+- Rollout: the pod does not restart on ConfigMap/Secret changes (`envFrom`, no checksum annotation in this repo). After the blueprint
+  is applied, run `kubectl -n mealie rollout restart deploy/mealie`. Verify with
+  `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/mealie/.well-known/openid-configuration` (200),
+  an SSO login as a `board-member` (lands non-admin) and a local login.
+
 ## Add the next app
 
 1. **Create the secret in Key Vault** (human step, never in Git):
