@@ -143,6 +143,8 @@ spec:
                 name: paperless-config
             - secretRef:
                 name: paperless-secret-key
+            - secretRef:
+                name: paperless-oidc
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
