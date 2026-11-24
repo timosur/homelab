@@ -7,6 +7,19 @@ version: 1
 metadata:
   name: Mealie OIDC
 entries:
+  # Mealie-specific email mapping. authentik's default 'email' mapping returns email_verified=False,
+  # which Mealie v3.30.0 rejects (OIDC_REQUIRES_EMAIL_VERIFICATION). Asserting True is only safe while
+  # authentik users cannot edit their own email (see README, "Mealie user behaviour").
+  - model: authentik_providers_oauth2.scopemapping
+    id: mealie-email
+    conditions:
+      - !Env [MEALIE_OIDC_CLIENT_SECRET, ""]
+    identifiers:
+      name: "Mealie: email (admin-managed, verified)"
+    attrs:
+      scope_name: email
+      expression: |
+        return {"email": request.user.email, "email_verified": True}
   - model: authentik_providers_oauth2.oauth2provider
     id: provider
     conditions:
@@ -31,7 +44,7 @@ entries:
           url: https://mealie.timosur.com/login?direct=1
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'openid'"]]
-        - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'email'"]]
+        - !KeyOf mealie-email
         - !Find [authentik_providers_oauth2.scopemapping, [name, "authentik default OAuth Mapping: OpenID 'profile'"]]
   - model: authentik_core.application
     id: application
