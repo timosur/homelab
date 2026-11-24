@@ -124,20 +124,24 @@ suspend can require manual recovery; do not assume an SSH disconnect means suspe
 6. Sync `dark-factory-prerequisites`. Wait until its AppDBClaim, PostgreSQL runtime Role,
    ExternalSecrets, and generated owner/runtime connection Secrets are ready. The owner and app
    roles must be distinct; neither should have `CREATEROLE`. Verify database backup and restore.
-7. Pin image digests in `apps/dark-factory/values.yaml` to upstream release `v2026.11.7`, source
-   commit `628b546f35cca77c1f960ed70b9963d359d99d3c` (upgraded from `v2026.11.1` /
-   `e42d4da438ec8ddbe5d7bc82403f3e0a7a0add2d`). ArgoCD renders the chart from Git, where
+7. Pin image digests in `apps/dark-factory/values.yaml` to upstream release `v2026.11.8`, source
+   commit `3089ad9e2d4eba98f2421a978bf814acfabf05e4` (upgraded from `v2026.11.7` /
+   `628b546f35cca77c1f960ed70b9963d359d99d3c`). ArgoCD renders the chart from Git, where
    `appVersion` is `0.0.0`, so every first-party image, both harness images (Claude Code `0.107.0`,
-   OpenCode `2.2.5`) and the GitHub plugin are pinned by digest; the harness digests match those
-   pinned by the published `2026.11.7` OCI chart. The image registry does not provide an
-   independent source attestation. Sandbox pod and PVC rendering only gained `DF_LANDLOCK` and
-   optional pod `imagePullSecrets`. The release adds 18 SQL migrations (through
-   `20261120000001`), including the model-provider conversion that fails if a persona lacks a
-   harness credential or model. Back up the database first; migrations cannot be rolled back.
-   Breaking value changes handled: `oidc.publicUrl` moved to top-level `publicUrl`, and
-   `gateway.replicas` is pinned to `2` because the chart default dropped to `1`. `sandbox.landlock`
-   defaults to `enforce`, which needs Landlock ABI 6 (Linux 6.12+) in the Kata guest kernel;
-   otherwise runs fail with `sandbox.landlock_unavailable`.
+   OpenCode `2.4.1`) and the GitHub plugin are pinned by digest; the harness digests match those
+   pinned by the published `2026.11.8` OCI chart. The image registry does not provide an
+   independent source attestation. Both amd64 and arm64 are present. Breaking value changes
+   handled in `v2026.11.8`: `sandboxNamespace.runtimeClassName` moved to
+   `sandbox.runtimeClassName`, and the chart no longer renders the sandbox `LimitRange`; the
+   previous defaults (requests 250m / 1Gi, limits 2 CPU / 4Gi) are now set explicitly on every
+   sandbox pod through `sandbox.resources`. Control plane and gateway gained a soft per-node
+   pod anti-affinity by default. Sync with prune so the orphaned `dark-factory-sandbox-limits`
+   LimitRange is removed. Earlier upgrades (`v2026.11.1` → `v2026.11.7`) moved `oidc.publicUrl`
+   to top-level `publicUrl`, pinned `gateway.replicas` to `2` because the chart default dropped
+   to `1`, and added 18 SQL migrations (through `20261120000001`); back up the database before
+   every upgrade, as migrations cannot be rolled back. `sandbox.landlock` defaults to `enforce`,
+   which needs Landlock ABI 6 (Linux 6.12+) in the Kata guest kernel; otherwise runs fail with
+   `sandbox.landlock_unavailable`.
 
 ## Staged installation
 
@@ -195,13 +199,13 @@ suspend can require manual recovery; do not assume an SSH disconnect means suspe
   `dark-factory-github` and `dark-factory-claude` in the UI, and configure the GitHub project for
   `https://github.com/timosur/homelab`. Build the credential-free, amd64-only
   `ghcr.io/timosur/homelab-dark-factory-project` image from the released
-  `claude-project:2026.11.7` base (previously `2026.11.1`). Pull requests validate it without
+  `claude-project:2026.11.8` base (previously `2026.11.7`). Pull requests validate it without
   publishing; `main` publishes
   `sha-<commit>` and `latest`. The first published SHA tag resolves to
   `sha256:5f5c70cb625703f4422afbd40cf1b3053b63fec9803180645e17cf01e9bac1ae`; configure
   the project with `ghcr.io/timosur/homelab-dark-factory-project` at that immutable digest, never
   `latest`. The released upstream base was observed at digest
-  `sha256:39ea9f86bfe4c1e2768e94f8a0fe456d4474f7b9cd036adcf9ccf74e14448b1d` (`2026.11.7`); after the
+  `sha256:2c35812c849dccf60898e21b768b5e1d07236072d81470749422dae7b2210b54` (`2026.11.8`); after the
   rebuilt image publishes, update the project's image digest in the UI.
 - Verify branch protection requires human review, prevents direct pushes and PAT bypass, and
   prohibits agent merges. Review PR-triggered workflows. The Git proxy is not a substitute for

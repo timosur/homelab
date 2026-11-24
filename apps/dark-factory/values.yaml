@@ -4,16 +4,16 @@ publicUrl: https://factory.home.timosur.com
 
 image:
   controlPlane:
-    digest: sha256:4c9db10e7f072a8bbccbbf29f8fe53e0f734fc4b9b8a529718d840cb5b712b01
+    digest: sha256:52c03be33853407ded0e043728463bb9ae47d31b827ac50ef7b1943c71e440ca
   runtime:
-    digest: sha256:1165b9b2070877fbc5ee9882f921c5d42d5491ce23bb39932003c08fea5d843b
+    digest: sha256:ad98ec36ef3617dd3a8241c1aba5b1df299a26b3b4b67a6353a3c8e6b2d7bed1
   harness:
     claudeCode:
       digest: sha256:efb64fb7a783b93b82463b4f60dfd5ccfb52418fe2316761561815674e4cef73
     opencode:
-      digest: sha256:ecdceafb62298ec94bbf87e8e0a7db2ff4f70013d3c5f6e4b877c7129bf9c3d2
+      digest: sha256:3bc45572888fa83fdf0229b984f4096c704d7b4f5cd09422f4c4b0a2c8f45e68
   testProject:
-    digest: sha256:1c90e3a692f9af891b7049b3d0f7da5163d1b21a0dab69b0aae45c9ad2d81836
+    digest: sha256:025b695a00984ab730a7b292605c514349ebd252d7a8fbb7e0b3f13792cb9141
 
 database:
   host: central-postgres-rw.postgres.svc.cluster.local
@@ -42,9 +42,20 @@ telemetry:
       labels:
         release: monitoring
 
+sandbox:
+  runtimeClassName: kata-dark-factory
+  # Replaces the sandbox LimitRange the chart dropped in v2026.11.8. The memory request reflects a
+  # realistic agent working set, so the scheduler spreads sandboxes across both workers.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: '2'
+      memory: 4Gi
+
 sandboxNamespace:
   name: dark-factory-sandboxes
-  runtimeClassName: kata-dark-factory
   storageClass: dark-factory-nfs
   pvcSize: 20Gi
   resourceQuota:
@@ -60,12 +71,6 @@ sandboxNamespace:
     requestsStorage: 400Gi
     # Retained per-task workspaces are independent of the concurrent sandbox slots.
     persistentVolumeClaims: '80'
-  limitRange:
-    defaultCpu: '2'
-    defaultMemory: 4Gi
-    defaultRequestCpu: 250m
-    # Realistic agent working set, so the scheduler spreads sandboxes across both workers.
-    defaultRequestMemory: 1Gi
 
 # Matches the sandbox quota above; chats count against the same quota.
 runs:
@@ -76,7 +81,7 @@ plugins:
   forgejo: null
   github:
     image:
-      digest: sha256:282f75e57f717a14a0f1b0928dd2fa4a2fa5e665f4747882f91ae586199d4d3f
+      digest: sha256:2774ffd0458df13e7a27e9a1e1a5ef830c70d918316a15cc45c71b4905da25ca
 
 controlPlane:
   resources:
