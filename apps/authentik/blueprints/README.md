@@ -216,6 +216,45 @@ the sign-in flow was not tested against a live cluster.
   6. If needed: `kubectl -n argocd rollout restart deploy/argocd-server`.
   7. Verify that an SSO login as a `board-member` has full access and that the local `admin` login still works.
 
+## Penpot user behaviour
+
+Checked against the Penpot 2.19.0 backend source (`app/auth/oidc.clj`, `app/rpc/commands/auth.clj`, `app/config.clj`) and the
+penpot-helm chart 1.11.9 templates (`helm template` was run against the chart source of tag `penpot-1.11.9`, since
+`helm.penpot.app` was not reachable from the sandbox). The sign-in flow was not tested against a live cluster.
+
+- Blueprint `penpot.yaml`, Key Vault secret `penpot-oidc-client-secret`, slug/client_id `penpot`, restricted to group `board-member`.
+  Penpot reads the secret from ExternalSecret `penpot-oidc` (namespace `penpot`, key `clientSecret`, in `apps/penpot/oidc-external-secret.yaml`;
+  separate from `penpot-secrets` so a missing entry cannot affect the API secret key).
+- Config is set with `backend.extraEnvs` (`PENPOT_OIDC_BASE_URI`, `_CLIENT_ID`, `_SCOPES`, `_CLIENT_SECRET`), not `config.providers.oidc`: the chart's
+  template renders the client secret `secretKeyRef` without `optional`, so a missing secret would leave the backend in `CreateContainerConfigError`.
+  With `optional: true` Penpot still starts, and password login keeps working. The `enable-login-with-oidc` flag is set in `config.flags`
+  (it reaches backend and frontend). Endpoints come from discovery at `PENPOT_OIDC_BASE_URI`.
+- Callback: `https://penpot.home.timosur.com/api/auth/oidc/callback` (strict; `PENPOT_PUBLIC_URI` + `/api/auth/oidc/callback`). `config.publicUri` and the
+  blueprint `redirect_uris` must change together. Penpot is reachable only from the home network, while authentik is public, so the login must happen on the home network.
+- Password login stays on (`enable-login-with-password`, break-glass).
+- **`enable-registration` is needed for first SSO login.** An unknown email is only allowed to register when the `registration` or `oidc-registration`
+  flag is set. It is kept as is, so local signup stays open on the LAN (accepted). To close local signup but keep SSO, swap it for `enable-oidc-registration`
+  (not done here: out of scope). The first SSO login lands on a "create account" confirmation screen with the name prefilled; the new account
+  is a normal user (Penpot has no global roles). `disable-email-verification` makes it active at once.
+- **No merge by email.** An existing profile with the same email is only logged in by SSO if it was created through OIDC, or if the `email_verified` claim is `true`
+  (`callback-handler`: `auth-provider-not-allowed` otherwise). authentik 2026.8.6's default `email` mapping returns `email_verified: false`, so the
+  blueprint uses the default `openid`/`email`/`profile` mappings and **no custom `email_verified: true` mapping**. A `board-member` whose email matches a local password
+  account is refused (`auth-provider-not-allowed` error on the login page). Do not add a mapping that asserts `email_verified: true`: that would enable account linking by email.
+  Penpot does not require `email_verified` for new accounts.
+- Claims: Penpot needs `email` and `name` (falls back to `nickname`, then to the email); both come from the default mappings. No groups or roles are used (`PENPOT_OIDC_ROLES` unset).
+- Restart: Penpot discovers the provider **once, when the backend starts** (`.well-known` fetch in `providers/generic`); if it fails it only logs a warning and the
+  SSO button does not work until the next start. The client secret is an env var from a Secret. Neither change rolls the pod, so restart the backend
+  after the authentik provider exists: `kubectl -n penpot rollout restart deploy/penpot-backend`.
+- Rollout:
+  1. Create Key Vault secret `penpot-oidc-client-secret` **before** the sync (`openssl rand -hex 32`); otherwise the shared
+     `authentik-oidc-secrets` ExternalSecret fails as a whole (and `penpot-oidc` does not sync).
+  2. Sync (`authentik` and `penpot`).
+  3. `kubectl -n authentik rollout restart deploy/authentik-worker`.
+  4. `kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/penpot.yaml`.
+  5. `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/penpot/.well-known/openid-configuration` returns `200`.
+  6. `kubectl -n penpot rollout restart deploy/penpot-backend`.
+  7. Verify that an SSO login as a `board-member` creates a normal account and that password login still works.
+
 ## Add the next app
 
 1. **Create the secret in Key Vault** (human step, never in Git):
