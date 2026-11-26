@@ -78,11 +78,96 @@ the PR that adds the entry is synced. This pattern is intentionally unchanged.
   group sync off); grant permissions in Paperless afterwards.
 - Existing local accounts are not merged or connected by email. An SSO user whose email matches a local account
   does not get linked.
-- Rollout: the Key Vault secret must exist **before** ArgoCD syncs (see "Shared ExternalSecret" below). The
+- Rollout: the Key Vault secret must exist **before** ArgoCD syncs (see "Shared ExternalSecret" above). The
   `paperless-oidc` `secretRef` in the Paperless deployment is `optional: true`, so if the secret is still missing
   Paperless starts without SSO (local login only) instead of failing. Then follow the rollout order above
   (restart worker, apply `/blueprints/oidc/paperless.yaml`), restart Paperless and check `.well-known` for slug `paperless`.
+- Proxy settings required for OIDC (lessons from the live rollout, both in `apps/paperless/configmap.yaml`):
+  - `PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT: "1"` is required. Without it allauth defaults the count to the number of
+    `PAPERLESS_TRUSTED_PROXIES` entries (3 CIDRs), but `X-Forwarded-For` has only one hop, so every OIDC login raises
+    `ImproperlyConfigured`.
+  - `PAPERLESS_USE_X_FORWARD_HOST: "true"` is needed because wol-proxy rewrites the Host header. It keeps the
+    redirect URIs on `docs.timosur.com`.
 - The client secret is inserted into the provider JSON with `toJson`, so `"` or `\` in the value cannot break it.
+
+## Mealie user behaviour
+
+Checked against the Mealie v3.30.0 source (`mealie/routes/auth/auth.py`, `mealie/core/security/providers/openid_provider.py`,
+`mealie/core/settings/settings.py`) and its OIDC docs. Env var names are verified against `settings.py`; the
+`.well-known` and sign-in behaviour were not tested against a live cluster.
+
+- Blueprint `mealie.yaml`, Key Vault secret `mealie-oidc-client-secret`, slug/client_id `mealie`, restricted to group
+  `board-member`. Mealie reads the secret from ExternalSecret `mealie-oidc` (key `OIDC_CLIENT_SECRET`, `secretKeyRef` is
+  `optional: true`, so a missing secret means Mealie starts without SSO). Non-secret settings are in ConfigMap `mealie-config`.
+- Callback: Mealie sends `redirect_uri=<BASE_URL>/login`, i.e. `https://mealie.timosur.com/login` (strict). `/login?direct=1`
+  is also registered (return after RP-initiated logout; listed in the Mealie docs). `BASE_URL` must stay `https://mealie.timosur.com`.
+- First SSO login creates the Mealie account (`OIDC_SIGNUP_ENABLED=true`) as a regular **non-admin** user (`admin` is only set
+  from `OIDC_ADMIN_GROUP`, which is deliberately unset, as is `OIDC_USER_GROUP`; access is gated in authentik by the `board-member` binding).
+- `ALLOW_SIGNUP=false` does **not** block OIDC signup: in v3.30.0 it is only checked by the public registration endpoint
+  (`routes/users/registration.py`). The OIDC path only checks `OIDC_SIGNUP_ENABLED`.
+- Local password login stays on and `OIDC_AUTO_REDIRECT=false` (break-glass).
+- **Deviation: existing accounts ARE matched by username/email and this cannot be turned off.** On OIDC login Mealie looks
+  up a user by the `OIDC_USER_CLAIM` value (default `email`) first as `username`, then as `email` (case-insensitive) and, if found,
+  logs the SSO user into that existing account, including local and admin accounts, keeping its role. It never creates a duplicate.
+  There is no setting to disable linking. Keep the merge-by-email warning in mind: a `board-member` whose authentik email
+  (or username) equals a local Mealie account signs in as that account, including its role.
+- **Email verification (how it really works).** Mealie rejects logins unless the `email_verified` claim is `true`
+  (`OIDC_REQUIRES_EMAIL_VERIFICATION`, default true, kept). authentik 2026.8.6's default `email` mapping returns
+  `email_verified: False`, so the blueprint uses its own scope mapping `Mealie: email (admin-managed, verified)` that always
+  asserts `true`. This is safe **only because authentik users cannot edit their own email** (confirmed by the board member).
+  If self-service email editing is ever enabled in authentik, this mapping becomes an account-takeover path, because Mealie links
+  SSO logins to existing accounts by username or email. Do not enable it without removing or reworking this mapping.
+- **Required safeguard (manual, before rollout):** the local Mealie admin must use a username and email that no authentik user
+  has (for example `admin@mealie.local`), so no SSO login can link to the admin account.
+- Board-member accounts need a non-empty `name` in authentik (Mealie requires the `name` claim). SSO usernames
+  (`preferred_username`) must not collide with local Mealie usernames. Mealie matches existing users only on the
+  `OIDC_USER_CLAIM` value (email), so a colliding `preferred_username` does **not** link the accounts: creating the new user
+  fails on the unique username, and the login returns 401 with only a log entry.
+- Rollout (no checksum annotation in this repo, and `envFrom` does not roll the pod on ConfigMap/Secret changes):
+  1. Create the Key Vault secret `mealie-oidc-client-secret` **before** the sync (`openssl rand -hex 32`). If it is missing,
+     the whole shared `authentik-oidc-secrets` ExternalSecret fails.
+  2. Change the local Mealie admin's username and email (see safeguard above).
+  3. Sync.
+  4. Restart the authentik worker: `kubectl -n authentik rollout restart deploy/authentik-worker`.
+  5. Apply the blueprint: `kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/mealie.yaml`.
+  6. Check `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/mealie/.well-known/openid-configuration` returns `200`.
+  7. `kubectl -n mealie rollout restart deploy/mealie`. The sync may have restarted the pod before the `mealie-oidc` Secret
+     existed, so this restart is still needed.
+  8. Verify that a `board-member` SSO login works and lands as a non-admin, and that local login still works.
+
+## Grafana user behaviour
+
+Checked against the kube-prometheus-stack 92.16.0 grafana subchart templates and Grafana's generic OAuth docs; the sign-in
+flow itself was not tested against a live cluster.
+
+- Blueprint `grafana.yaml`, Key Vault secret `grafana-oidc-client-secret`, slug/client_id `grafana`, restricted to group
+  `board-member`. Grafana reads the secret from ExternalSecret `grafana-oidc` (namespace `monitoring`, key `client-secret`) through
+  the chart's `envValueFrom` as `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET` (`optional: true`, so Grafana still starts if the Secret is missing;
+  the "Sign in with authentik" button is then still shown but SSO sign-in fails, while the local/admin login keeps working). The secret is not in values, `grafana.ini` or a ConfigMap.
+- Callback: `https://grafana.home.timosur.com/login/generic_oauth` (strict; `root_url` + `/login/generic_oauth`). `root_url`
+  and the blueprint `redirect_uris` must change together. Grafana is reachable only from the home network, while authentik is public. The browser follows the redirect back to Grafana, so the login must happen on the home network.
+- Local/admin login stays on (`grafana-admin-secret`): no `disable_login_form`, `auto_login` or basic-auth change.
+- First SSO login creates the user (`allow_sign_up: true`) as **Viewer** (`[users] auto_assign_org_role`). No `role_attribute_path`, no
+  group scope, no Grafana-admin mapping (`allow_assign_grafana_admin: false`).
+- Role sync: `skip_org_role_sync: true`. Without a `role_attribute_path` Grafana would reset the org role to the default on each
+  login; with this setting, roles an admin grants in the Grafana UI persist.
+- No merge by email: `[auth] oauth_allow_insecure_email_lookup: false` is set explicitly. Grafana then identifies SSO users by the
+  OAuth `sub` (auth_id) only; a `board-member` whose email matches a local Grafana user is not linked and sign-in fails with a
+  "user already exists"-style error. (Default is false; stated in config so it is not changed by accident.)
+- Claims: Grafana's generic OAuth does not check `email_verified`, so authentik's default `email` mapping is used and no custom
+  mapping is needed. The default openid/email/profile mappings provide the `email` and `name` claims Grafana needs. Grafana sets the user's login to the email address, not to `preferred_username`.
+- Restart: the chart puts a `checksum/config` annotation on the pod, so changing `grafana.ini` or values rolls Grafana automatically.
+  A change to the `grafana-oidc` Secret (first creation, rotation) does **not** roll it (env from `secretKeyRef` is read at start),
+  so run `kubectl -n monitoring rollout restart deploy/monitoring-grafana`.
+- Rollout:
+  1. Create Key Vault secret `grafana-oidc-client-secret` **before** the sync (`openssl rand -hex 32`); otherwise the shared
+     `authentik-oidc-secrets` ExternalSecret fails as a whole.
+  2. Sync.
+  3. `kubectl -n authentik rollout restart deploy/authentik-worker`.
+  4. `kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/grafana.yaml`.
+  5. `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/grafana/.well-known/openid-configuration` returns `200`.
+  6. `kubectl -n monitoring rollout restart deploy/monitoring-grafana` (the sync may have started the pod before the Secret existed).
+  7. Verify an SSO login as a `board-member` lands as Viewer and the admin login still works.
 
 ## Add the next app
 

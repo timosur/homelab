@@ -28,3 +28,5 @@ configMapGenerator:
     files:
       - blueprints/open-webui.yaml
       - blueprints/paperless.yaml
+      - blueprints/mealie.yaml
+      - blueprints/grafana.yaml

@@ -14,3 +14,11 @@ data:
   POSTGRES_SERVER: "central-postgres-rw.postgres.svc.cluster.local"
   POSTGRES_PORT: "5432"
   POSTGRES_DB: "mealie"
+  # authentik OIDC (client secret comes from Secret mealie-oidc, not from here).
+  # Not set on purpose: OIDC_USER_GROUP / OIDC_ADMIN_GROUP (default scopes carry no groups claim).
+  OIDC_AUTH_ENABLED: "true"
+  OIDC_SIGNUP_ENABLED: "true"
+  OIDC_CONFIGURATION_URL: "https://auth.timosur.com/application/o/mealie/.well-known/openid-configuration"
+  OIDC_CLIENT_ID: "mealie"
+  OIDC_PROVIDER_NAME: "authentik"
+  OIDC_AUTO_REDIRECT: "false"
