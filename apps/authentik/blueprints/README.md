@@ -208,7 +208,7 @@ the sign-in flow was not tested against a live cluster.
 - Rollout:
   1. Create Key Vault secret `argocd-oidc-client-secret` **before** the sync (`openssl rand -hex 32`); otherwise the shared
      `authentik-oidc-secrets` ExternalSecret fails as a whole.
-  2. Sync: the `argocd`, `argocd-oidc` (must sync, it creates the `argocd-oidc` Secret) and `authentik` apps, plus `_argocd` for the new Application.
+  2. Sync `root` (it creates the new `argocd-oidc` Application), then `argocd-oidc` (must sync, it creates the `argocd-oidc` Secret), `argocd` and `authentik`.
   3. `kubectl -n authentik rollout restart deploy/authentik-worker`. Needed because the sync can start the worker before ESO has
      added the new `ARGOCD_OIDC_CLIENT_SECRET` key to `authentik-oidc-secrets`; env vars from a Secret are only read at pod start.
   4. `kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/argocd.yaml`.
