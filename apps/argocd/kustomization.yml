@@ -5,7 +5,6 @@ namespace: argocd
 
 resources:
   - https://github.com/argoproj/argo-cd/manifests/cluster-install?ref=v3.6.2
-  - oidc-external-secret.yaml
 
 patches:
   - target:
@@ -60,6 +59,8 @@ patches:
         name: argocd-cm
       data:
         url: https://argo.home.timosur.com
+        # Pinned: policy.default (role:admin) must not apply to anonymous users.
+        users.anonymous.enabled: "false"
         oidc.config: |
           name: authentik
           issuer: https://auth.timosur.com/application/o/argocd/
