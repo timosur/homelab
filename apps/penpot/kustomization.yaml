@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - external-secret.yaml
+  - oidc-external-secret.yaml
   - appdb.yaml
   - valkey.yaml
 
