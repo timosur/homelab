@@ -31,3 +31,4 @@ configMapGenerator:
       - blueprints/mealie.yaml
       - blueprints/grafana.yaml
       - blueprints/argocd.yaml
+      - blueprints/penpot.yaml

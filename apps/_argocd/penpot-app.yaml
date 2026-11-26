@@ -13,7 +13,7 @@ spec:
         valuesObject:
           config:
             publicUri: https://penpot.home.timosur.com
-            flags: "enable-registration enable-login-with-password disable-email-verification enable-mcp"
+            flags: "enable-registration enable-login-with-password enable-login-with-oidc disable-email-verification enable-mcp"
             existingSecret: penpot-secrets
             secretKeys:
               apiSecretKey: apiSecretKey
@@ -37,6 +37,25 @@ spec:
                 value: "2"
               - name: PENPOT_DATABASE_MAX_POOL_SIZE
                 value: "20"
+              # authentik OIDC. Not config.providers.oidc: that chart template makes the secretKeyRef
+              # non-optional, so a missing secret would stop the backend from starting.
+              # Discovery (.well-known) runs once at backend start; restart the backend after the provider exists.
+              - name: PENPOT_OIDC_BASE_URI
+                value: https://auth.timosur.com/application/o/penpot/
+              - name: PENPOT_OIDC_CLIENT_ID
+                value: penpot
+              # Penpot's SSRF guard blocks hosts that resolve to private addresses, which would break discovery
+              # if auth.timosur.com resolves to a LAN IP (split DNS). Exact, case-insensitive host match.
+              - name: PENPOT_SSRF_ALLOWED_HOSTS
+                value: auth.timosur.com
+              - name: PENPOT_OIDC_SCOPES
+                value: openid profile email
+              - name: PENPOT_OIDC_CLIENT_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: penpot-oidc
+                    key: clientSecret
+                    optional: true
             resources:
               requests:
                 cpu: 200m
