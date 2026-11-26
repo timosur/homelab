@@ -176,7 +176,7 @@ the sign-in flow was not tested against a live cluster.
 
 - Blueprint `argocd.yaml`, Key Vault secret `argocd-oidc-client-secret`, slug/client_id `argocd`, restricted to group
   `board-member`. ArgoCD reads the secret from ExternalSecret `argocd-oidc` (namespace `argocd`, key `clientSecret`, in
-  `apps/argocd/oidc-external-secret.yaml`). It is a separate Secret, **not** `argocd-secret`, and carries the label
+  `apps/argocd-oidc/oidc-external-secret.yaml`). It is a separate Secret, **not** `argocd-secret`, and carries the label
   `app.kubernetes.io/part-of: argocd` (set via `target.template.metadata.labels`), which ArgoCD requires before it resolves
   `$argocd-oidc:clientSecret` in `oidc.config`. The secret is never in a ConfigMap or Git.
 - Config (patches in `apps/argocd/kustomization.yml`): `argocd-cm` gets `url: https://argo.home.timosur.com` and `oidc.config`
@@ -191,6 +191,13 @@ the sign-in flow was not tested against a live cluster.
   grants every authenticated user without an explicit policy full access. Access is gated only by the authentik `board-member`
   binding; there is no groups scope mapping and no per-group RBAC. Anyone who can pass that binding administers the cluster's GitOps.
 - The local `admin` account is kept (`admin.enabled` is not set to false), as the break-glass login.
+  `policy.default` applies to **every authenticated account**, local ones included (today that is only `admin`), so any local
+  account added in future would also be admin. `users.anonymous.enabled: "false"` is pinned in `argocd-cm` so the default role
+  can never apply to anonymous users.
+- The `argocd-oidc` ExternalSecret lives in its own Application (`apps/_argocd/argocd-oidc-app.yaml`, path `apps/argocd-oidc`), not in
+  `apps/argocd`: Ansible applies the `apps/argocd` overlay before External Secrets Operator and its CRD exist, so an
+  ExternalSecret there would break a fresh bootstrap. The new app owns only that ExternalSecret (`prune: false`) and needs ESO
+  and the `azure-keyvault-store` ClusterSecretStore.
 - Claims: ArgoCD does not check `email_verified` and uses no groups, so authentik's default `openid`/`email`/`profile` mappings suffice
   and no custom mapping is added.
 - Missing secret: if `argocd-oidc` does not exist, argocd-server still starts. The unresolved `$argocd-oidc:clientSecret` string is used
@@ -201,8 +208,9 @@ the sign-in flow was not tested against a live cluster.
 - Rollout:
   1. Create Key Vault secret `argocd-oidc-client-secret` **before** the sync (`openssl rand -hex 32`); otherwise the shared
      `authentik-oidc-secrets` ExternalSecret fails as a whole.
-  2. Sync.
-  3. `kubectl -n authentik rollout restart deploy/authentik-worker`.
+  2. Sync: the `argocd`, `argocd-oidc` (must sync, it creates the `argocd-oidc` Secret) and `authentik` apps, plus `_argocd` for the new Application.
+  3. `kubectl -n authentik rollout restart deploy/authentik-worker`. Needed because the sync can start the worker before ESO has
+     added the new `ARGOCD_OIDC_CLIENT_SECRET` key to `authentik-oidc-secrets`; env vars from a Secret are only read at pod start.
   4. `kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/argocd.yaml`.
   5. `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/argocd/.well-known/openid-configuration` returns `200`.
   6. If needed: `kubectl -n argocd rollout restart deploy/argocd-server`.
