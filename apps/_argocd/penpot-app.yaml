@@ -44,6 +44,10 @@ spec:
                 value: https://auth.timosur.com/application/o/penpot/
               - name: PENPOT_OIDC_CLIENT_ID
                 value: penpot
+              # Penpot's SSRF guard blocks hosts that resolve to private addresses, which would break discovery
+              # if auth.timosur.com resolves to a LAN IP (split DNS). Exact, case-insensitive host match.
+              - name: PENPOT_SSRF_ALLOWED_HOSTS
+                value: auth.timosur.com
               - name: PENPOT_OIDC_SCOPES
                 value: openid profile email
               - name: PENPOT_OIDC_CLIENT_SECRET
