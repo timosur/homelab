@@ -48,3 +48,33 @@ patches:
         name: argocd-cmd-params-cm
       data:
         server.insecure: "true"
+  - target:
+      version: v1
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cm
+      data:
+        url: https://argo.home.timosur.com
+        # Pinned: policy.default (role:admin) must not apply to anonymous users.
+        users.anonymous.enabled: "false"
+        oidc.config: |
+          name: authentik
+          issuer: https://auth.timosur.com/application/o/argocd/
+          clientID: argocd
+          clientSecret: $argocd-oidc:clientSecret
+          requestedScopes: ["openid", "profile", "email"]
+  - target:
+      version: v1
+      kind: ConfigMap
+      name: argocd-rbac-cm
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-rbac-cm
+      data:
+        policy.default: role:admin

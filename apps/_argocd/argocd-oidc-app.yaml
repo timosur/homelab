@@ -1,0 +1,22 @@
+# Only the argocd-oidc ExternalSecret. Kept out of apps/argocd because that overlay is applied by
+# Ansible before External Secrets Operator (and its CRD) exist. Owns nothing else in the argocd namespace.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-oidc
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/timosur/homelab.git
+    targetRevision: HEAD
+    path: apps/argocd-oidc
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
