@@ -82,6 +82,14 @@ spec:
                   # Optional so a missing Key Vault entry cannot block the worker (Recreate strategy).
                   # The blueprint skips its entries while the variable is empty.
                   optional: true
+            - name: PENPOT_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-oidc-secrets
+                  key: PENPOT_OIDC_CLIENT_SECRET
+                  # Optional so a missing Key Vault entry cannot block the worker (Recreate strategy).
+                  # The blueprint skips its entries while the variable is empty.
+                  optional: true
           volumeMounts:
             - name: media
               mountPath: /media
