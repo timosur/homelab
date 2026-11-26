@@ -30,3 +30,4 @@ configMapGenerator:
       - blueprints/paperless.yaml
       - blueprints/mealie.yaml
       - blueprints/grafana.yaml
+      - blueprints/argocd.yaml
