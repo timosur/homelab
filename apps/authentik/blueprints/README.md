@@ -169,6 +169,45 @@ flow itself was not tested against a live cluster.
   6. `kubectl -n monitoring rollout restart deploy/monitoring-grafana` (the sync may have started the pod before the Secret existed).
   7. Verify an SSO login as a `board-member` lands as Viewer and the admin login still works.
 
+## ArgoCD user behaviour
+
+Checked against the Argo CD v3.6.2 source and docs (`util/settings/settings.go`, `server/server.go`, user-management docs);
+the sign-in flow was not tested against a live cluster.
+
+- Blueprint `argocd.yaml`, Key Vault secret `argocd-oidc-client-secret`, slug/client_id `argocd`, restricted to group
+  `board-member`. ArgoCD reads the secret from ExternalSecret `argocd-oidc` (namespace `argocd`, key `clientSecret`, in
+  `apps/argocd/oidc-external-secret.yaml`). It is a separate Secret, **not** `argocd-secret`, and carries the label
+  `app.kubernetes.io/part-of: argocd` (set via `target.template.metadata.labels`), which ArgoCD requires before it resolves
+  `$argocd-oidc:clientSecret` in `oidc.config`. The secret is never in a ConfigMap or Git.
+- Config (patches in `apps/argocd/kustomization.yml`): `argocd-cm` gets `url: https://argo.home.timosur.com` and `oidc.config`
+  (name `authentik`, issuer `https://auth.timosur.com/application/o/argocd/`, `requestedScopes: [openid, profile, email]`);
+  `argocd-rbac-cm` gets `policy.default: role:admin`. The upstream keys of both ConfigMaps are preserved (checked in the rendered output).
+- Callback: `https://argo.home.timosur.com/auth/callback` (strict; `<url>/auth/callback`). `url` in `argocd-cm` and the blueprint
+  `redirect_uris` must change together. ArgoCD is reachable only from the home network, while authentik is public, so the login
+  must happen on the home network.
+- CLI: `argocd login --sso` uses `http://localhost:8085/auth/callback` (default `--sso-port`). It is **not** registered in the blueprint,
+  so CLI SSO does not work. To enable it, add a second strict redirect URI for that URL (the CLI reuses the same client). Use the local `admin` for the CLI until then.
+- **Role decision (deliberate exception to the lowest-role rule of other apps): every SSO user is full admin.** `policy.default: role:admin`
+  grants every authenticated user without an explicit policy full access. Access is gated only by the authentik `board-member`
+  binding; there is no groups scope mapping and no per-group RBAC. Anyone who can pass that binding administers the cluster's GitOps.
+- The local `admin` account is kept (`admin.enabled` is not set to false), as the break-glass login.
+- Claims: ArgoCD does not check `email_verified` and uses no groups, so authentik's default `openid`/`email`/`profile` mappings suffice
+  and no custom mapping is added.
+- Missing secret: if `argocd-oidc` does not exist, argocd-server still starts. The unresolved `$argocd-oidc:clientSecret` string is used
+  as the literal secret (a warning is logged), so SSO login fails at the token exchange, while the local `admin` login is unaffected.
+- Reload: argocd-server watches `argocd-cm` and Secrets. When the OIDC config (including the resolved secret) or `url` changes it logs
+  "oidc config modified. restarting" and restarts its server loop in-process, so no pod restart should be needed. A manual restart is
+  the safe fallback if the login button or SSO still fails after a sync.
+- Rollout:
+  1. Create Key Vault secret `argocd-oidc-client-secret` **before** the sync (`openssl rand -hex 32`); otherwise the shared
+     `authentik-oidc-secrets` ExternalSecret fails as a whole.
+  2. Sync.
+  3. `kubectl -n authentik rollout restart deploy/authentik-worker`.
+  4. `kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/argocd.yaml`.
+  5. `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/argocd/.well-known/openid-configuration` returns `200`.
+  6. If needed: `kubectl -n argocd rollout restart deploy/argocd-server`.
+  7. Verify that an SSO login as a `board-member` has full access and that the local `admin` login still works.
+
 ## Add the next app
 
 1. **Create the secret in Key Vault** (human step, never in Git):
