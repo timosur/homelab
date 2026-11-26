@@ -58,6 +58,37 @@ spec:
               security:
                 cookie_secure: true
                 cookie_samesite: lax
+              # [auth]: never link SSO users to existing accounts by email (Grafana reads this only from [auth]).
+              auth:
+                oauth_allow_insecure_email_lookup: false
+              # [users]: role for newly created users, including first SSO logins.
+              users:
+                auto_assign_org_role: Viewer
+              # authentik SSO. Local/admin login form stays enabled (break-glass): no disable_login_form, no auto_login.
+              # The client secret comes only from GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET (envValueFrom below).
+              auth.generic_oauth:
+                enabled: true
+                name: authentik
+                client_id: grafana
+                scopes: openid email profile
+                auth_url: https://auth.timosur.com/application/o/authorize/
+                token_url: https://auth.timosur.com/application/o/token/
+                api_url: https://auth.timosur.com/application/o/userinfo/
+                signout_redirect_url: https://auth.timosur.com/application/o/grafana/end-session/
+                use_pkce: true
+                allow_sign_up: true
+                role_attribute_strict: false
+                # No role_attribute_path: without this Grafana resets the org role on every login.
+                # With it, roles an admin grants in the Grafana UI persist.
+                skip_org_role_sync: true
+                allow_assign_grafana_admin: false
+            envValueFrom:
+              GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+                secretKeyRef:
+                  name: grafana-oidc
+                  key: client-secret
+                  # Optional so Grafana still starts (local login only) if the Secret is missing.
+                  optional: true
           prometheus:
             prometheusSpec:
               retention: 30d

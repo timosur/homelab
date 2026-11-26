@@ -135,6 +135,40 @@ Checked against the Mealie v3.30.0 source (`mealie/routes/auth/auth.py`, `mealie
      existed, so this restart is still needed.
   8. Verify that a `board-member` SSO login works and lands as a non-admin, and that local login still works.
 
+## Grafana user behaviour
+
+Checked against the kube-prometheus-stack 92.16.0 grafana subchart templates and Grafana's generic OAuth docs; the sign-in
+flow itself was not tested against a live cluster.
+
+- Blueprint `grafana.yaml`, Key Vault secret `grafana-oidc-client-secret`, slug/client_id `grafana`, restricted to group
+  `board-member`. Grafana reads the secret from ExternalSecret `grafana-oidc` (namespace `monitoring`, key `client-secret`) through
+  the chart's `envValueFrom` as `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET` (`optional: true`, so Grafana still starts if the Secret is missing;
+  the "Sign in with authentik" button is then still shown but SSO sign-in fails, while the local/admin login keeps working). The secret is not in values, `grafana.ini` or a ConfigMap.
+- Callback: `https://grafana.home.timosur.com/login/generic_oauth` (strict; `root_url` + `/login/generic_oauth`). `root_url`
+  and the blueprint `redirect_uris` must change together. Grafana is reachable only from the home network, while authentik is public. The browser follows the redirect back to Grafana, so the login must happen on the home network.
+- Local/admin login stays on (`grafana-admin-secret`): no `disable_login_form`, `auto_login` or basic-auth change.
+- First SSO login creates the user (`allow_sign_up: true`) as **Viewer** (`[users] auto_assign_org_role`). No `role_attribute_path`, no
+  group scope, no Grafana-admin mapping (`allow_assign_grafana_admin: false`).
+- Role sync: `skip_org_role_sync: true`. Without a `role_attribute_path` Grafana would reset the org role to the default on each
+  login; with this setting, roles an admin grants in the Grafana UI persist.
+- No merge by email: `[auth] oauth_allow_insecure_email_lookup: false` is set explicitly. Grafana then identifies SSO users by the
+  OAuth `sub` (auth_id) only; a `board-member` whose email matches a local Grafana user is not linked and sign-in fails with a
+  "user already exists"-style error. (Default is false; stated in config so it is not changed by accident.)
+- Claims: Grafana's generic OAuth does not check `email_verified`, so authentik's default `email` mapping is used and no custom
+  mapping is needed. The default openid/email/profile mappings provide the `email` and `name` claims Grafana needs. Grafana sets the user's login to the email address, not to `preferred_username`.
+- Restart: the chart puts a `checksum/config` annotation on the pod, so changing `grafana.ini` or values rolls Grafana automatically.
+  A change to the `grafana-oidc` Secret (first creation, rotation) does **not** roll it (env from `secretKeyRef` is read at start),
+  so run `kubectl -n monitoring rollout restart deploy/monitoring-grafana`.
+- Rollout:
+  1. Create Key Vault secret `grafana-oidc-client-secret` **before** the sync (`openssl rand -hex 32`); otherwise the shared
+     `authentik-oidc-secrets` ExternalSecret fails as a whole.
+  2. Sync.
+  3. `kubectl -n authentik rollout restart deploy/authentik-worker`.
+  4. `kubectl -n authentik exec deploy/authentik-worker -- ak apply_blueprint /blueprints/oidc/grafana.yaml`.
+  5. `curl -s -o /dev/null -w '%{http_code}\n' https://auth.timosur.com/application/o/grafana/.well-known/openid-configuration` returns `200`.
+  6. `kubectl -n monitoring rollout restart deploy/monitoring-grafana` (the sync may have started the pod before the Secret existed).
+  7. Verify an SSO login as a `board-member` lands as Viewer and the admin login still works.
+
 ## Add the next app
 
 1. **Create the secret in Key Vault** (human step, never in Git):
